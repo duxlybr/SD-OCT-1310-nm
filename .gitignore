@@ -1,0 +1,35 @@
+# ===== Raw OCT acquisitions (GBs per run) - keep on institutional storage =====
+*.tdms
+*.tdms_index
+raw/
+**/raw/
+
+# ===== MATLAB =====
+*.asv
+*.m~
+*.mex*
+slprj/
+codegen/
+
+# ===== LabVIEW =====
+*.aliases
+*.lvlps
+.cache/
+builds/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# ===== Fusion 360 / CAD backups =====
+*.f3d.bak
+*~
+
+# ===== OS / editor =====
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+~$*
