@@ -66,21 +66,9 @@ are described in
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    SLD["SLD 1310 nm<br/>(Inphenix IPSDS1313)"] -->|single-mode fiber| COL["Collimation<br/>90° OAP"]
-    COL --> BS{"50:50<br/>beamsplitter"}
-    BS --> REF["Reference arm<br/>mirror + PT1/M"]
-    BS --> SAM["Sample arm<br/>GVS002 + LSM04<br/>+ dispersion compensator"]
-    REF --> BS
-    SAM --> BS
-    BS --> SPEC["Spectrometer<br/>600 l/mm grating<br/>+ 45° OAP"]
-    SPEC --> CAM["InGaAs line camera<br/>GL2048R-10A (2048 px)"]
-    CAM -->|Camera Link| FG["NI PCIe-1433"]
-    DAQ["NI PCIe-6323"] -->|analog out| SAM
-    DAQ -->|SMB/BNC trigger| FG
-    FG --> PC["LabVIEW (acquisition)<br/>MATLAB (processing)"]
-```
+<p align="center">
+  <img src="docs/img/system_architecture.svg" width="100%" alt="SD-OCT 1310 nm architecture: SLD, collimation, 50:50 beamsplitter with reference and sample arms, grating spectrometer, InGaAs camera, NI PCIe-1433 frame grabber and PC; NI PCIe-6323 drives the galvanometers and triggers the frame grabber.">
+</p>
 
 The system is organized into three modular subsystems, each aligned and
 characterized independently:
