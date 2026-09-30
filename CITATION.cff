@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this system or its code, please cite the associated thesis."
+title: "SD-OCT 1310 nm: signal processing, GUI and assembly documentation"
+authors:
+  - family-names: "Barreto Espinosa"
+    given-names: "Luis Eduardo"
+    affiliation: "Pontificia Universidad Católica del Perú (PUCP), GIBIO"
+  - family-names: "Pariona"
+    given-names: "Carlos"
+license: MIT
+repository-code: "https://github.com/duxlybr/SD-OCT-1310-nm"
+keywords:
+  - optical coherence tomography
+  - spectral-domain OCT
+  - 1310 nm
+  - biophotonics
+preferred-citation:
+  type: thesis
+  thesis-type: "Master's thesis"
+  title: "Development of an Optical Coherence Tomography Imaging Method for Nile Tilapia Fry Under Controlled Translational Motion"
+  authors:
+    - family-names: "Barreto Espinosa"
+      given-names: "Luis Eduardo"
+  institution:
+    name: "Pontificia Universidad Católica del Perú"
+  year: 2026

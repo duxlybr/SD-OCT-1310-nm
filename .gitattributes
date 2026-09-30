@@ -1,0 +1,22 @@
+* text=auto
+
+*.m      text diff=matlab
+*.md     text
+*.csv    text
+*.cff    text
+
+*.vi     binary
+*.ctl    binary
+*.lvproj text eol=crlf
+*.lvlib  text eol=crlf
+*.mat    binary
+*.tdms   binary
+*.f3d    binary
+*.step   binary
+*.stp    binary
+*.stl    binary
+*.xlsx   binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.pdf    binary

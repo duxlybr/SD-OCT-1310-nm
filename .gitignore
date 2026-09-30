@@ -2,6 +2,7 @@
 *.asv
 *.m~
 *.mlx.autosave
+*.mex*
 slprj/
 codegen/
 
@@ -17,12 +18,37 @@ results/
 *.tiff
 *.fig
 
+# Raw OCT acquisitions (GBs per run) - keep on institutional storage
+*.tdms
+*.tdms_index
+raw/
+**/raw/
+
 # MAT files are ignored by default because many are experiment-specific or heavy
 *.mat
 
-# OS files
+# LabVIEW
+*.aliases
+*.lvlps
+.cache/
+builds/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# CAD backups
+*.f3d.bak
+
+# OS / editor files
 .DS_Store
 Thumbs.db
+desktop.ini
+*.swp
+*~
+~$*
 
 # Local machine configuration
 local_settings.m
