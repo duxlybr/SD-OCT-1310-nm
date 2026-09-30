@@ -9,5 +9,6 @@ User interfaces used to operate the instrument.
 
 Both tools apply the SD-OCT reconstruction chain (background subtraction,
 k-linearization, Hann window, FFT), differing only in the transform length and
-averaging. The maintained offline processing lives in `src/+oce/` and
-`workflows/`; its interactive tuners are in `src/+oce/+interaction/`.
+averaging. The maintained offline processing lives in
+[`../OCE_workflow/`](../OCE_workflow/); its interactive tuners are in
+`OCE_workflow/src/+oce/+interaction/`.

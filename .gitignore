@@ -1,3 +1,5 @@
+# Repository-wide rules. OCE_workflow/.gitignore adds the processing-specific ones.
+
 # MATLAB autosave and temporary files
 *.asv
 *.m~
@@ -49,10 +51,3 @@ desktop.ini
 *.swp
 *~
 ~$*
-
-# Local machine configuration
-local_settings.m
-pathdef.m
-
-# Allow the reviewed deterministic synthetic scientific baseline
-!tests/fixtures/synthetic_scientific_baseline.mat

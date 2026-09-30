@@ -11,9 +11,9 @@ sample arm with a two-axis galvanometer and a telecentric scan lens, and a
 custom spectrometer with a reflective diffraction grating and an InGaAs
 line-scan camera. Acquisition and hardware control run in LabVIEW.
 
-The repository also contains the maintained **MATLAB OCT/OCE processing
-workflow** (reconstruction, phase estimation, filtering, Lamb-wave
-phase-speed analysis and experimental summaries), which supports this system
+The maintained **MATLAB OCT/OCE processing workflow** (reconstruction, phase
+estimation, filtering, Lamb-wave phase-speed analysis and experimental
+summaries) lives in [`OCE_workflow/`](OCE_workflow/) and supports this system
 through the `spectral_domain_1310` profile.
 
 ---
@@ -155,37 +155,24 @@ See [`docs/05_operation_and_acquisition.md`](docs/05_operation_and_acquisition.m
 
 ## Processing
 
-### Start
-
-Open MATLAB in the repository root and run:
+The processing code is a self-contained MATLAB project in
+[`OCE_workflow/`](OCE_workflow/). Open MATLAB **in that folder** and run:
 
 ```matlab
 startup
 ```
 
-Keep raw acquisitions, generated results and experiment-specific parameter files
-outside the repository. Choose a workflow below and edit its user configuration.
-
-### Human workflows
-
-| Task | Entrypoint |
-| --- | --- |
-| Inspect one acquisition section by section | `workflows/run_acquisition_stepwise.m` |
-| Prepare interactively, then process a batch | `workflows/run_experiment_batch.m` |
-| Process one prepared acquisition | `workflows/process_single_acquisition.m` |
-| Process a prepared batch | `workflows/process_acquisition_batch.m` |
-| Summarize one subexperiment | `workflows/summarize_subexperiment_results.m` |
-| Summarize an experiment | `workflows/summarize_experiment_results.m` |
-
-The [workflow guide](docs/processing_workflow.md) explains preparation, stopping,
-runtime previews and persistence. k-f and optional phase-gradient estimates remain
-separate; their interpretation is in [dispersion analysis](docs/dispersion_analysis_options.md).
+Then choose a workflow in `OCE_workflow/workflows/`. The
+[OCE_workflow README](OCE_workflow/README.md) lists the entrypoints, and the
+[workflow guide](OCE_workflow/docs/processing_workflow.md) explains
+preparation, previews and outputs. Before changing code, read
+[`OCE_workflow/AGENTS.md`](OCE_workflow/AGENTS.md).
 
 ### Reconstruction for this system (`spectral_domain_1310`)
 
 Select `oct_system_profile = "spectral_domain_1310"`. The profile is defined
-in `src/+oce/+config/getOCTSystemOptions.m` and its contract in
-[`docs/reconstruction_result_contract.md`](docs/reconstruction_result_contract.md):
+in `OCE_workflow/src/+oce/+config/getOCTSystemOptions.m` and its contract in
+[`OCE_workflow/docs/reconstruction_result_contract.md`](OCE_workflow/docs/reconstruction_result_contract.md):
 
 1. **Background subtraction**: sample-derived global-median spectrum.
 2. **Spectral resampling**: inverse-wavelength PCHIP resampling using
@@ -203,14 +190,6 @@ coefficients are applied.
 > (imaging) and 8192 (characterization) points. See
 > [`characterization/LATEST.md`](characterization/LATEST.md).
 
-### Find the right reference
-
-- Changing code: read [AGENTS.md](AGENTS.md), then the [architecture map](docs/repository/final_architecture.md).
-- Preparing metadata: [experimental metadata](docs/experimental_metadata.md).
-- Interpreting saved data: [scientific result](docs/scientific_result_schema.md).
-- Interpreting statistics: [summary statistics](docs/results_summary_statistics.md).
-- Validating changes: [canonical gate](docs/repository/validation_status.md), using `UpdateBaseline=false`.
-
 ---
 
 ## Repository structure
@@ -218,26 +197,27 @@ coefficients are applied.
 ```
 SD-OCT-1310-nm/
 ├── README.md
-├── AGENTS.md                     Rules for modifying the processing code
 ├── CITATION.cff                  Citation metadata
-├── LICENSE                       MIT
-├── startup.m                     Adds src/ and third_party/ to the MATLAB path
 │
-├── src/+oce/                     Maintained MATLAB processing packages
-├── workflows/                    Human entrypoints (stepwise, batch, summaries)
-├── tests/                        Executable contracts and regressions
-├── third_party/                  Vendored dependencies (MIMT, fireice)
-├── inherited/                    Historical source, outside the runtime path
+├── OCE_workflow/                 MATLAB OCT/OCE processing project (MIT)
+│   ├── README.md                 Entrypoints and references
+│   ├── AGENTS.md                 Rules for modifying the processing code
+│   ├── LICENSE                   MIT
+│   ├── startup.m                 Adds src/ and third_party/ to the MATLAB path
+│   ├── src/+oce/                 Maintained processing packages
+│   ├── workflows/                Human entrypoints (stepwise, batch, summaries)
+│   ├── tests/                    Executable contracts and regressions
+│   ├── docs/                     Processing workflow and scientific contracts
+│   ├── third_party/              Vendored dependencies (MIMT, fireice)
+│   └── inherited/                Historical source, outside the runtime path
 │
-├── docs/                         Documentation
+├── docs/                         System documentation
 │   ├── README.md                 Index
-│   ├── 01_system_architecture.md … 05_operation_and_acquisition.md
-│   │                             System: architecture, assembly, calibration,
-│   │                             characterization methods, operation
-│   ├── processing_workflow.md, reconstruction_result_contract.md, …
-│   │                             Processing: workflow and scientific contracts
-│   ├── repository/               Architecture, dependencies, validation
-│   ├── project/                  Scientific audit log
+│   ├── 01_system_architecture.md
+│   ├── 02_assembly_guide.md      Assembly and optical alignment
+│   ├── 03_calibration.md         Spectral, axial and lateral calibration
+│   ├── 04_characterization_methods.md
+│   ├── 05_operation_and_acquisition.md
 │   └── img/                      Documentation figures
 ├── characterization/             Characterization results, kept up to date
 │   ├── LATEST.md                 Current reference values of the system
@@ -266,7 +246,7 @@ The system documents in `docs/` describe **how** each measurement is made;
 
 | Component | Purpose |
 |---|---|
-| MATLAB | Processing workflow (`startup.m`, `src/+oce/`, `workflows/`) |
+| MATLAB | Processing workflow ([`OCE_workflow/`](OCE_workflow/)) |
 | LabVIEW + NI-DAQmx | PCIe-6323 control (galvanometers and triggers) |
 | NI Vision Acquisition Software (NI-IMAQ) | PCIe-1433 frame grabber and Camera Link camera |
 | Autodesk Fusion 360 | Virtual assembly (optional) |
@@ -340,11 +320,13 @@ If you use this system or its code, please cite the associated thesis (see
 ## Authors and funding
 
 - **SD-OCT system and documentation:** Luis Eduardo Barreto Espinosa — luis.barretoe@pucp.edu.pe
-- **Processing workflow:** Carlos Pariona (see [LICENSE](LICENSE))
+- **Processing workflow (`OCE_workflow/`):** Carlos Pariona (see [LICENSE](OCE_workflow/LICENSE))
 - **Advisor:** José Fernando Zvietcovich Zegarra
 - **Group:** Biophotonics and Biomedical Optics Research Group (GIBIO), PUCP
 - **Funding:** CONCYTEC-PROCIENCIA (PI 1242 – PE501093888)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+- `OCE_workflow/`: MIT — see [`OCE_workflow/LICENSE`](OCE_workflow/LICENSE).
+- Rest of the repository (system documentation, characterization, hardware):
+  no license has been chosen yet; all rights reserved until one is added.

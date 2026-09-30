@@ -41,8 +41,9 @@ characterization/
    [`LATEST.md`](LATEST.md) and the performance table of the root
    [`README.md`](../README.md). If a calibration constant changed (axial
    slope, spectrometer λ range, galvanometer factors), also review the
-   `spectral_domain_1310` profile in `src/+oce/+config/getOCTSystemOptions.m`
-   (follow [AGENTS.md](../AGENTS.md): calibration changes are scientific
+   `spectral_domain_1310` profile in
+   `OCE_workflow/src/+oce/+config/getOCTSystemOptions.m` (follow
+   [AGENTS.md](../OCE_workflow/AGENTS.md): calibration changes are scientific
    changes).
 
 ## Conventions
