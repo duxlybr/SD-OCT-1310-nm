@@ -19,6 +19,7 @@ outside the repository. Choose a workflow below and edit its user configuration.
 | Task | Entrypoint |
 | --- | --- |
 | Inspect one acquisition section by section | `workflows/run_acquisition_stepwise.m` |
+| Process a raster acquisition into an en-face (XY) wave video | `workflows/run_raster_enface_stepwise.m` |
 | Prepare interactively, then process a batch | `workflows/run_experiment_batch.m` |
 | Process one prepared acquisition | `workflows/process_single_acquisition.m` |
 | Process a prepared batch | `workflows/process_acquisition_batch.m` |

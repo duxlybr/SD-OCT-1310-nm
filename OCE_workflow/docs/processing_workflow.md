@@ -8,6 +8,7 @@ parameter files and generated results outside the repository.
 | Need | Human entrypoint | Programmatic owner |
 | --- | --- | --- |
 | Inspect one acquisition by stages | `workflows/run_acquisition_stepwise.m` | Explicit domain calls |
+| Process one raster acquisition to an en-face video | `workflows/run_raster_enface_stepwise.m` | Explicit domain calls |
 | Prepare interactively, then process a batch | `workflows/run_experiment_batch.m` | Preparation and batch owners |
 | Process one prepared acquisition | `workflows/process_single_acquisition.m` | `oce.pipeline.runSingleAcquisition` |
 | Process a prepared batch | `workflows/process_acquisition_batch.m` | `oce.pipeline.runBatchProcessing` |
@@ -155,6 +156,34 @@ The automatic runner exposes these presentation values through OutputOptions.
   Batch preview controls act during representative review, not every automatic run.
 - **Polar:** rendering follows scientific-result construction and uses its existing
   angular values. It does not recalculate dispersion or thickness.
+
+## Raster en-face motion
+
+`run_raster_enface_stepwise.m` processes a `raster` acquisition through
+reconstruction, per-B-scan borders, anterior-surface phase and
+`oce.filtering.filterSurfacePhase`. Depth-resolved phase is not needed for the
+en-face product and is skipped. Every raster position has its own excitation
+trigger, so one time sample across positions forms one XY frame.
+`oce.plotting.prepareEnfaceMotionVisualization` arranges the filtered surface
+phase as `y_x_time` frames with FIR delay compensated visually, each position's
+temporal mean removed and an optional display-only spatial median.
+`plotEnfaceMotionSnapshots` previews selected frames and
+`oce.video.createEnfaceMotionVideo` writes the MP4. The automatic pipeline accepts
+raster up to `stop_after="filtering"`; dispersion windows reject raster geometry.
+
+The optional structural en-face (section 4A) uses
+`oce.acquisition.computeStructuralEnface`: each position averages the OCT
+amplitude `|A|` of `N` M-repetitions starting at `FirstMRepetition` (incoherent
+A-scan averaging, insensitive to motion-induced phase), then takes the linear mean
+over `DepthRangeIndices` of the reconstructed depth crop. The map keeps linear
+amplitude and its `20*log10` value with the averaging provenance.
+`oce.plotting.saveStructuralEnface` writes `StructuralEnface.fig/.png`.
+For a static sample, repeated A-scans share the same speckle, so A-scan averaging
+reduces detector noise rather than speckle.
+
+Raw acquisitions are held as `uint16` digitizer counts and converted to double
+during spectral preparation. The complex reconstruction still stores
+lateral x depth x time complex doubles, so large rasters need a tight depth crop.
 
 Filtered-motion video subtracts the temporal mean per spatial pixel and applies
 `medfilt2(frame,[5 3],'Symmetric')` only to temporary display frames. This does not

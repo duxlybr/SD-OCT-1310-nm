@@ -131,6 +131,10 @@ function assert_input_failures(fixture)
     late.DispersionWindowOptions.temporal.start_index_inclusive = 999;
     assert_identifier(@() run(late, fixture.filter_result, fixture), ...
         'OCE:DispersionWindows:TemporalStartOutsideDomain');
+    raster = fixture;
+    raster.geometry.raster = struct('slow_axis_mm', [0 1]);
+    assert_identifier(@() run(config, fixture.filter_result, raster), ...
+        'OCE:DispersionWindows:UnsupportedScanGeometry');
 end
 
 function assert_first_max_tie(fixture)

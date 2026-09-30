@@ -62,7 +62,8 @@ Those belong to `acquisition_state.geometry` because they depend on canonical ex
 For `scan_geometry="angular_bmodes"`, `oce.acquisition.buildAcquisitionGeometry` builds the local physical B-mode axis once from the neutral raw descriptor. It is not inferred a second time inside reconstruction.
 
 Raw I/O returns `measurement.raw_descriptor` and `rawdata` with layout
-`spectral_time_lateral`. `buildAcquisitionState` combines reconstruction with
+`spectral_time_lateral`, holding native `uint16` digitizer counts; spectral
+preparation converts them to double exactly. `buildAcquisitionState` combines reconstruction with
 acquisition geometry; downstream domains use that geometry for B-mode spatial
 information. See [architecture](repository/final_architecture.md) for the ownership map.
 

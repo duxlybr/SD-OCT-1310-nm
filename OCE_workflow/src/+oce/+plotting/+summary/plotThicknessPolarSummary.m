@@ -59,7 +59,8 @@ function [figures, fileNames] = plotThicknessPolarSummary(experiment)
             end
 
             title(pax, sprintf('Thickness (µm) - %s', conditionTitle));
-            legend(pax, 'show', 'Location', 'best');
+            legend(pax, 'show', 'Location', 'southoutside', ...
+                'Orientation', 'horizontal');
             grid(pax, 'on');
             hold(pax, 'off');
         end

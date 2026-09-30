@@ -117,7 +117,8 @@ function render_phase_speed_comparison(fig, anglesDeg, kfValues, ...
     polarAx.GridAlpha = 0.35;
     title(polarAx, sprintf('Phase speed (m/s) @ %.0f Hz', frequencyHz), ...
         'FontWeight', 'bold');
-    legend(polarAx, 'show', 'Location', 'best');
+    legend(polarAx, 'show', 'Location', 'southoutside', ...
+        'Orientation', 'horizontal');
     apply_radial_limit(polarAx, [kfValues; gradientValues]);
 
     boxAx = axes(fig, 'Position', [0.77 0.20 0.19 0.60]);
