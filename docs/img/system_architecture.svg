@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1095 440" width="1095" height="440" role="img" aria-labelledby="title desc" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title id="title">SD-OCT 1310 nm system architecture</title>
+  <desc id="desc">The SLD light is collimated and split by a 50:50 beamsplitter into a reference arm and a sample arm. The recombined light is dispersed by the grating onto an InGaAs line camera, read by an NI PCIe-1433 frame grabber and sent to the PC. An NI PCIe-6323 drives the galvanometers in the sample arm and triggers the frame grabber.</desc>
+  <style>
+    .box   { fill: #f6f8fa; stroke: #57606a; stroke-width: 1.5; }
+    .elec  { fill: #eef4ff; stroke: #0969da; stroke-width: 1.5; }
+    .bs    { fill: #fff8e6; stroke: #9a6700; stroke-width: 1.5; }
+    .t     { fill: #1f2328; font-size: 16px; font-weight: 600; text-anchor: middle; }
+    .s     { fill: #57606a; font-size: 13.5px; text-anchor: middle; }
+    .lbl   { fill: #57606a; font-size: 13px; font-style: italic; }
+    .edge  { stroke: #57606a; stroke-width: 1.6; fill: none; }
+    .eedge { stroke: #0969da; stroke-width: 1.6; fill: none; stroke-dasharray: 6 4; }
+    .head  { fill: #57606a; }
+    .ehead { fill: #0969da; }
+    .grp   { fill: none; stroke: #d0d7de; stroke-width: 1; stroke-dasharray: 3 4; }
+    .gl    { fill: #8c959f; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-anchor: middle; }
+    @media (prefers-color-scheme: dark) {
+      .box   { fill: #161b22; stroke: #8b949e; }
+      .elec  { fill: #0d2240; stroke: #4493f8; }
+      .bs    { fill: #2b2111; stroke: #d29922; }
+      .t     { fill: #e6edf3; }
+      .s, .lbl { fill: #9198a1; }
+      .edge  { stroke: #9198a1; }
+      .eedge { stroke: #4493f8; }
+      .head  { fill: #9198a1; }
+      .ehead { fill: #4493f8; }
+      .grp   { stroke: #3d444d; }
+      .gl    { fill: #6e7681; }
+    }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="head" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+    <marker id="e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="ehead" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <!-- subsystem groups -->
+  <rect class="grp" x="350" y="16" width="155" height="410" rx="10"/>
+  <text class="gl" x="427.5" y="418">INTERFEROMETER</text>
+  <rect class="grp" x="520" y="140" width="340" height="130" rx="10"/>
+  <text class="gl" x="690" y="162">SPECTROMETER</text>
+
+  <!-- optical path -->
+  <rect class="box" x="20" y="180" width="140" height="70" rx="8"/>
+  <text class="t" x="90" y="210">SLD 1310 nm</text>
+  <text class="s" x="90" y="231">Inphenix IPSDS1313</text>
+
+  <rect class="box" x="200" y="180" width="125" height="70" rx="8"/>
+  <text class="t" x="262.5" y="210">Collimation</text>
+  <text class="s" x="262.5" y="231">90° OAP mirror</text>
+
+  <rect class="bs" x="365" y="180" width="125" height="70" rx="8"/>
+  <text class="t" x="427.5" y="210">Beamsplitter</text>
+  <text class="s" x="427.5" y="231">50:50 cube</text>
+
+  <rect class="box" x="360" y="30" width="135" height="70" rx="8"/>
+  <text class="t" x="427.5" y="60">Reference arm</text>
+  <text class="s" x="427.5" y="81">mirror + PT1/M</text>
+
+  <rect class="box" x="360" y="310" width="135" height="84" rx="8"/>
+  <text class="t" x="427.5" y="337">Sample arm</text>
+  <text class="s" x="427.5" y="358">GVS002 · LSM04</text>
+  <text class="s" x="427.5" y="377">dispersion comp.</text>
+
+  <rect class="box" x="535" y="180" width="140" height="70" rx="8"/>
+  <text class="t" x="605" y="210">Grating</text>
+  <text class="s" x="605" y="231">600 l/mm, 45° OAP</text>
+
+  <rect class="box" x="705" y="180" width="140" height="70" rx="8"/>
+  <text class="t" x="775" y="210">InGaAs camera</text>
+  <text class="s" x="775" y="231">GL2048R-10A</text>
+
+  <!-- electronics -->
+  <rect class="elec" x="940" y="180" width="130" height="70" rx="8"/>
+  <text class="t" x="1005" y="210">NI PCIe-1433</text>
+  <text class="s" x="1005" y="231">frame grabber</text>
+
+  <rect class="elec" x="940" y="317" width="130" height="70" rx="8"/>
+  <text class="t" x="1005" y="347">NI PCIe-6323</text>
+  <text class="s" x="1005" y="368">DAQ / waveforms</text>
+
+  <rect class="elec" x="940" y="22" width="130" height="86" rx="8"/>
+  <text class="t" x="1005" y="50">PC</text>
+  <text class="s" x="1005" y="72">LabVIEW (acq.)</text>
+  <text class="s" x="1005" y="91">MATLAB (proc.)</text>
+
+  <!-- optical edges -->
+  <line class="edge" x1="160" y1="215" x2="198" y2="215" marker-end="url(#a)"/>
+  <text class="lbl" x="180" y="205" text-anchor="middle">fiber</text>
+  <line class="edge" x1="325" y1="215" x2="363" y2="215" marker-end="url(#a)"/>
+  <line class="edge" x1="427.5" y1="102" x2="427.5" y2="178" marker-start="url(#a)" marker-end="url(#a)"/>
+  <line class="edge" x1="427.5" y1="252" x2="427.5" y2="308" marker-start="url(#a)" marker-end="url(#a)"/>
+  <line class="edge" x1="490" y1="215" x2="533" y2="215" marker-end="url(#a)"/>
+  <line class="edge" x1="675" y1="215" x2="703" y2="215" marker-end="url(#a)"/>
+
+  <!-- electrical edges -->
+  <line class="eedge" x1="845" y1="215" x2="938" y2="215" marker-end="url(#e)"/>
+  <text class="lbl" x="892.5" y="204" text-anchor="middle">Camera Link</text>
+  <line class="eedge" x1="1005" y1="180" x2="1005" y2="110" marker-end="url(#e)"/>
+  <line class="eedge" x1="1005" y1="317" x2="1005" y2="252" marker-end="url(#e)"/>
+  <text class="lbl" x="997" y="290" text-anchor="end">SMB/BNC trigger</text>
+  <line class="eedge" x1="940" y1="352" x2="497" y2="352" marker-end="url(#e)"/>
+  <text class="lbl" x="718" y="343" text-anchor="middle">analog out · galvanometer drive</text>
+</svg>
