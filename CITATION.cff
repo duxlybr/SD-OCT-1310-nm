@@ -7,7 +7,6 @@ authors:
     affiliation: "Pontificia Universidad Católica del Perú (PUCP), GIBIO"
   - family-names: "Pariona"
     given-names: "Carlos"
-license: MIT
 repository-code: "https://github.com/duxlybr/SD-OCT-1310-nm"
 keywords:
   - optical coherence tomography
