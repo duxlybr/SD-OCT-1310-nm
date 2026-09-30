@@ -69,4 +69,5 @@ in-house from catalog components.
 
 Source → interferometer → spectral interference → grating + line camera →
 background subtraction → λ-to-k resampling → window → FFT → depth profile.
-See the [processing pipeline](../processing/matlab/README.md).
+In software this chain is implemented by the `spectral_domain_1310` profile;
+see the [reconstruction contract](reconstruction_result_contract.md).

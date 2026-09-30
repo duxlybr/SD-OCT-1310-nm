@@ -34,7 +34,7 @@ component, new scan lens, different line rate, etc.).
 
 ## Files
 
-- `data/`:
+- `tables/`:
 - `figures/`:
 
 ## Notes

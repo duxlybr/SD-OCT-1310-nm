@@ -12,9 +12,9 @@ air. Update this file whenever a new campaign supersedes them (see
 
 | Constant | Value | Notes |
 |---|---|---|
-| Spectrometer wavelength axis | 1262.34 nm (pixel 1) → 1471.08 nm (pixel 2048), linear | Used for k-linearization |
+| Spectrometer wavelength axis | 1262.34 nm (pixel 1) → 1471.08 nm (pixel 2048), linear | Used in the thesis characterization; the processing profile `spectral_domain_1310` currently uses 1261.36 → 1472.76 nm (to be reconciled) |
 | Axial calibration (8192-pt FFT) | p = 0.6744·d + 43.24 | p: peak pixel, d: micrometer reading (µm); max residual 0.72 px |
-| Axial pixel size | 1.483 µm/px (8192-pt) · 2.966 µm/px (4096-pt) · 5.931 µm/native sample | |
+| Axial pixel size | 1.483 µm/px (8192-pt) · 2.966 µm/px (4096-pt) · 5.931 µm/native sample | Processing profile uses 1.48 µm/bin at 8192 → 5.92 µm/bin unpadded |
 | Depth from zero delay | z = p / 0.6744 µm | |
 | Galvanometer factor, X | 0.4053 V/mm (RMSE 1.3 mV) | Proportional fit through origin |
 | Galvanometer factor, Y | 0.4071 V/mm (RMSE 2.1 mV) | Proportional fit through origin |

@@ -89,7 +89,7 @@ Common-path configuration (front/back reflections of a coverslip, peak at
 
 ## Files
 
-- `data/`: processed characterization tables (to be added)
+- `tables/`: processed characterization tables (to be added)
 - `figures/`: exported figures (to be added)
 
 ## Notes

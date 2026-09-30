@@ -1,8 +1,9 @@
 # 3. Calibration
 
 Current calibration constants are in
-[`../characterization/LATEST.md`](../characterization/LATEST.md) and must be
-mirrored in `processing/matlab/config/`.
+[`../characterization/LATEST.md`](../characterization/LATEST.md). The
+processing code reads its calibration from the `spectral_domain_1310` profile
+in `src/+oce/+config/getOCTSystemOptions.m`; keep both consistent.
 
 ## 3.1 Spectral (pixel → wavelength)
 

@@ -21,7 +21,7 @@ characterization/
 │   └── README.md
 └── YYYY-MM_<description>/  One folder per campaign
     ├── README.md           Conditions, results and notes of the campaign
-    ├── data/               Processed/summary data (CSV, XLSX, small MAT)
+    ├── tables/             Processed/summary tables (CSV, XLSX)
     └── figures/            Exported figures (PNG/SVG)
 ```
 
@@ -32,15 +32,18 @@ characterization/
    than one campaign happens in the same month.
 2. Fill in its `README.md`: date, operator, system configuration (what
    changed since the previous campaign) and the results table.
-3. Put processed data in `data/` and exported figures in `figures/`. Raw
-   `.tdms` acquisitions stay out of Git (see the root `.gitignore`); record
-   their storage location in the campaign `README.md`.
+3. Put processed tables in `tables/` and exported figures in `figures/`.
+   Prefer CSV: the root `.gitignore` excludes `*.mat` and any `data/` or
+   `results/` folder. Raw `.tdms` acquisitions stay out of Git; record their
+   storage location in the campaign `README.md`.
 4. Add a row at the top of [`HISTORY.md`](HISTORY.md).
 5. If the campaign supersedes the current reference values, update
    [`LATEST.md`](LATEST.md) and the performance table of the root
    [`README.md`](../README.md). If a calibration constant changed (axial
-   slope, spectrometer λ range, galvanometer factors), also update
-   `processing/matlab/config/`.
+   slope, spectrometer λ range, galvanometer factors), also review the
+   `spectral_domain_1310` profile in `src/+oce/+config/getOCTSystemOptions.m`
+   (follow [AGENTS.md](../AGENTS.md): calibration changes are scientific
+   changes).
 
 ## Conventions
 
