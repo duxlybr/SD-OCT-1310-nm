@@ -9,12 +9,12 @@ The system is a laboratory prototype built from free-space optics on optical
 breadboards: a fiber-coupled SLD source, a Twyman–Green interferometer, a
 sample arm with a two-axis galvanometer and a telecentric scan lens, and a
 custom spectrometer with a reflective diffraction grating and an InGaAs
-line-scan camera. Acquisition and hardware control run in LabVIEW;
-reconstruction runs in MATLAB.
+line-scan camera. Acquisition and hardware control run in LabVIEW.
 
-> **Status:** the system is functional and characterized. Code and
-> documentation are being added to this repository progressively; see the
-> [Roadmap](#roadmap).
+The repository also contains the maintained **MATLAB OCT/OCE processing
+workflow** (reconstruction, phase estimation, filtering, Lamb-wave
+phase-speed analysis and experimental summaries), which supports this system
+through the `spectral_domain_1310` profile.
 
 ---
 
@@ -24,15 +24,15 @@ reconstruction runs in MATLAB.
 - [Architecture](#architecture)
 - [Main components](#main-components)
 - [Acquisition parameters](#acquisition-parameters)
-- [Processing pipeline](#processing-pipeline)
+- [Processing](#processing)
 - [Repository structure](#repository-structure)
 - [Software requirements](#software-requirements)
-- [Quick start](#quick-start)
 - [Data](#data)
 - [Application: motion-based OCT](#application-motion-based-oct)
 - [Roadmap](#roadmap)
 - [How to cite](#how-to-cite)
 - [Authors and funding](#authors-and-funding)
+- [License](#license)
 
 ---
 
@@ -51,7 +51,7 @@ are described in
 | Source optical power | — | **10.14 mW** | Source certificate |
 | Axial resolution | 8.49 µm (theoretical) | **9.65 µm** | PSF FWHM of a mirror near zero delay |
 | Lateral resolution | — | **11.04 µm** | USAF 1951 target, group 5, element 4 |
-| Axial sampling | — | 1.483 µm/px (8192-pt FFT) · 2.966 µm/px (4096-pt FFT) | Axial calibration, mirror on micrometer stage |
+| Axial sampling | — | 1.483 µm/px (8192-pt FFT) · 5.931 µm per native sample | Axial calibration, mirror on micrometer stage |
 | Reconstructed axial range | — | 6.07 mm (Nyquist) | 1024 × 5.931 µm |
 | Imaging depth (−10 dB) | 3.57 mm (model) | **3.45 mm** (≈ 2.6 mm in water) | Signal roll-off |
 | Sensitivity | — | **79.6 dB** | Mirror + ND filter (OD 1.02 at 1310 nm, double pass) |
@@ -79,7 +79,7 @@ flowchart LR
     CAM -->|Camera Link| FG["NI PCIe-1433"]
     DAQ["NI PCIe-6323"] -->|analog out| SAM
     DAQ -->|SMB/BNC trigger| FG
-    FG --> PC["LabVIEW (acquisition)<br/>MATLAB (reconstruction)"]
+    FG --> PC["LabVIEW (acquisition)<br/>MATLAB (processing)"]
 ```
 
 The system is organized into three modular subsystems, each aligned and
@@ -153,27 +153,63 @@ See [`docs/05_operation_and_acquisition.md`](docs/05_operation_and_acquisition.m
 
 ---
 
-## Processing pipeline
+## Processing
 
-Each A-line of 2048 spectral samples is processed as follows:
+### Start
 
-1. **DC subtraction**: remove the non-interferometric component (background
-   spectrum).
-2. **Wavenumber linearization**: spline resampling from λ to a uniform
-   k grid. Spectrometer calibration: λ varies linearly from
-   **1262.34 nm (pixel 1)** to **1471.08 nm (pixel 2048)**.
-3. **Hann window**.
-4. **Zero-padded FFT**: 8192 points (characterization) or 4096 points
-   (imaging). Only the non-conjugate half is kept.
-5. **Log scale**: 20·log₁₀|FFT|.
-6. **B-scan assembly**: A-lines acquired on the backward ramp are flipped so
-   that every B-scan has the same fast-axis orientation.
+Open MATLAB in the repository root and run:
 
-Dispersion is compensated **optically** in the sample arm, so no numerical
-phase coefficients are applied. Depth conversion: z = p / 0.6744 µm, with p
-the pixel index of the 8192-point reconstruction.
+```matlab
+startup
+```
 
-See [`processing/matlab/README.md`](processing/matlab/README.md).
+Keep raw acquisitions, generated results and experiment-specific parameter files
+outside the repository. Choose a workflow below and edit its user configuration.
+
+### Human workflows
+
+| Task | Entrypoint |
+| --- | --- |
+| Inspect one acquisition section by section | `workflows/run_acquisition_stepwise.m` |
+| Prepare interactively, then process a batch | `workflows/run_experiment_batch.m` |
+| Process one prepared acquisition | `workflows/process_single_acquisition.m` |
+| Process a prepared batch | `workflows/process_acquisition_batch.m` |
+| Summarize one subexperiment | `workflows/summarize_subexperiment_results.m` |
+| Summarize an experiment | `workflows/summarize_experiment_results.m` |
+
+The [workflow guide](docs/processing_workflow.md) explains preparation, stopping,
+runtime previews and persistence. k-f and optional phase-gradient estimates remain
+separate; their interpretation is in [dispersion analysis](docs/dispersion_analysis_options.md).
+
+### Reconstruction for this system (`spectral_domain_1310`)
+
+Select `oct_system_profile = "spectral_domain_1310"`. The profile is defined
+in `src/+oce/+config/getOCTSystemOptions.m` and its contract in
+[`docs/reconstruction_result_contract.md`](docs/reconstruction_result_contract.md):
+
+1. **Background subtraction**: sample-derived global-median spectrum.
+2. **Spectral resampling**: inverse-wavelength PCHIP resampling using
+   detector-pixel wavelength endpoints **1261.36 → 1472.76 nm**.
+3. **Hann window and FFT** of the 2048 prepared samples (no zero padding).
+4. **Depth axis**: 1.48 µm/bin in air at the reference FFT of 8192 points,
+   i.e. 1.48 × 8192 / 2048 = **5.92 µm/bin** for the unpadded reconstruction,
+   divided by the sample refractive index.
+
+Dispersion is compensated **optically** in the sample arm; no numerical phase
+coefficients are applied.
+
+> **Note:** the thesis characterization used wavelength endpoints
+> 1262.34 → 1471.08 nm, spline resampling and zero-padded FFTs of 4096
+> (imaging) and 8192 (characterization) points. See
+> [`characterization/LATEST.md`](characterization/LATEST.md).
+
+### Find the right reference
+
+- Changing code: read [AGENTS.md](AGENTS.md), then the [architecture map](docs/repository/final_architecture.md).
+- Preparing metadata: [experimental metadata](docs/experimental_metadata.md).
+- Interpreting saved data: [scientific result](docs/scientific_result_schema.md).
+- Interpreting statistics: [summary statistics](docs/results_summary_statistics.md).
+- Validating changes: [canonical gate](docs/repository/validation_status.md), using `UpdateBaseline=false`.
 
 ---
 
@@ -182,49 +218,47 @@ See [`processing/matlab/README.md`](processing/matlab/README.md).
 ```
 SD-OCT-1310-nm/
 ├── README.md
+├── AGENTS.md                     Rules for modifying the processing code
 ├── CITATION.cff                  Citation metadata
-├── docs/                         Technical documentation (procedures)
-│   ├── 01_system_architecture.md
-│   ├── 02_assembly_guide.md      Step-by-step assembly and alignment
-│   ├── 03_calibration.md         Axial, spectral and lateral calibration
-│   ├── 04_characterization_methods.md
-│   ├── 05_operation_and_acquisition.md
+├── LICENSE                       MIT
+├── startup.m                     Adds src/ and third_party/ to the MATLAB path
+│
+├── src/+oce/                     Maintained MATLAB processing packages
+├── workflows/                    Human entrypoints (stepwise, batch, summaries)
+├── tests/                        Executable contracts and regressions
+├── third_party/                  Vendored dependencies (MIMT, fireice)
+├── inherited/                    Historical source, outside the runtime path
+│
+├── docs/                         Documentation
+│   ├── README.md                 Index
+│   ├── 01_system_architecture.md … 05_operation_and_acquisition.md
+│   │                             System: architecture, assembly, calibration,
+│   │                             characterization methods, operation
+│   ├── processing_workflow.md, reconstruction_result_contract.md, …
+│   │                             Processing: workflow and scientific contracts
+│   ├── repository/               Architecture, dependencies, validation
+│   ├── project/                  Scientific audit log
 │   └── img/                      Documentation figures
 ├── characterization/             Characterization results, kept up to date
 │   ├── LATEST.md                 Current reference values of the system
 │   ├── HISTORY.md                Log of all characterization campaigns
 │   ├── _template/                Template for a new campaign
-│   └── YYYY-MM_<description>/    One folder per campaign (data + figures)
+│   └── YYYY-MM_<description>/    One folder per campaign (tables + figures)
 ├── hardware/                     Physical documentation of the system
 │   ├── BOM.md                    Bill of materials
-│   ├── cad/
-│   │   ├── fusion360/            Virtual assembly (.f3d)
-│   │   └── step/                 STEP models of the subsystems
+│   ├── cad/                      Fusion 360 assembly and STEP models
 │   ├── 3d_printing/              Printed parts (mounts, connectors)
 │   └── wiring/                   Connections and synchronization signals
 ├── acquisition/                  Acquisition and hardware control
 │   ├── labview/                  Acquisition and galvanometer-control VIs
 │   └── camera_config/            Camera Link configuration of the camera
-├── processing/
-│   └── matlab/                   Reconstruction and analysis
-│       ├── config/               System and calibration parameters
-│       ├── io/                   TDMS file readers
-│       ├── reconstruction/       DC, k-linearization, window, FFT
-│       ├── imaging/              B-scans, volumes and en face projections
-│       ├── calibration/          Axial and galvanometer calibration
-│       ├── characterization/     PSF, sensitivity, roll-off, phase analysis
-│       └── utils/                Helper functions
-├── gui/                          User interfaces
-│   ├── characterization/         Characterization tool (8192-pt FFT)
-│   └── imaging/                  Imaging tool (4096-pt FFT)
-└── data/                         Lightweight calibration and sample data
-    ├── calibration/
-    └── samples/
+└── gui/                          Operator tools for the instrument
+    ├── characterization/
+    └── imaging/
 ```
 
-Each top-level folder has its own `README.md` describing what it contains.
-`docs/` describes **how** each measurement is made; `characterization/`
-records **what** was measured and when.
+The system documents in `docs/` describe **how** each measurement is made;
+`characterization/` records **what** was measured and when.
 
 ---
 
@@ -232,41 +266,23 @@ records **what** was measured and when.
 
 | Component | Purpose |
 |---|---|
+| MATLAB | Processing workflow (`startup.m`, `src/+oce/`, `workflows/`) |
 | LabVIEW + NI-DAQmx | PCIe-6323 control (galvanometers and triggers) |
 | NI Vision Acquisition Software (NI-IMAQ) | PCIe-1433 frame grabber and Camera Link camera |
-| MATLAB | Reconstruction, calibration and characterization |
 | Autodesk Fusion 360 | Virtual assembly (optional) |
-
-> Exact versions will be documented together with the corresponding code.
-
----
-
-## Quick start
-
-1. **Assembly and alignment**: follow
-   [`docs/02_assembly_guide.md`](docs/02_assembly_guide.md).
-2. **Calibration**: obtain the pixel-to-depth relation and the galvanometer
-   V/mm factors ([`docs/03_calibration.md`](docs/03_calibration.md)) and
-   update the values in `processing/matlab/config/`.
-3. **Characterization**: measure resolution, sensitivity and roll-off, and
-   record the results as a new campaign in
-   [`characterization/`](characterization/).
-4. **Acquisition**: set the line rate, N_A and field of view in the LabVIEW
-   interface and acquire the data as TDMS files.
-5. **Reconstruction**: process the TDMS files with the scripts in
-   `processing/matlab/` to obtain B-scans, volumes and en face projections.
 
 ---
 
 ## Data
 
-- This repository holds **lightweight data only**: calibration tables,
-  characterization summaries and small sample datasets.
-- Raw OCT data (`.tdms` files, several GB per session) are **not
-  versioned** (see `.gitignore`). They are kept on institutional storage and
-  may be published in an external data repository (e.g. Zenodo or OSF).
-
-See [`data/README.md`](data/README.md).
+- Raw acquisitions, generated results and experiment-specific parameter files
+  **stay outside the repository**. `.gitignore` excludes `data/`, `results/`,
+  `*.mat`, `*.tdms` and video files.
+- Raw OCT data (≈ 205 MB/s, several GB per run) are kept on institutional
+  storage and may be published in an external data repository (e.g. Zenodo
+  or OSF).
+- Only lightweight characterization tables (CSV) and figures are versioned,
+  inside [`characterization/`](characterization/).
 
 ---
 
@@ -298,16 +314,14 @@ released after the thesis defense.
 
 ## Roadmap
 
-- [x] Repository structure and general documentation
+- [x] Repository structure and system documentation
 - [x] Characterization log with the current reference values
+- [x] MATLAB processing workflow (`spectral_domain_1310` profile)
+- [ ] Reconcile the spectral calibration of the processing profile with the thesis characterization
 - [ ] LabVIEW acquisition and synchronization VIs
-- [ ] MATLAB reconstruction scripts (A-line → B-scan → volume)
-- [ ] Calibration (axial and galvanometer) and characterization scripts
 - [ ] Characterization and imaging GUIs
 - [ ] CAD assembly and 3D-printed parts
 - [ ] Photographs of the assembled system and wiring diagrams
-- [ ] Sample dataset
-- [ ] License
 
 ---
 
@@ -325,12 +339,12 @@ If you use this system or its code, please cite the associated thesis (see
 
 ## Authors and funding
 
-- **Author:** Luis Eduardo Barreto Espinosa — luis.barretoe@pucp.edu.pe
+- **SD-OCT system and documentation:** Luis Eduardo Barreto Espinosa — luis.barretoe@pucp.edu.pe
+- **Processing workflow:** Carlos Pariona (see [LICENSE](LICENSE))
 - **Advisor:** José Fernando Zvietcovich Zegarra
 - **Group:** Biophotonics and Biomedical Optics Research Group (GIBIO), PUCP
 - **Funding:** CONCYTEC-PROCIENCIA (PI 1242 – PE501093888)
 
 ## License
 
-No license has been chosen yet. Until a `LICENSE` file is added, all rights
-are reserved.
+MIT — see [LICENSE](LICENSE).

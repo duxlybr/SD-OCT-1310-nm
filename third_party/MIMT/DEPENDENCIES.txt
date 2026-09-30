@@ -1,0 +1,124 @@
+The following files require Image Processing Toolbox to work
+Many files have had IPT dependency removed by implementing conditional fallback methods
+and will run with some loss of performance
+
+DEPENDENT:
+dilatemargins
+driftds
+glasstiles
+im2ods
+im2spectrogram
+imdestroyer 
+lcdemu
+linedither
+shuffle
+text2spectrogram
+tonemap
+vectorscan
+
+SOME DEPENDENCY:
+erraccumulate ('scale' and 'rotate' operations)
+imlnc (histeq methods)
+imfold (when using nondefault 'scale' method)
+immodify (blurs, tonemap, blue noise dither, line dither)
+immask (geometric selections, morphological operations, etc)
+noisedither (blue noise mode)
+
+NO DEPENDENCY:
+addborder
+arborddither
+batchloader
+bicoloradapt
+blendmask
+blockify
+cpicktool
+cropborder
+csview
+displace
+eoframe
+eoline
+findpixels
+fourdee
+gifread
+gifwrite
+hsi2rgb
+hsl2rgb
+hsy2rgb
+husl2rgb
+imadjustFB
+imblend
+imcartpol
+imcast
+imcompare
+imcompose
+imdrag
+imecho
+imgenerate
+imrange
+imshow2
+imstacker
+imtweak
+ismono
+jpegger
+jpegslur
+lch2rgb
+lineshifter
+lingrad
+maxchroma
+meanlines
+mergedown
+mimread
+mono
+multimask
+orddither
+paritysweep
+perlin
+perlin3
+permutechannels
+picdynamics
+radgrad
+randlines
+randrange
+randspots
+rangemask
+rectds
+replacepixels
+rgb2hsi
+rgb2hsl
+rgb2hsy
+rgb2husl
+rgb2lch
+roiflip
+roishift
+rotateds
+straightshifter
+stretchlimFB
+thresholdinpaint
+xwline
+zblend
+zfdither
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+some files may still require other resources:
+picdynamics requires LTI simulation tools which may be found in various toolboxes
+gifread/gifwrite requires imagemagick for certain options
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ALSO consider FEX dependencies:
+these should be included in the zip archive, but just in case:
+
+colorspace() is required by csview()
+http://www.mathworks.com/matlabcentral/fileexchange/28790-colorspace-transformations
+
+inpaint_nans() is required by thresholdinpaint()
+http://www.mathworks.com/matlabcentral/fileexchange/4551-inpaint-nans
+
+STFT/ISTFT tools are required by im2spectrogram() and text2spectrogram
+http://www.mathworks.com/matlabcentral/fileexchange/45197-short-time-fourier-transformation--stft--with-matlab-implementation
+
+text2im() is required by text2spectrogram()
+http://www.mathworks.com/matlabcentral/fileexchange/19896-convert-text-to-an-image
+
+GUI tools rely on akZoom by Alexander Kessel
+http://www.mathworks.com/matlabcentral/fileexchange/41426-akzoom
+

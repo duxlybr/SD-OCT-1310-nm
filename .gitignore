@@ -1,35 +1,58 @@
-# ===== Raw OCT acquisitions (GBs per run) - keep on institutional storage =====
+# MATLAB autosave and temporary files
+*.asv
+*.m~
+*.mlx.autosave
+*.mex*
+slprj/
+codegen/
+
+# Raw data and generated results should not live in this repository
+Data/
+data/
+Results/
+results/
+*.bin
+*.avi
+*.mp4
+*.tif
+*.tiff
+*.fig
+
+# Raw OCT acquisitions (GBs per run) - keep on institutional storage
 *.tdms
 *.tdms_index
 raw/
 **/raw/
 
-# ===== MATLAB =====
-*.asv
-*.m~
-*.mex*
-slprj/
-codegen/
+# MAT files are ignored by default because many are experiment-specific or heavy
+*.mat
 
-# ===== LabVIEW =====
+# LabVIEW
 *.aliases
 *.lvlps
 .cache/
 builds/
 
-# ===== Python =====
+# Python
 __pycache__/
 *.py[cod]
 .venv/
 .ipynb_checkpoints/
 
-# ===== Fusion 360 / CAD backups =====
+# CAD backups
 *.f3d.bak
-*~
 
-# ===== OS / editor =====
+# OS / editor files
 .DS_Store
 Thumbs.db
 desktop.ini
 *.swp
+*~
 ~$*
+
+# Local machine configuration
+local_settings.m
+pathdef.m
+
+# Allow the reviewed deterministic synthetic scientific baseline
+!tests/fixtures/synthetic_scientific_baseline.mat
