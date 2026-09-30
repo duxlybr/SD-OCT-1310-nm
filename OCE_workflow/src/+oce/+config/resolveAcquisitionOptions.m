@@ -33,7 +33,7 @@ function options = resolveAcquisitionOptions( ...
     end
 
     scanGeometry = validate_supported_geometry(scanGeometry);
-    validate_angular_bmodes_header(acquisitionHeader);
+    validate_bmode_header(acquisitionHeader);
     sourceMetadata = struct( ...
         'num_3d_scans', acquisitionHeader.No_3Dscans, ...
         'bframes_in_3d_scan', acquisitionHeader.Bframes_in_3Dscan, ...
@@ -104,13 +104,8 @@ function value = require_scan_geometry(value)
 end
 
 function value = validate_supported_geometry(value)
-    if value == "angular_bmodes"
+    if ismember(value, ["angular_bmodes", "raster"])
         return;
-    end
-    if value == "raster"
-        error('OCE:Acquisition:UnsupportedScanGeometry', ...
-            ['Scan geometry "raster" is recognized by the acquisition ' ...
-             'metadata schema but its processing path is not implemented.']);
     end
     error('OCE:Acquisition:UnsupportedScanGeometry', ...
         'Unsupported scan geometry "%s".', value);
@@ -126,7 +121,7 @@ function value = require_text_scalar(value, identifier, label)
     end
 end
 
-function validate_angular_bmodes_header(header)
+function validate_bmode_header(header)
     if ~isstruct(header) || ~isscalar(header)
         error('OCE:Acquisition:GeometryHeaderMismatch', ...
             'A scalar acquisition header is required.');

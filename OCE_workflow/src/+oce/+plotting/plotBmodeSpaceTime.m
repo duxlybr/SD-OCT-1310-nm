@@ -120,10 +120,9 @@ function [fig, preview] = plotBmodeSpaceTime(values, timeAxisMs, ...
             'HitTest', 'off', 'PickableParts', 'none');
 
         if ~embedded
-            drawnow;
             isRightEdge = mod(index, selection.column_count) == 0 || ...
                 index == numel(selection.indices);
-            overlay = physical_overlay(fig, ax, ...
+            overlay = physical_overlay(ax, ...
                 selection.local_lateral_axis_mm, displayTimeSamples, ...
                 displayTimeAxisMs, selection.samples_per_bmode, ...
                 rowIndex == 1, isRightEdge);
@@ -152,10 +151,6 @@ function [fig, preview] = plotBmodeSpaceTime(values, timeAxisMs, ...
             'FigureSize', [figureWidth figureHeight]);
         set(secondaryAxes, 'FontSize', 10, 'LineWidth', 0.8, ...
             'Box', 'off', 'TickDir', 'out');
-        drawnow;
-        sync_overlay_positions(primaryAxes, secondaryAxes);
-        fig.SizeChangedFcn = @(~,~) sync_overlay_positions( ...
-            primaryAxes, secondaryAxes);
     end
 
     preview = struct( ...
@@ -203,26 +198,38 @@ function [fig, layout, axesHandles] = create_standalone_layout( ...
     fig = figure('Name', char(titlePrefix));
     layout = tiledlayout(fig, selection.row_count, selection.column_count, ...
         'TileSpacing', 'compact', 'Padding', 'loose');
-    title(layout, {char(titlePrefix); ' '}, ...
+    title(layout, char(titlePrefix), ...
         'FontSize', 12, 'FontWeight', 'bold');
     axesHandles = gobjects(numel(selection.indices), 1);
 end
 
-function overlay = physical_overlay(fig, primary, lateralAxisMm, ...
+function overlay = physical_overlay(primary, lateralAxisMm, ...
         timeSamples, timeAxisMs, lateralCount, showXAxis, showYAxis)
-    xTicks = unique(round(linspace(1, lateralCount, min(3, lateralCount))));
-    yTicks = unique(round(linspace( ...
-        timeSamples(1), timeSamples(end), min(3, numel(timeSamples)))));
-    xValues = interp1(1:lateralCount, lateralAxisMm, xTicks, 'linear');
-    yValues = interp1(timeSamples, timeAxisMs, yTicks, 'linear');
-    overlay = axes(fig, 'Position', primary.Position, 'Color', 'none', ...
+    % Round physical values; time ticks stay inside the axis so they never
+    % meet the lateral tick labels at the right-hand corners.
+    xValues = nice_ticks(lateralAxisMm(1), lateralAxisMm(end));
+    yValues = nice_ticks(timeAxisMs(1), timeAxisMs(end));
+    margin = 0.05 * (timeAxisMs(end) - timeAxisMs(1));
+    interior = yValues > timeAxisMs(1) + margin & ...
+        yValues < timeAxisMs(end) - margin;
+    if any(interior)
+        yValues = yValues(interior);
+    else
+        yValues = mean(timeAxisMs([1 end]));
+    end
+    xTicks = interp1(lateralAxisMm, 1:lateralCount, xValues, 'linear');
+    yTicks = interp1(timeAxisMs, timeSamples, yValues, 'linear');
+    % Sharing the primary tile keeps both axes aligned and lets the layout
+    % reserve room for the top/right physical tick labels.
+    overlay = axes(primary.Parent, 'Color', 'none', ...
         'XAxisLocation', 'top', 'YAxisLocation', 'right', ...
         'XLim', primary.XLim, 'YLim', primary.YLim, ...
         'YDir', primary.YDir, 'XTick', xTicks, 'YTick', yTicks, ...
-        'XTickLabel', compose('%.2f', xValues), ...
-        'YTickLabel', compose('%.2f', yValues), ...
+        'XTickLabel', compose('%g', xValues), ...
+        'YTickLabel', compose('%g', yValues), ...
         'HitTest', 'off', 'PickableParts', 'none', ...
         'HandleVisibility', 'off');
+    overlay.Layout.Tile = primary.Layout.Tile;
     if ~showXAxis
         overlay.XTick = [];
     end
@@ -235,12 +242,19 @@ function overlay = physical_overlay(fig, primary, lateralAxisMm, ...
     end
 end
 
-function sync_overlay_positions(primaryAxes, secondaryAxes)
-    for index = 1:numel(primaryAxes)
-        if isgraphics(primaryAxes(index)) && isgraphics(secondaryAxes(index))
-            secondaryAxes(index).Position = primaryAxes(index).Position;
-        end
+function values = nice_ticks(lower, upper)
+    span = upper - lower;
+    if ~(span > 0)
+        values = lower;
+        return;
     end
+    rawStep = span / 3;
+    magnitude = 10 ^ floor(log10(rawStep));
+    candidates = [1 2 2.5 5 10] * magnitude;
+    step = candidates(find(candidates >= rawStep * (1 - 1e-9), 1));
+    values = (ceil(lower / step - 1e-9):floor(upper / step + 1e-9)) * step;
+    values = min(max(values, lower), upper);
+    values(values == 0) = 0;  % print 0, not -0
 end
 
 function tf = valid_clim_mode(value)

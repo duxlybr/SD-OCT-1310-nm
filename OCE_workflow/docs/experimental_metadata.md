@@ -30,13 +30,16 @@ Maintained temporal mode:
 mb_mode
 ```
 
-Maintained executable scan geometry:
+Maintained executable scan geometries:
 
 ```text
 angular_bmodes
+raster
 ```
 
-`raster` is recognized metadata but not implemented as a processing path.
+`raster` is executable through reconstruction, borders, surface phase and
+temporal filtering, and feeds the en-face motion video. k-f dispersion windows
+and the persisted scientific result remain `angular_bmodes` products.
 
 Maintained OCT profiles include:
 
@@ -83,6 +86,19 @@ Within a subexperiment, `acquisition_mode`, `scan_geometry`, and `oct_system_pro
 `angular_bmodes` means independent stored B-mode segments acquired at defined
 scan orientations. Use the [architecture terminology](repository/final_architecture.md#geometry-and-physical-ownership)
 for B-mode, scan axis and propagation direction; generic segments are not called meridians.
+
+`raster` means consecutive B-scans along x stepped along y, each position
+acquired in `mb_mode` with its own excitation trigger. One B-mode is one B-scan.
+Bidirectional (serpentine) rasters are rejected rather than silently reordered.
+
+The OCTOCE reader records the physical length of every stored B-scan in
+`bscan_length_mm`, following the acquisition scan planner: raster lines span
+`x_length_mm`; linear lines span `x_length_mm` (horizontal) or `y_length_mm`
+(vertical); meridian `b` spans the ellipse diameter at `theta = pi*b/bscans`.
+Geometry uses that length for the local lateral axis and rejects B-scans of
+unequal length (elliptical meridians with more than one scan axis). Historical
+headers without this field keep `Ver_scan_length_mm` as the B-mode length.
+Positions start at 0 mm on the first acquired A-line and B-scan.
 
 ## Acquisition-parameter relationship
 

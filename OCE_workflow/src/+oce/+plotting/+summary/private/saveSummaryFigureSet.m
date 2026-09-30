@@ -16,7 +16,7 @@ function artifacts = saveSummaryFigureSet(figures, fileNames, rootdir)
     artifacts = strings(2 * numel(figures), 1);
     for index = 1:numel(figures)
         figurePath = fullfile(saveFolder, fileNames(index) + ".fig");
-        imagePath = fullfile(saveFolder, fileNames(index) + ".tif");
+        imagePath = fullfile(saveFolder, fileNames(index) + ".png");
         savefig(figures(index), figurePath);
         exportgraphics(figures(index), imagePath, 'Resolution', 300);
         artifacts(2 * index - 1) = string(figurePath);

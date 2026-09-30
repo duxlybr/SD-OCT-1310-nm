@@ -34,7 +34,7 @@ function context = build_context(rawData, octSystem)
             lateralMedians = zeros(sampleCount, lateralCount);
             for position = 1:lateralCount
                 lateralMedians(:, position) = median( ...
-                    rawData(:, :, position), 2);
+                    double(rawData(:, :, position)), 2);
             end
             context.background_spectrum = median(lateralMedians, 2);
         otherwise
@@ -75,7 +75,8 @@ function samples = apply_preparation(rawData, octSystem, timeIndices, ...
     validate_selection(rawData, timeIndices, lateralIndex, context, ...
         octSystem);
     purpose = normalize_purpose(purpose);
-    fringes = rawData(:, timeIndices, lateralIndex);
+    % Raw digitizer counts may be stored as uint16; double conversion is exact.
+    fringes = double(rawData(:, timeIndices, lateralIndex));
 
     samples = prepare_input_samples( ...
         fringes, octSystem.spectral_sampling.method, purpose);

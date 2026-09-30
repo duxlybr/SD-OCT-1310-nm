@@ -24,10 +24,10 @@ function validateAcquisitionParameters(parameters)
 
     scanGeometry = require_text(parameters.scan_geometry, ...
         'acquisition_parameters.scan_geometry');
-    if scanGeometry ~= "angular_bmodes"
+    if ~ismember(scanGeometry, ["angular_bmodes", "raster"])
         error('OCE:Acquisition:ScanGeometryMismatch', ...
-            ['Canonical acquisition_parameters supports only scan geometry ' ...
-             '"angular_bmodes".']);
+            ['Canonical acquisition_parameters supports scan geometry ' ...
+             '"angular_bmodes" or "raster".']);
     end
 
     validate_source(parameters.source);

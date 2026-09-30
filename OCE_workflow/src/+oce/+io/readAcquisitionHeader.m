@@ -160,6 +160,48 @@ function scanInfo = build_octoce_raw_v1_scan_info(fileID, fullPath)
         'Hor_scan_length_mm', xWidthMm, ...
         'Ver_scan_length_mm', yWidthMm, ...
         'binary_format', binaryFormat);
+
+    scanInfo.bscan_length_mm = octoce_bscan_lengths( ...
+        scan, pattern, bmodeCount, xWidthMm, yWidthMm, fullPath);
+    if isfield(scan, 'raster_bidirectional')
+        bidirectional = scan.raster_bidirectional;
+        if ~islogical(bidirectional) || ~isscalar(bidirectional)
+            error('OCE:IO:InvalidAcquisitionHeader', ...
+                'OCTOCE field scan.raster_bidirectional must be boolean in: %s', ...
+                fullPath);
+        end
+        scanInfo.raster_bidirectional = bidirectional;
+    end
+end
+
+function lengths = octoce_bscan_lengths(scan, pattern, bmodeCount, ...
+        xWidthMm, yWidthMm, fullPath)
+    % Physical length of each stored B-scan under the OCTOCE scan planner:
+    % raster lines run along x; linear lines follow their orientation;
+    % meridian b spans the ellipse diameter at theta = pi*b/bscans.
+    switch lower(pattern)
+        case "raster"
+            lengths = repmat(xWidthMm, 1, bmodeCount);
+        case "linear"
+            orientation = lower(json_text_scalar( ...
+                scan, 'orientation', 'scan.orientation', fullPath));
+            switch orientation
+                case "horizontal"
+                    lengths = repmat(xWidthMm, 1, bmodeCount);
+                case "vertical"
+                    lengths = repmat(yWidthMm, 1, bmodeCount);
+                otherwise
+                    error('OCE:IO:InvalidAcquisitionHeader', ...
+                        'Unsupported OCTOCE scan.orientation "%s" in: %s', ...
+                        orientation, fullPath);
+            end
+        case "meridians"
+            theta = pi * (0:bmodeCount - 1) / bmodeCount;
+            lengths = hypot(xWidthMm * cos(theta), yWidthMm * sin(theta));
+        otherwise
+            % No single-line length is defined (e.g. crosshair sweeps).
+            lengths = NaN(1, bmodeCount);
+    end
 end
 
 function validate_octoce_raw_v1_source(source, payloadOffset, fullPath)

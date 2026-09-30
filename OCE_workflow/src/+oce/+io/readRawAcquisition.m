@@ -1,7 +1,9 @@
 function measurement = readRawAcquisition(filename, filepath)
 %READRAWACQUISITION Read one OCT/OCE binary acquisition without geometry intent.
-% Binary-family storage is normalized to spectral_time_lateral. Experimental
-% acquisition mode and scan geometry are resolved outside the I/O boundary.
+% Binary-family storage is normalized to spectral_time_lateral. Samples keep
+% their native uint16 digitizer counts; spectral preparation converts them to
+% double exactly. Experimental acquisition mode and scan geometry are resolved
+% outside the I/O boundary.
 
     if nargin < 1 || isempty(filename)
         error('filename is required.');
@@ -59,7 +61,7 @@ function measurement = readRawAcquisition(filename, filepath)
             'Failed to seek to raw acquisition samples in: %s', fullPath);
     end
 
-    [rawData, actualCount] = fread(fileID, expectedCount, 'uint16');
+    [rawData, actualCount] = fread(fileID, expectedCount, 'uint16=>uint16');
     if actualCount ~= expectedCount
         error('OCE:IO:IncompleteAcquisition', ...
             ['Incomplete binary acquisition: expected %d uint16 samples, ' ...

@@ -40,11 +40,9 @@ function [fig, details] = plotDispersionWindowContext(windowResult, ...
     bmode = windowResult.bmodes(bmodeIndex);
     baseAxes = basePreview.primary_axes(1);
     if isempty(suppliedAxes)
-        overlayAxes = physical_roi_axes(fig, baseAxes, ...
-            localLateralAxisMm, basePreview.display_time_axis_ms);
-        previousResize = fig.SizeChangedFcn;
-        fig.SizeChangedFcn = @(source, event) resize_context_axes( ...
-            source, event, previousResize, baseAxes, overlayAxes);
+        overlayAxes = physical_roi_axes(baseAxes, localLateralAxisMm, ...
+            basePreview.display_time_samples, ...
+            basePreview.display_time_axis_ms);
         leftRectangle = physical_roi_rectangle(overlayAxes, bmode.left);
         rightRectangle = physical_roi_rectangle(overlayAxes, bmode.right);
         centerLine = xline(overlayAxes, bmode.center.x_coordinate_mm, ...
@@ -98,14 +96,20 @@ function geometry = context_geometry(windowResult, localLateralAxisMm)
             double(localLateralAxisMm(end) - localLateralAxisMm(1)));
 end
 
-function ax = physical_roi_axes(fig, baseAxes, lateralAxisMm, timeAxisMs)
-    drawnow;
-    ax = axes(fig, 'Position', baseAxes.Position, 'Color', 'none', ...
-        'XLim', double(lateralAxisMm([1 end])), ...
-        'YLim', double(timeAxisMs([1 end])), ...
+function ax = physical_roi_axes(baseAxes, lateralAxisMm, timeSamples, timeAxisMs)
+    % Same layout tile as the image; limits are the image's sample-edge
+    % limits mapped to mm/ms so physical ROIs land on the displayed pixels.
+    lateralCount = numel(lateralAxisMm);
+    xLimitsMm = interp1(1:lateralCount, double(lateralAxisMm(:)'), ...
+        baseAxes.XLim, 'linear', 'extrap');
+    yLimitsMs = interp1(double(timeSamples(:)'), double(timeAxisMs(:)'), ...
+        baseAxes.YLim, 'linear', 'extrap');
+    ax = axes(baseAxes.Parent, 'Color', 'none', ...
+        'XLim', xLimitsMm, 'YLim', yLimitsMs, ...
         'YDir', baseAxes.YDir, 'XTick', [], 'YTick', [], ...
         'HitTest', 'off', 'PickableParts', 'none', ...
         'HandleVisibility', 'off');
+    ax.Layout.Tile = baseAxes.Layout.Tile;
     hold(ax, 'on');
 end
 
@@ -146,15 +150,6 @@ function handle = roi_label(ax, window, rectangleHandle)
         'Color', [1 1 1], 'FontSize', 8, 'FontWeight', 'bold', ...
         'BackgroundColor', [0 0 0], 'Margin', 2, ...
         'Clipping', 'on');
-end
-
-function resize_context_axes(source, event, previousResize, baseAxes, overlayAxes)
-    if isa(previousResize, 'function_handle')
-        previousResize(source, event);
-    end
-    if isgraphics(baseAxes) && isgraphics(overlayAxes)
-        overlayAxes.Position = baseAxes.Position;
-    end
 end
 
 function validate_inputs(windowResult, filterResult, xAxisMm, bmodeIndex)

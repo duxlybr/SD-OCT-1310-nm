@@ -36,13 +36,23 @@ function assert_acquisition_taxonomy_independence()
     invalidMode.acquisition_mode = "unsupported_mode";
     assert_identifier('OCE:Acquisition:UnsupportedAcquisitionMode', @() ...
         oce.config.resolveAcquisitionOptions(invalidMode, row, header));
-    invalidGeometry = base;
-    invalidGeometry.scan_geometry = "raster";
+    rasterBase = base;
+    rasterBase.scan_geometry = "raster";
     rasterRow = table("mb_mode", "raster", ...
+        'VariableNames', {'acquisition_mode', 'scan_geometry'});
+    rasterResolved = oce.config.resolveAcquisitionOptions( ...
+        rasterBase, rasterRow, header);
+    if rasterResolved.scan_geometry ~= "raster"
+        error('OCE:ConfigTest:RasterTaxonomy', ...
+            'Raster scan geometry must resolve from the acquisition row.');
+    end
+    invalidGeometry = base;
+    invalidGeometry.scan_geometry = "spiral";
+    spiralRow = table("mb_mode", "spiral", ...
         'VariableNames', {'acquisition_mode', 'scan_geometry'});
     assert_identifier('OCE:Acquisition:UnsupportedScanGeometry', @() ...
         oce.config.resolveAcquisitionOptions( ...
-            invalidGeometry, rasterRow, header));
+            invalidGeometry, spiralRow, header));
     clear fixture
 end
 
