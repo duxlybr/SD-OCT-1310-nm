@@ -1,0 +1,19 @@
+function artifacts = saveDispersionWindowContext(windowResult, filterResult, ...
+        localLateralAxisMm, bmodeIndex, outputDirectory, varargin)
+%SAVEDISPERSIONWINDOWCONTEXT Save one resolved space-time ROI context figure.
+
+    if ~isfolder(outputDirectory)
+        mkdir(outputDirectory);
+    end
+    fig = oce.plotting.plotDispersionWindowContext( ...
+        windowResult, filterResult, localLateralAxisMm, bmodeIndex, ...
+        varargin{:});
+    artifacts = [string(fullfile(outputDirectory, sprintf( ...
+        'DispersionWindowContext_bmode%02d.fig', bmodeIndex))); ...
+        string(fullfile(outputDirectory, sprintf( ...
+        'DispersionWindowContext_bmode%02d.tif', bmodeIndex)))];
+    drawnow;
+    fig.SizeChangedFcn = [];
+    saveas(fig, artifacts(1));
+    saveas(fig, artifacts(2));
+end

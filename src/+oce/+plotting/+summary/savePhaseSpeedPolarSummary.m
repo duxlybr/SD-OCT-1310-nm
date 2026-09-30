@@ -1,0 +1,9 @@
+function artifacts = savePhaseSpeedPolarSummary( ...
+        experiment, rootdir, varargin)
+%SAVEPHASESPEEDPOLARSUMMARY Render and persist phase-speed polar summaries.
+
+    [figures, fileNames] = ...
+        oce.plotting.summary.plotPhaseSpeedPolarSummary( ...
+            experiment, varargin{:});
+    artifacts = saveSummaryFigureSet(figures, fileNames, rootdir);
+end
