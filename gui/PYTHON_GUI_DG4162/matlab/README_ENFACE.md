@@ -6,7 +6,7 @@ OCT en un rango de Z bins y
 permite medir distancias en mm entre dos puntos.
 
 ```matlab
-addpath('C:/Users/proyecto.pi1081/Desktop/OCT_GUI/PYTHON_GUI/matlab');
+addpath('C:/Users/proyecto.pi1081/Desktop/SD-OCT-1310-nm/gui/PYTHON_GUI_DG4162/matlab');
 raster_enface_medicion();
 ```
 

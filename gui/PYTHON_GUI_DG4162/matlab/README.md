@@ -10,7 +10,7 @@ La carpeta activa reúne las herramientas de ambas versiones:
 | raster_enface_medicion | Reconstrucción en face mediante memoria mapeada y medición X/Y en mm |
 
 ```matlab
-addpath('C:/Users/proyecto.pi1081/Desktop/OCT_GUI/PYTHON_GUI/matlab');
+addpath('C:/Users/proyecto.pi1081/Desktop/SD-OCT-1310-nm/gui/PYTHON_GUI_DG4162/matlab');
 explorar_raster_oct();
 % O reconstrucción en face con medición:
 raster_enface_medicion();

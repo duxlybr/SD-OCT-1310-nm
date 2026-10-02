@@ -594,7 +594,7 @@ class OCTOCEUSBApp(OCTOCEApp):
             except ValueError as exc:
                 warning = str(exc)
         elif self.pattern_overlay_var.get():
-            warning = "Ejecute run_camera_roi_setup.py para calibrar mm."
+            warning = "Calibre la ROI con ⚙ → Setup de cámara para ver el patrón en mm."
         height, width = frame.shape[:2]
         canvas_width = max(1, canvas.winfo_width())
         canvas_height = max(1, canvas.winfo_height())
