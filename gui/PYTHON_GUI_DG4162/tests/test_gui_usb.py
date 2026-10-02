@@ -218,7 +218,7 @@ class USBGuiTests(unittest.TestCase):
         finally:
             setup.close()
 
-    def test_startup_is_fullscreen_without_automatic_camera_setup(self) -> None:
+    def test_startup_is_maximized_without_automatic_camera_setup(self) -> None:
         root = tk.Tk()
         stream = _FakeStream()
         with patch.object(OCTOCEUSBApp, "_open_usb_setup") as setup:
@@ -227,7 +227,13 @@ class USBGuiTests(unittest.TestCase):
                 root.after(500, root.quit)
                 root.mainloop()
                 setup.assert_not_called()
+                self.assertEqual(root.state(), "zoomed")
+                self.assertFalse(root.attributes("-fullscreen"))
+                app._toggle_fullscreen()
                 self.assertTrue(root.attributes("-fullscreen"))
+                app._toggle_fullscreen()
+                self.assertFalse(root.attributes("-fullscreen"))
+                self.assertEqual(root.state(), "zoomed")
                 app.backend_var.set("Simulación")
                 app.save_var.set(False)
                 with patch.object(app.engine, "start"):

@@ -376,6 +376,9 @@ class AcquisitionEngine:
         self._preview_window = DEFAULT_SPECTRAL_WINDOW
         self._preview_depth_range = (1, 2048)
         self._preview_selected_depth_bin: int | None = None
+        # Optional callable run once by the next start(), in the acquisition
+        # thread, after the backend is armed and right before acquiring.
+        self.before_acquire: Callable[[], None] | None = None
 
     @property
     def state(self) -> EngineState:
@@ -465,11 +468,12 @@ class AcquisitionEngine:
         if output is not None:
             self._check_disk_space(output, estimate_payload_bytes(scan, hardware))
         selected_backend = backend or SimulatedBackend()
+        before_acquire, self.before_acquire = self.before_acquire, None
         self._stop_event = threading.Event()
         self._set_state(EngineState.ARMING)
         self._thread = threading.Thread(
             target=self._run,
-            args=(scan, hardware, planner, output, selected_backend, continuous),
+            args=(scan, hardware, planner, output, selected_backend, continuous, before_acquire),
             name="octoce-acquisition",
             daemon=True,
         )
@@ -507,6 +511,7 @@ class AcquisitionEngine:
         output: Path | None,
         backend: AcquisitionBackend,
         continuous: bool,
+        before_acquire: Callable[[], None] | None = None,
     ) -> None:
         writer: OctBinWriter | None = None
         consumer: _WriterWorker | None = None
@@ -544,6 +549,8 @@ class AcquisitionEngine:
             consumer.start()
             backend.open(scan, hardware)
             backend_opened = True
+            if before_acquire is not None:
+                before_acquire()
             acquisition_started = time.monotonic()
             self._set_state(EngineState.RUNNING, output=str(output) if output else None)
             previous_copied = -1

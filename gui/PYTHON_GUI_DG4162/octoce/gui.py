@@ -120,8 +120,9 @@ class OCTOCEApp:
         self.root = root
         self.root.title("OCT / OCE Acquisition · Optimizada")
         self.root.geometry("1360x860")
-        self.root.attributes("-fullscreen", True)
         self.root.minsize(1040, 680)
+        self.root.state("zoomed")  # maximized; F11 toggles full screen
+        self.root.bind("<F11>", self._toggle_fullscreen)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.event_queue: queue.Queue[EngineEvent] = queue.Queue()
         self.engine = AcquisitionEngine(self.event_queue.put)
@@ -357,12 +358,8 @@ class OCTOCEApp:
             row=row, column=0, columnspan=2, sticky="w", pady=(6, 4)
         )
         row += 1
-        path_holder = ttk.Frame(parent, style="Card.TFrame")
-        path_holder.grid(row=row, column=0, columnspan=2, sticky="ew", pady=4)
-        path_holder.columnconfigure(0, weight=1)
-        ttk.Entry(path_holder, textvariable=self.output_var).grid(row=0, column=0, sticky="ew")
-        ttk.Button(path_holder, text="…", width=4, command=self._browse_output).grid(row=0, column=1, padx=(6, 0))
-        row += 1
+        row = self._build_output_controls(parent, row)
+        row = self._build_extra_controls(parent, row)
 
         ttk.Button(parent, text="Configuración de hardware…", command=self._open_hardware_dialog).grid(
             row=row, column=0, columnspan=2, sticky="ew", pady=(8, 4)
@@ -842,6 +839,11 @@ class OCTOCEApp:
             all_sync = np.vstack([path for _sequence, path in sync_paths])
             x_lo, x_hi = min(x_lo, float(all_sync[:, 0].min())), max(x_hi, float(all_sync[:, 0].max()))
             y_lo, y_hi = min(y_lo, float(all_sync[:, 1].min())), max(y_hi, float(all_sync[:, 1].max()))
+        # Same mm-per-pixel on both axes: equal X/Y lengths draw as a square.
+        scale = min(plot_w / (x_hi - x_lo), plot_h / (y_hi - y_lo))
+        left += (plot_w - (x_hi - x_lo) * scale) / 2.0
+        top += (plot_h - (y_hi - y_lo) * scale) / 2.0
+        plot_w, plot_h = (x_hi - x_lo) * scale, (y_hi - y_lo) * scale
 
         def project(x: float, y: float) -> tuple[float, float]:
             return (
@@ -853,10 +855,10 @@ class OCTOCEApp:
         cx, cy = project(scan.center_x_mm, scan.center_y_mm)
         canvas.create_line(cx, top, cx, top + plot_h, fill="#e3e9f0", dash=(3, 3))
         canvas.create_line(left, cy, left + plot_w, cy, fill="#e3e9f0", dash=(3, 3))
-        canvas.create_text(left, height - 17, anchor="w", text=f"X {x_lo:+.2f} mm", fill="#506078")
-        canvas.create_text(left + plot_w, height - 17, anchor="e", text=f"{x_hi:+.2f} mm → AO0", fill="#506078")
-        canvas.create_text(7, top, anchor="nw", text=f"Y {y_hi:+.2f}", fill="#506078")
-        canvas.create_text(7, top + plot_h, anchor="sw", text=f"{y_lo:+.2f}", fill="#506078")
+        canvas.create_text(left, top + plot_h + 4, anchor="ne", text=f"X {x_lo:+.2f} mm", fill="#506078")
+        canvas.create_text(left + plot_w, top + plot_h + 4, anchor="nw", text=f"{x_hi:+.2f} mm → AO0", fill="#506078")
+        canvas.create_text(left - 6, top, anchor="ne", text=f"Y {y_hi:+.2f}", fill="#506078")
+        canvas.create_text(left - 6, top + plot_h, anchor="se", text=f"{y_lo:+.2f}", fill="#506078")
         for _sequence, path in sync_paths:
             points = [coordinate for xy in path for coordinate in project(float(xy[0]), float(xy[1]))]
             canvas.create_line(*points, fill="#d06a13", width=1.5, dash=(4, 3),
@@ -884,6 +886,28 @@ class OCTOCEApp:
                      f"({self._trajectory_current_xy[0]:+.3f}, {self._trajectory_current_xy[1]:+.3f}) mm",
             )
         self._trajectory_last_render = time.monotonic()
+
+    def _build_output_controls(self, parent: ttk.Frame, row: int) -> int:
+        """Output file widgets; returns the next free grid row."""
+        path_holder = ttk.Frame(parent, style="Card.TFrame")
+        path_holder.grid(row=row, column=0, columnspan=2, sticky="ew", pady=4)
+        path_holder.columnconfigure(0, weight=1)
+        ttk.Entry(path_holder, textvariable=self.output_var).grid(row=0, column=0, sticky="ew")
+        ttk.Button(path_holder, text="…", width=4, command=self._browse_output).grid(row=0, column=1, padx=(6, 0))
+        return row + 1
+
+    def _build_extra_controls(self, parent: ttk.Frame, row: int) -> int:
+        """Extension point for additional panels below the output file."""
+        return row
+
+    def _resolve_output_path(self) -> Path:
+        output = Path(self.output_var.get())
+        if output.suffix.lower() != ".bin":
+            output = output.with_suffix(".bin")
+            self.output_var.set(str(output))
+        if output.exists():
+            raise ValueError("El archivo ya existe. Elija un nombre nuevo para evitar sobrescribir datos.")
+        return output
 
     def _browse_output(self) -> None:
         selected = filedialog.asksaveasfilename(
@@ -935,20 +959,15 @@ class OCTOCEApp:
         """Release cached NI-IMAQ before closing Tk."""
         NIHardwareBackend.release_warm_camera()
 
-    def _start(self) -> None:
+    def _start(self, *, confirm: bool = True) -> bool:
+        """Start one acquisition; ``confirm=False`` skips the NI arming dialog."""
         try:
             if self.engine.is_active:
                 raise RuntimeError("Hay una adquisición en curso; deténgala antes de iniciar otra.")
             scan, hardware = self._configs()
             depth_range = self._parse_depth_range()
             self._last_depth_range = depth_range
-            output = Path(self.output_var.get()) if self.save_var.get() else None
-            if output is not None:
-                if output.suffix.lower() != ".bin":
-                    output = output.with_suffix(".bin")
-                    self.output_var.set(str(output))
-                if output.exists():
-                    raise ValueError("El archivo ya existe. Elija un nombre nuevo para evitar sobrescribir datos.")
+            output = self._resolve_output_path() if self.save_var.get() else None
             real = self.backend_var.get() == "Hardware NI"
             if real:
                 optimized_chunk = NIHardwareBackend().supports_mb_chunks(scan) and NIHardwareBackend.mb_chunk_size(scan, hardware) > 0
@@ -983,8 +1002,8 @@ class OCTOCEApp:
                     "Confirme que PFI12 llega a la entrada de trigger del frame grabber, que su acción "
                     "NI-IMAQ produce una línea válida por pulso y que los límites eléctricos son seguros."
                 )
-                if not messagebox.askyesno("Armar hardware NI", message, icon="warning"):
-                    return
+                if confirm and not messagebox.askyesno("Armar hardware NI", message, icon="warning"):
+                    return False
                 backend = NIHardwareBackend(warm_camera=True)
             else:
                 backend = SimulatedBackend()
@@ -1031,9 +1050,11 @@ class OCTOCEApp:
             self.engine.start(scan, hardware, output_path=output, backend=backend)
             self.start_button.configure(state="disabled")
             self.stop_button.configure(state="normal")
+            return True
         except Exception as exc:
             self._on_oct_start_failed()
             messagebox.showerror("No se puede iniciar", str(exc))
+            return False
 
     def _start_alignment(self) -> None:
         try:
@@ -1190,6 +1211,12 @@ class OCTOCEApp:
         self.engine.stop()
         self.stop_button.configure(state="disabled")
         self._append_log("Solicitud de parada enviada; se finalizará el bloque actual de forma segura.")
+
+    def _toggle_fullscreen(self, _event: object | None = None) -> None:
+        fullscreen = not bool(self.root.attributes("-fullscreen"))
+        self.root.attributes("-fullscreen", fullscreen)
+        if not fullscreen:
+            self.root.state("zoomed")
 
     def _set_status(self, text: str, color: str) -> None:
         self.status_var.set(text)
