@@ -1,0 +1,3 @@
+-r requirements-usb.txt
+pyvisa>=1.13
+openpyxl>=3.1
