@@ -40,6 +40,12 @@ def geometry_scale(kind, points, real_mm, axis="Horizontal"):
     return pixels / real_mm
 
 
+def geometry_center(points):
+    """Center of the line, square or ellipse defined by its two points."""
+    (x0, y0), (x1, y1) = points
+    return (x0 + x1) / 2, (y0 + y1) / 2
+
+
 class CameraROISetup:
     def __init__(self, root, stream, camera_index=0, path=DEFAULT_ROI_PATH):
         self.root, self.stream, self.index, self.path = root, stream, camera_index, path
@@ -143,14 +149,12 @@ class CameraROISetup:
             return
         self.approved = True
         self._drag_mode = None
-        self.center = None
+        self.center = geometry_center(self.points)
         self.render()
 
     def roi(self):
         if not self.approved:
             raise ValueError("Primero ajuste la figura y pulse Aprobar geometría.")
-        if self.center is None:
-            raise ValueError("Seleccione el centro de la ROI después de aprobar la geometría.")
         height, width = self.frame.shape[:2]
         roi = CameraROI(self.index, width, height, self._approved_scale, *self.center,
                         self.flip_x.get(), self.flip_y.get())
@@ -179,14 +183,10 @@ class CameraROISetup:
         return anchor[0] + sx * side, anchor[1] + sy * side
 
     def click(self, event):
-        if not self.frozen:
+        if not self.frozen or self.approved:
             return
         point = self._sensor_point(event)
         if point is None:
-            return
-        if self.approved:
-            self.center = point
-            self.render()
             return
         if len(self.points) < 2:
             if not self.points:
@@ -264,13 +264,13 @@ class CameraROISetup:
         elif not self.approved:
             self.status.set("Dibuje con dos clics o arrastre. Ajuste los extremos arrastrando los puntos; arrastre el interior para mover. Luego pulse Aprobar geometría.")
         else:
-            self.status.set(f"Geometría aprobada · {self._approved_scale:.3f} px/mm. Seleccione el centro (origen XY de adquisición).")
+            self.status.set(f"Geometría aprobada · {self._approved_scale:.3f} px/mm. Centro de la ROI = centro de la geometría.")
         if self.center is not None:
             try:
                 roi = self.roi()
                 left, top, right, bottom = roi.bounds(width, height)
                 self.canvas.create_rectangle(ox + left*scale, oy + top*scale, ox + right*scale, oy + bottom*scale, outline="red", width=2)
-                self.status.set(f"ROI válida: 15 × 15 mm · {roi.pixels_per_mm:.3f} px/mm. Puede guardar o cambiar el centro.")
+                self.status.set(f"ROI válida: 15 × 15 mm · {roi.pixels_per_mm:.3f} px/mm. Centrada en la geometría aprobada; puede guardar o editar la geometría.")
             except ValueError as exc:
                 self.status.set(str(exc))
 

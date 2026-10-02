@@ -3,9 +3,9 @@
   "camera_index": 0,
   "frame_width": 640,
   "frame_height": 480,
-  "pixels_per_mm": 23.95,
-  "center_x": 280.5942857142857,
-  "center_y": 202.42285714285714,
-  "flip_x": false,
-  "flip_y": false
+  "pixels_per_mm": 18.609230769230766,
+  "center_x": 357.78461538461534,
+  "center_y": 252.18461538461537,
+  "flip_x": true,
+  "flip_y": true
 }
