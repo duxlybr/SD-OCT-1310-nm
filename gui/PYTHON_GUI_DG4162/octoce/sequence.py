@@ -28,7 +28,7 @@ COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("ch1_mVpp", "Amplitud de CH1 (portadora)", "mVpp; >1000 pide confirmación"),
     ("ch2_frecuencia_Hz", "Frecuencia de la moduladora (CH2)", "Hz"),
     ("ch2_forma_onda", "Forma de onda de la moduladora (CH2)", ", ".join(CH2_WAVEFORMS)),
-    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (típico 2)"),
+    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (STATE 4: 6)"),
     ("repeticiones", "Veces que se repite esta fila", "entero ≥ 1 (vacío = 1)"),
     ("espera_s", "Espera después de cada adquisición de la fila", "s (vacío = 0)"),
     ("nombre_archivo", "Vacío = nombre por defecto; si existe se añade _1, _2…", "texto sin extensión"),
@@ -41,11 +41,11 @@ GUI_DEFAULT_KEYS = COLUMN_KEYS[:15]
 
 EXAMPLE_ROWS: tuple[tuple[Any, ...], ...] = (
     ("OCE", "Lineal", "Horizontal", 100, 1, 400, 200, 5.0, 0.0, 0.0,
-     "Sin contacto", 300, 2000, "Pulso", 2, 3, 10, "", "", "Ejemplo: 3 repeticiones"),
+     "Sin contacto", 300, 2000, "Pulso", 6, 3, 10, "", "", "Ejemplo: 3 repeticiones"),
     ("OCE", "Lineal", "Horizontal", 100, 1, 400, 200, 5.0, 0.0, 0.0,
-     "Sin contacto", 500, 1000, "Pulso", 2, 1, 10, "", "", "Otra frecuencia"),
+     "Sin contacto", 500, 1000, "Pulso", 6, 1, 10, "", "", "Otra frecuencia"),
     ("OCT", "Raster", "Horizontal", 512, 64, 1, 50, 5.0, 5.0, 0.0,
-     "Sin contacto", 500, 2000, "Pulso", 2, 1, 0, "referencia_OCT", "", "Nombre propio"),
+     "Sin contacto", 500, 2000, "Pulso", 6, 1, 0, "referencia_OCT", "", "Nombre propio"),
 )
 
 _PATTERNS = {

@@ -15,11 +15,13 @@ firmware 00.01.14; the controller reads it right away to keep queries aligned
 """
 from __future__ import annotations
 
+import json
 import re
 import threading
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields, replace
 from enum import Enum
 from math import isfinite
+from pathlib import Path
 from typing import Any
 
 DEFAULT_RESOURCE = "USB0::0x1AB1::0x0641::DG4E253001553::INSTR"
@@ -178,6 +180,70 @@ class GeneratorState:
         return asdict(self)
 
 
+@dataclass(frozen=True, slots=True)
+class BaseSetup:
+    """OCE base configuration of the generator.
+
+    Defaults read from the instrument memory, front-panel STATE 4 =
+    ``1040octoacus1000.RSF`` (``*RCL 3``). Fixed parts: CH1 sine carrier,
+    offset 0 V, 50 Ω load, AM from the EXT input, no burst; CH2 High-Z, burst
+    triggered by EXT (PFI13) on the rising edge. The values
+    below are editable in the GUI and saved in ``gui/config/dg4162_base.json``.
+    ``ch1_vpp`` and the ``ch2_*`` waveform/frequency/delay are the defaults of
+    the acquisition panel and the state left when the GUI closes.
+    """
+
+    ch1_frequency_hz: float = 948_070.0  # transducer resonance (CH1 carrier)
+    am_depth_percent: float = 100.0
+    ch2_vpp: float = 1.0
+    ch2_offset_v: float = 0.452
+    burst_cycles: int = 1
+    ch1_vpp: float = 0.5
+    ch2_waveform: str = "PULS"
+    ch2_frequency_hz: float = 2000.0
+    ch2_delay_ms: float = 6.0
+
+    def validate(self) -> None:
+        if not isfinite(self.ch1_frequency_hz) or not 0 < self.ch1_frequency_hz <= 160e6:
+            raise ValueError("La frecuencia de resonancia (CH1) debe estar entre 0 y 160 MHz.")
+        if not isfinite(self.am_depth_percent) or not 0 <= self.am_depth_percent <= 120:
+            raise ValueError("La profundidad AM debe estar entre 0 y 120 %.")
+        if not isfinite(self.ch2_vpp) or self.ch2_vpp <= 0:
+            raise ValueError("La amplitud de CH2 debe ser mayor que 0 Vpp.")
+        if not isfinite(self.ch2_offset_v) or abs(self.ch2_offset_v) + self.ch2_vpp / 2 > 10.0:
+            raise ValueError("CH2: |offset| + amplitud/2 no puede superar 10 V (High-Z).")
+        if int(self.burst_cycles) != self.burst_cycles or not 1 <= self.burst_cycles <= 1_000_000:
+            raise ValueError("Los ciclos por burst deben ser un entero entre 1 y 1 000 000.")
+        if check_ch1_vpp(self.ch1_vpp, Excitation.NON_CONTACT):
+            raise ValueError("La amplitud por defecto de CH1 no puede superar 1 Vpp.")
+        self.default_settings().validate()
+
+    def default_settings(self) -> GeneratorSettings:
+        return GeneratorSettings(
+            ch1_vpp=self.ch1_vpp, ch2_frequency_hz=self.ch2_frequency_hz,
+            ch2_waveform=self.ch2_waveform, ch2_delay_ms=self.ch2_delay_ms,
+        )
+
+    @classmethod
+    def load(cls, path: Path) -> "BaseSetup":
+        """Saved configuration, or the STATE 4 defaults when there is none."""
+        if not path.exists():
+            return cls()
+        data = json.loads(path.read_text(encoding="utf-8"))
+        known = {field.name for field in fields(cls)}
+        base = replace(cls(), **{key: value for key, value in data.items() if key in known})
+        base = replace(base, ch2_waveform=waveform_scpi(base.ch2_waveform), burst_cycles=int(base.burst_cycles))
+        base.validate()
+        return base
+
+    def save(self, path: Path) -> None:
+        self.validate()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        temporary.write_text(json.dumps({"version": 1, **asdict(self)}, indent=2), encoding="utf-8")
+        temporary.replace(path)
+
+
 def _approx(a: float, b: float, rel: float = 1e-4, abs_tol: float = 1e-9) -> bool:
     return abs(a - b) <= max(abs_tol, rel * max(abs(a), abs(b)))
 
@@ -201,8 +267,6 @@ class DG4162Controller:
         self._lock = threading.RLock()
         self._extra_blank_line = True
         self.identity = ""
-        # State read on the first connection; restored when the GUI closes.
-        self.baseline: GeneratorState | None = None
 
     # -- connection ---------------------------------------------------------
     @property
@@ -271,18 +335,15 @@ class DG4162Controller:
                 self._detect_blank_line()
                 self._clear_errors()
                 self.identity = identity
-                if self.baseline is None:
-                    self.baseline = self.read_state()
             except BaseException:
                 self._release()
                 raise
             return identity
 
-    def close(self, *, restore: bool = True) -> list[str]:
-        """Leave the generator in its base state and close the session.
+    def close(self, *, base: BaseSetup | None = None) -> list[str]:
+        """Switch both outputs off, optionally leave ``base`` programmed, close.
 
-        Both outputs are switched off and, with ``restore``, CH1/CH2 return to
-        the values read on the first connection. Returns warnings (empty = OK).
+        Returns warnings (empty = OK).
         """
         with self._lock:
             if self._inst is None:
@@ -293,11 +354,12 @@ class DG4162Controller:
                     self.set_output(channel, False)
                 except Exception as exc:
                     warnings.append(f"No se pudo apagar OUTPUT{channel}: {exc}")
-            if restore and self.baseline is not None and not warnings:
+            if base is not None and not warnings:
                 try:
-                    self.restore_baseline()
+                    self.ensure_base(base)
+                    self.apply(base.default_settings())
                 except Exception as exc:
-                    warnings.append(f"No se pudo restaurar la configuración inicial: {exc}")
+                    warnings.append(f"No se pudo dejar la configuración base: {exc}")
             self._release()
             return warnings
 
@@ -305,17 +367,6 @@ class DG4162Controller:
         """Close the session without sending anything (read-only use)."""
         with self._lock:
             self._release()
-
-    def restore_baseline(self) -> None:
-        base = self.baseline
-        if base is None:
-            return
-        with self._lock:
-            if base.ch2_function in _WAVEFORM_LABELS:
-                self.set_ch2_waveform(base.ch2_function)
-            self.set_ch2_frequency(base.ch2_frequency_hz)
-            self.set_ch2_delay_ms(base.ch2_delay_ms)
-            self.set_ch1_vpp(base.ch1_vpp, limit_vpp=base.ch1_vpp)
 
     def _release(self) -> None:
         inst, self._inst = self._inst, None
@@ -509,6 +560,62 @@ class DG4162Controller:
             self.set_ch2_delay_ms(settings.ch2_delay_ms)
             self.set_ch1_vpp(settings.ch1_vpp, limit_vpp=settings.excitation.limit_vpp)
             return self.read_state()
+
+    def ensure_base(self, base: BaseSetup) -> list[str]:
+        """Check the OCE base configuration and correct what differs.
+
+        OUTPUT1 is switched off first. Returns the corrections made (empty when
+        the generator already matched); every write is verified by reading back.
+        """
+        base.validate()
+        corrections: list[str] = []
+        with self._lock:
+            if self._query_bool(":OUTP1?"):
+                self.set_output(1, False)
+                corrections.append("OUTPUT1: ON → OFF")
+
+            def check(label: str, query: str, expected: object, command: str) -> None:
+                def matches(answer: str) -> bool:
+                    if isinstance(expected, (int, float)):
+                        try:
+                            value = float(answer.strip('"'))
+                        except ValueError:
+                            return False
+                        # "INFINITY" parses as inf, which _approx would accept.
+                        return isfinite(value) and _approx(value, float(expected), rel=1e-6, abs_tol=1e-9)
+                    return answer.upper().startswith(str(expected).upper())
+
+                current = self._query(query)
+                if matches(current):
+                    return
+                self.write(command)
+                after = self._query(query)
+                if not matches(after):
+                    raise DG4162Error(f"{label}: quedó en {after} (esperado {expected}).")
+                corrections.append(f"{label}: {current} → {after}")
+
+            check("CH1 carga", ":OUTP1:IMP?", 50, ":OUTP1:IMP 50")
+            check("CH1 forma de onda", ":SOUR1:FUNC?", "SIN", ":SOUR1:FUNC SIN")
+            check("CH1 frecuencia (Hz)", ":SOUR1:FREQ?", base.ch1_frequency_hz,
+                  f":SOUR1:FREQ {base.ch1_frequency_hz:.9g}")
+            check("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", 0.0, ":SOUR1:VOLT:OFFS 0")
+            check("CH1 modulación", ":SOUR1:MOD:TYP?", "AM", ":SOUR1:MOD:TYP AM")
+            check("CH1 fuente AM", ":SOUR1:MOD:AM:SOUR?", "EXT", ":SOUR1:MOD:AM:SOUR EXT")
+            check("CH1 profundidad AM (%)", ":SOUR1:MOD:AM:DEPT?", base.am_depth_percent,
+                  f":SOUR1:MOD:AM:DEPT {base.am_depth_percent:.6g}")
+            check("CH1 modulación activa", ":SOUR1:MOD?", "ON", ":SOUR1:MOD ON")
+            check("CH1 burst", ":SOUR1:BURS?", "OFF", ":SOUR1:BURS OFF")
+            check("CH2 carga", ":OUTP2:IMP?", "INF", ":OUTP2:IMP INF")
+            check("CH2 amplitud (Vpp)", ":SOUR2:VOLT?", base.ch2_vpp, f":SOUR2:VOLT {base.ch2_vpp:.6g}")
+            check("CH2 offset (V)", ":SOUR2:VOLT:OFFS?", base.ch2_offset_v,
+                  f":SOUR2:VOLT:OFFS {base.ch2_offset_v:.6g}")
+            check("CH2 modo burst", ":SOUR2:BURS:MODE?", "TRIG", ":SOUR2:BURS:MODE TRIG")
+            check("CH2 ciclos por burst", ":SOUR2:BURS:NCYC?", base.burst_cycles,
+                  f":SOUR2:BURS:NCYC {int(base.burst_cycles)}")
+            check("CH2 disparo burst", ":SOUR2:BURS:TRIG:SOUR?", "EXT", ":SOUR2:BURS:TRIG:SOUR EXT")
+            check("CH2 flanco de disparo", ":SOUR2:BURS:TRIG:SLOP?", "POS", ":SOUR2:BURS:TRIG:SLOP POS")
+            check("CH2 burst activo", ":SOUR2:BURS?", "ON", ":SOUR2:BURS ON")
+        return corrections
 
     def start_excitation(self) -> bool:
         """OUTPUT2 on (kept on) and OUTPUT1 on; only writes what is off.

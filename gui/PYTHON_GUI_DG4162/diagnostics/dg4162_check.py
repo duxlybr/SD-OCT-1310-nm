@@ -61,7 +61,7 @@ def main() -> int:
             print("OUTPUT1 OFF")
         print("\nEstado final:\n" + controller.read_state().summary())
     finally:
-        warnings = controller.close(restore=False)
+        warnings = controller.close()
         for warning in warnings:
             print("ATENCIÓN:", warning)
     return 0

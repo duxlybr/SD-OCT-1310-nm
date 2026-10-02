@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import sys
 import time
 import tkinter as tk
 from dataclasses import replace
@@ -1987,7 +1988,14 @@ class OCTOCEApp:
 
     def _append_log(self, text: str) -> None:
         stamp = datetime.now().strftime("%H:%M:%S")
-        print(f"[{stamp}] {text}", flush=True)
+        line = f"[{stamp}] {text}"
+        stream = sys.stdout
+        if stream is not None:  # None under pythonw
+            try:
+                print(line, flush=True)
+            except UnicodeEncodeError:  # Windows console code page (e.g. cp1252) lacks "→"
+                encoding = getattr(stream, "encoding", None) or "ascii"
+                print(line.encode(encoding, "replace").decode(encoding), flush=True)
         if not hasattr(self, "log"):
             return
         self.log.configure(state="normal")

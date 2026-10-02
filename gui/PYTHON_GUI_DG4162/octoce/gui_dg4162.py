@@ -14,6 +14,7 @@ from .config import ConfigurationError, ScanParameters
 from .dg4162 import (
     CH2_WAVEFORMS,
     WARNING_CH1_VPP,
+    BaseSetup,
     DG4162Controller,
     Excitation,
     GeneratorSettings,
@@ -25,7 +26,7 @@ from .engine import EngineEvent, EngineState
 from .gui import MODE_LABELS, ORIENTATION_LABELS, PATTERN_LABELS, _CollapsibleSection, _duration
 from .gui_usb import OCTOCEUSBApp
 from .naming import MODE_PREFIX, clean_stem, default_stem, unique_path
-from .paths import ACQUISITIONS_DIR
+from .paths import ACQUISITIONS_DIR, CONFIG_DIR
 from .sequence import SequenceJob, build_jobs, read_rows, write_template
 from .usb_camera import USBCameraStream
 
@@ -34,6 +35,7 @@ _PATTERN_LABEL = {pattern: label for label, pattern in PATTERN_LABELS.items()}
 _ORIENTATION_LABEL = {orientation: label for label, orientation in ORIENTATION_LABELS.items()}
 _FINAL_STATES = {EngineState.COMPLETED.value, EngineState.STOPPED.value, EngineState.ERROR.value}
 MAX_RETRIES = 3
+BASE_SETUP_PATH = CONFIG_DIR / "dg4162_base.json"
 LINK_CHECK_PERIOD_S = 2.0
 LINK_ON_COLOR, LINK_OFF_COLOR = "#1da56d", "#9aa5b1"
 RETRY_DELAY_MS = 1500
@@ -218,6 +220,95 @@ class _SequenceWindow:
         self.stop_button.configure(state="normal" if running else "disabled")
 
 
+class _BaseConfigDialog:
+    """Edit the generator base configuration (defaults from front-panel STATE 4)."""
+
+    FIELDS = (
+        ("ch1_frequency_hz", "Frecuencia de resonancia del transductor (CH1)", "kHz", 1e3),
+        ("am_depth_percent", "Profundidad AM (CH1)", "%", 1.0),
+        ("ch2_vpp", "Amplitud de la moduladora (CH2)", "Vpp", 1.0),
+        ("ch2_offset_v", "Offset de la moduladora (CH2)", "V", 1.0),
+        ("burst_cycles", "Ciclos por burst (CH2)", "", 1.0),
+        ("ch1_vpp", "CH1 amplitud", "mVpp", 1e-3),
+        ("ch2_frequency_hz", "CH2 frecuencia", "Hz", 1.0),
+        ("ch2_delay_ms", "CH2 retardo burst", "ms", 1.0),
+    )
+
+    def __init__(self, app: "OCTOCEDG4162App") -> None:
+        self.app = app
+        self.window = tk.Toplevel(app.root)
+        self.window.title("Configuración del generador DG4162")
+        self.window.transient(app.root)
+        self.window.resizable(False, False)
+        self.window.configure(bg="#ffffff")
+        body = ttk.Frame(self.window, style="Card.TFrame", padding=16)
+        body.pack(fill="both", expand=True)
+        body.columnconfigure(1, weight=1)
+        ttk.Label(body, text="Configuración base (STATE 4)", style="CardTitle.TLabel").grid(
+            row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
+        ttk.Label(
+            body, style="Muted.TLabel", wraplength=470, justify="left",
+            text="Se verifica y corrige al detectar el generador y antes de cada adquisición. Fijo: "
+                 "CH1 senoidal, offset 0 V, carga 50 Ω, AM desde EXT; CH2 High-Z, burst disparado "
+                 "por EXT (PFI13) en flanco ascendente.",
+        ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
+        self.vars: dict[str, tk.StringVar] = {}
+        row = 2
+        for index, (name, label, unit, scale) in enumerate(self.FIELDS):
+            if index == 5:
+                ttk.Separator(body).grid(row=row, column=0, columnspan=3, sticky="ew", pady=8)
+                ttk.Label(body, text="Valores por defecto del panel (al abrir y al cerrar la GUI)",
+                          style="Card.TLabel").grid(row=row + 1, column=0, columnspan=3, sticky="w")
+                row += 2
+                ttk.Label(body, text="CH2 forma de onda", style="Card.TLabel").grid(
+                    row=row, column=0, sticky="w", pady=3)
+                self.wave_var = tk.StringVar()
+                ttk.Combobox(body, textvariable=self.wave_var, values=list(CH2_WAVEFORMS),
+                             state="readonly", width=16).grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=3)
+                row += 1
+            ttk.Label(body, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=3)
+            variable = tk.StringVar()
+            ttk.Entry(body, textvariable=variable, width=14).grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=3)
+            ttk.Label(body, text=unit, style="Muted.TLabel").grid(row=row, column=2, sticky="w", padx=(6, 0))
+            self.vars[name] = variable
+            row += 1
+        self._fill(app.base_setup)
+        ttk.Label(body, text=f"Archivo: {app.base_path}", style="Muted.TLabel", wraplength=470).grid(
+            row=row, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        actions = ttk.Frame(body, style="Card.TFrame")
+        actions.grid(row=row + 1, column=0, columnspan=3, sticky="ew", pady=(12, 0))
+        ttk.Button(actions, text="Valores del STATE 4", command=lambda: self._fill(BaseSetup())).pack(side="left")
+        ttk.Button(actions, text="Cancelar", command=self.window.destroy).pack(side="right")
+        ttk.Button(actions, text="Guardar", style="Primary.TButton", command=self.save).pack(side="right", padx=(0, 8))
+        self.window.grab_set()
+
+    def _fill(self, base: BaseSetup) -> None:
+        for name, _label, _unit, scale in self.FIELDS:
+            value = getattr(base, name) / scale
+            self.vars[name].set(f"{value:.10g}")
+        self.wave_var.set(waveform_label(base.ch2_waveform))
+
+    def values(self) -> BaseSetup:
+        changes: dict[str, Any] = {}
+        for name, label, _unit, scale in self.FIELDS:
+            value = _parse_float(self.vars[name].get(), label) * scale
+            changes[name] = int(round(value)) if name == "burst_cycles" else value
+        changes["ch2_waveform"] = waveform_scpi(self.wave_var.get())
+        base = replace(BaseSetup(), **changes)
+        base.validate()
+        return base
+
+    def save(self) -> None:
+        try:
+            base = self.values()
+            base.save(self.app.base_path)
+        except (ValueError, OSError) as exc:
+            messagebox.showerror("Configuración del generador", str(exc), parent=self.window)
+            return
+        self.window.destroy()
+        self.app._base_config_saved(base)
+
+
 class OCTOCEDG4162App(OCTOCEUSBApp):
     """USB GUI + DG4162 control + separate folder/name + Excel series."""
 
@@ -229,8 +320,16 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         show_setup_on_start: bool = False,
         generator: DG4162Controller | None = None,
         auto_connect: bool = True,
+        base_path: Path | None = None,
     ) -> None:
         self.generator = generator or DG4162Controller()
+        self.base_path = base_path or BASE_SETUP_PATH
+        self._base_error = ""
+        try:
+            self.base_setup = BaseSetup.load(self.base_path)
+        except (OSError, ValueError, TypeError) as exc:
+            self.base_setup = BaseSetup()
+            self._base_error = f"{self.base_path.name} no válido ({exc}); se usan los valores del STATE 4."
         self._generator_run = False
         self._pending_settings: GeneratorSettings | None = None
         self._applied_state: GeneratorState | None = None
@@ -263,6 +362,8 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             variable.trace_add("write", lambda *_args: self._update_voltage_warning())
         self._update_target()
         self._update_voltage_warning()
+        if self._base_error:
+            self._append_log(self._base_error)
         self._set_link(self.generator.connected)
         if auto_connect:
             self._link_thread = threading.Thread(
@@ -289,10 +390,11 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.target_var = tk.StringVar(value="")
         self.gen_enabled_var = tk.BooleanVar(value=True)
         self.excitation_var = tk.StringVar(value=Excitation.NON_CONTACT.value)
-        self.ch1_mvpp_var = tk.StringVar(value="500")
-        self.ch2_freq_var = tk.StringVar(value="2000")
-        self.ch2_wave_var = tk.StringVar(value="Pulso")
-        self.ch2_delay_var = tk.StringVar(value="2")
+        base = self.base_setup
+        self.ch1_mvpp_var = tk.StringVar(value=f"{base.ch1_vpp * 1000:g}")
+        self.ch2_freq_var = tk.StringVar(value=f"{base.ch2_frequency_hz:g}")
+        self.ch2_wave_var = tk.StringVar(value=waveform_label(base.ch2_waveform))
+        self.ch2_delay_var = tk.StringVar(value=f"{base.ch2_delay_ms:g}")
         self.gen_warning_var = tk.StringVar(value="")
         self.gen_status_var = tk.StringVar(value="DG4162 sin conectar.")
 
@@ -367,8 +469,12 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.gen_apply_button.grid(row=0, column=2, sticky="ew", padx=(3, 0))
         ttk.Label(section, textvariable=self.gen_status_var, style="Muted.TLabel", wraplength=330,
                   justify="left").grid(row=inner_row + 2, column=0, columnspan=2, sticky="w", pady=(2, 2))
+        self.base_config_button = ttk.Button(
+            section, text="Configuración del generador…", command=self._open_base_config,
+        )
+        self.base_config_button.grid(row=inner_row + 3, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         self.sequence_button = ttk.Button(section, text="Secuencia desde Excel…", command=self._open_sequence)
-        self.sequence_button.grid(row=inner_row + 3, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        self.sequence_button.grid(row=inner_row + 4, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         return row + 1
 
     def _square_usb_view(self) -> None:
@@ -517,10 +623,66 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         was = self._link_ok
         self._set_link(connected)
         if connected and not was:
-            self._connect_generator(interactive=False)
+            if self._configure_generator("conexión detectada"):
+                self._append_log(f"DG4162 conectado: {self.generator.identity}")
         elif was and not connected:
             self.gen_status_var.set("DG4162 sin comunicación. Se reconectará solo al volver a estar disponible.")
             self._append_log("DG4162: comunicación perdida; buscando el generador…")
+
+    def _configure_generator(self, reason: str) -> bool:
+        """Program the base configuration and the panel values; OUTPUT2 on.
+
+        Corrections are listed in the console. CH1 above 1 Vpp (which needs a
+        confirmation) is left for the next acquisition.
+        """
+        if self.engine.is_active or self._sequence_active:
+            self._append_log(f"DG4162 ({reason}): adquisición en curso; la configuración se verifica al iniciar la próxima.")
+            return False
+        try:
+            corrections = self.generator.ensure_base(self.base_setup)
+            try:
+                settings = self._generator_settings()
+                needs_confirmation = settings.validate()
+            except ValueError:
+                settings, needs_confirmation = None, True
+            if settings is not None and not needs_confirmation:
+                state = self.generator.apply(settings)
+            else:
+                state = self.generator.read_state()
+            if not state.output2:
+                self.generator.set_output(2, True)
+                state = replace(state, output2=True)
+        except Exception as exc:
+            self._sync_link()
+            self.gen_status_var.set(f"DG4162: no se pudo configurar: {exc}")
+            self._append_log(f"DG4162 ({reason}): no se pudo configurar: {exc}")
+            return False
+        self.gen_status_var.set(state.summary())
+        if corrections:
+            self._append_log(
+                f"DG4162 ({reason}): configuración base corregida · " + " · ".join(corrections)
+            )
+        else:
+            self._append_log(f"DG4162 ({reason}): configuración base correcta.")
+        return True
+
+    def _open_base_config(self) -> None:
+        if self.engine.is_active or self._sequence_active:
+            messagebox.showinfo("DG4162", "Espere a que termine la adquisición o la secuencia.")
+            return
+        _BaseConfigDialog(self)
+
+    def _base_config_saved(self, base: BaseSetup) -> None:
+        self.base_setup = base
+        self.ch1_mvpp_var.set(f"{base.ch1_vpp * 1000:g}")
+        self.ch2_freq_var.set(f"{base.ch2_frequency_hz:g}")
+        self.ch2_wave_var.set(waveform_label(base.ch2_waveform))
+        self.ch2_delay_var.set(f"{base.ch2_delay_ms:g}")
+        self._append_log(f"Configuración del generador guardada en {self.base_path}.")
+        if self.generator.connected:
+            self._configure_generator("configuración guardada")
+        else:
+            self._append_log("DG4162 sin comunicación: la configuración se aplicará al conectar.")
 
     def _connect_generator(self, *, interactive: bool) -> bool:
         """Read and show the generator state; False (with a message) without link."""
@@ -573,6 +735,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 return
             if not self._connect_generator(interactive=True):
                 return
+            corrections = self.generator.ensure_base(self.base_setup)
+            if corrections:
+                self._append_log("DG4162: configuración base corregida · " + " · ".join(corrections))
             state = self.generator.apply(settings)
             if not state.output2:
                 self.generator.set_output(2, True)
@@ -658,6 +823,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             super()._before_oct_start(output)
             return
         self.generator.connect()
+        corrections = self.generator.ensure_base(self.base_setup)
+        if corrections:
+            self._append_log("DG4162: configuración base corregida antes de adquirir · " + " · ".join(corrections))
         state = self.generator.apply(settings)
         super()._before_oct_start(output)  # USB photo/video before the excitation starts
         self._output1_on = True  # from here on, any failure must turn OUTPUT1 off
@@ -1074,7 +1242,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                     pass
                 setattr(self, name, None)
         connected = self.generator.connected
-        warnings = self.generator.close(restore=True)
+        warnings = self.generator.close(base=self.base_setup)
         self._output1_on = False
         if warnings:
             for warning in warnings:
@@ -1083,7 +1251,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 "DG4162", "\n".join(warnings) + "\n\nApague OUTPUT1 y OUTPUT2 manualmente.",
             )
         elif connected:
-            self._append_log("DG4162: OUTPUT1/OUTPUT2 OFF y configuración inicial restaurada.")
+            self._append_log("DG4162: OUTPUT1/OUTPUT2 OFF y configuración base programada.")
         super()._before_root_destroy()
 
 
