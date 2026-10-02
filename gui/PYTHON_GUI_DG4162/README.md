@@ -3,11 +3,11 @@
 Aplicación de adquisición para el sistema SD-OCT/OCE con NI PCIe-6323,
 NI PCIe-1433 y cámara lineal Sensors Unlimited GL2048R. La aplicación separa
 el camino crítico de adquisición de la GUI, el procesamiento y el disco.
-Esta es la única GUI Python mantenida. La versión 03 permanece archivada en
-`../archive/03_NEW_IMPLEMENTATION/PYTHON_GUI` como referencia recuperable.
-Los datos existentes están separados en `../data`; las nuevas adquisiciones
-se proponen en `../data/acquisitions`. La configuración ROI está en `../config`.
-La comparación y el manifiesto están en `../02_DOCUMENTATION/REORGANIZATION`.
+Esta es la única GUI Python mantenida; se lanza con `../run_gui_dg4162.bat`
+(ver [README_DG4162.md](README_DG4162.md)). La GUI anterior está en
+`legacy/gui/PYTHON_GUI` en la raíz del repositorio.
+Las nuevas adquisiciones se proponen en `../data/acquisitions`; la
+configuración ROI está en `../config`.
 
 En MB y BM finitos con `sync>0`, la ruta NI nueva agrupa hasta 64 sweeps en un
 solo armado AO/ctr0/ctr1. También admite MB estacionario con `sync=0`; el MB
@@ -150,19 +150,18 @@ Python 3.11–3.14 de 64 bits es compatible. Instale las dependencias en el mism
 intérprete con el que se inicia la GUI.
 
 ```powershell
-cd C:\Users\proyecto.pi1081\Desktop\OCT_GUI\PYTHON_GUI
-python -m pip install -r requirements.txt
-python run_gui.py
+cd C:\Users\proyecto.pi1081\Desktop\SD-OCT-1310-nm\gui\PYTHON_GUI_DG4162
+py -3.11 -m pip install -r requirements-dg4162.txt
+py -3.11 run_gui_dg4162.py
 ```
 
-En este equipo NumPy, Pillow y Tkinter ya están disponibles, de modo que la GUI
-puede ejecutarse directamente. También se puede abrir `run_gui.bat`.
+También se puede abrir `..\run_gui_dg4162.bat`.
 
 ## Habilitar el backend NI
 
 ```powershell
-python -m pip install -r requirements-hardware.txt
-python run_gui.py
+py -3.11 -m pip install -r requirements-hardware.txt
+py -3.11 run_gui_dg4162.py
 ```
 
 La GUI abre con **Hardware NI** seleccionado, pero no activa salidas hasta
@@ -307,7 +306,7 @@ raw = open_memmap("acquisition.bin", logical_shape=info.complete)
 Lectura en MATLAB (sin toolboxes):
 
 ```matlab
-addpath('C:/Users/proyecto.pi1081/Desktop/OCT_GUI/PYTHON_GUI/matlab')
+addpath('C:/Users/proyecto.pi1081/Desktop/SD-OCT-1310-nm/gui/PYTHON_GUI_DG4162/matlab')
 [parametros, alines] = leer_octoce_bin('acquisition.bin');
 disp(parametros.scan)
 espectro = alines{1};  % uint16, pixeles_por_aline x 1

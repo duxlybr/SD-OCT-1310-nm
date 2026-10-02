@@ -1,9 +1,13 @@
 import unittest
 
-from octoce.camera_roi_setup import geometry_scale
+from octoce.camera_roi_setup import geometry_center, geometry_scale
 
 
 class GeometryCalibrationTests(unittest.TestCase):
+    def test_center_is_midpoint_of_geometry(self):
+        self.assertEqual(geometry_center([(100, 100), (420, 260)]), (260, 180))
+        self.assertEqual(geometry_center([(300, 300), (100, 100)]), (200, 200))
+
     def test_line_uses_euclidean_length(self):
         self.assertEqual(geometry_scale("Línea", [(0, 0), (300, 400)], 25), 20)
 

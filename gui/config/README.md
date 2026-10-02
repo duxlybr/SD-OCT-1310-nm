@@ -4,8 +4,8 @@ El setup opcional guarda aquí `camera_roi.json`: índice de cámara, resolució
 escala px/mm, centro e inversión de ejes. La GUI USB lo carga al iniciar.
 No se suministra una calibración ficticia: debe medirse con la cámara real.
 
-Desde la raíz del proyecto, abra `run_camera_roi_setup.bat`; también puede usar
-`python run_camera_roi_setup.py --camera 0` desde `PYTHON_GUI`.
+Se calibra desde la GUI (`run_gui_dg4162.bat`): ⚙ *Cámara USB* →
+*Setup de cámara · calibrar ROI…*; los cambios se guardan al cerrar el setup.
 
 `alineacion_referencia.json` es la referencia espectral del monitor de
 alineación (`run_alignment_live.bat`). Se genera desde MATLAB con
