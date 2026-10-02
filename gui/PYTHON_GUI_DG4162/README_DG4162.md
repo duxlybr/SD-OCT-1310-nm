@@ -42,7 +42,12 @@ amplitud y offset):
    - Sin el control del generador activo, se omiten `mVpp` y `Hz`.
    - El botón **Sugerido** copia el nombre por defecto al cuadro para editarlo.
 3. **Panel DG4162.**
-   - **Conectar / leer:** solo lectura. Se ejecuta también al abrir la GUI.
+   - **Luz de comunicación:** verde = comunicación OK; gris = sin comunicación.
+     La GUI busca el generador cada 2 s y conecta sola al encenderlo o
+     reconectar el USB. Sin comunicación, los botones del generador quedan
+     desactivados y una adquisición con "Controlar DG4162" marcado avisa en
+     lugar de iniciarse.
+   - **Leer estado:** solo lectura.
    - **Copiar del equipo:** copia los valores actuales del generador a los campos.
    - **Aplicar ahora:** programa los valores con OUTPUT1 apagado y OUTPUT2 encendido.
    - En cada adquisición (botón *Iniciar adquisición*) la GUI programa y
