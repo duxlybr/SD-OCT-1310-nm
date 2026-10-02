@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import tkinter as tk
 from dataclasses import replace
 from datetime import datetime
@@ -33,6 +34,8 @@ _PATTERN_LABEL = {pattern: label for label, pattern in PATTERN_LABELS.items()}
 _ORIENTATION_LABEL = {orientation: label for label, orientation in ORIENTATION_LABELS.items()}
 _FINAL_STATES = {EngineState.COMPLETED.value, EngineState.STOPPED.value, EngineState.ERROR.value}
 MAX_RETRIES = 3
+LINK_CHECK_PERIOD_S = 2.0
+LINK_ON_COLOR, LINK_OFF_COLOR = "#1da56d", "#9aa5b1"
 RETRY_DELAY_MS = 1500
 
 
@@ -240,7 +243,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._sequence_after: str | None = None
         self._sequence_window: _SequenceWindow | None = None
         self._current_job: SequenceJob | None = None
-        self._connect_after: str | None = None
+        self._link_ok = False
+        self._link_stop = threading.Event()
+        self._link_thread: threading.Thread | None = None
         self._run_kind: str | None = None  # "acquisition" | "alignment" while the engine runs
         self._retry_count = 0
         self._retrying = False
@@ -258,8 +263,12 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             variable.trace_add("write", lambda *_args: self._update_voltage_warning())
         self._update_target()
         self._update_voltage_warning()
+        self._set_link(self.generator.connected)
         if auto_connect:
-            self._connect_after = self.root.after(600, lambda: self._connect_generator(interactive=False))
+            self._link_thread = threading.Thread(
+                target=self._watch_generator, name="dg4162-link", daemon=True,
+            )
+            self._link_thread.start()
         self._square_after = self.root.after(700, self._square_usb_view)
 
     # -- layout ---------------------------------------------------------------
@@ -310,11 +319,18 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.generator_section = _CollapsibleSection(parent, "Generador DG4162")
         self.generator_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         section = self.generator_section.body
+        link = ttk.Frame(section, style="Card.TFrame")
+        link.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 4))
+        self.link_light = tk.Canvas(link, width=14, height=14, bg="#ffffff", highlightthickness=0)
+        self.link_light.pack(side="left", padx=(0, 6))
+        self.link_light_id = self.link_light.create_oval(2, 2, 12, 12, fill=LINK_OFF_COLOR, outline="")
+        self.link_var = tk.StringVar(value="Sin comunicación con el DG4162 · buscando…")
+        ttk.Label(link, textvariable=self.link_var, style="Card.TLabel").pack(side="left")
         ttk.Checkbutton(
             section, text="Controlar DG4162 en cada adquisición (OUTPUT1 on/off)",
             variable=self.gen_enabled_var,
-        ).grid(row=0, column=0, columnspan=2, sticky="w")
-        inner_row = 1
+        ).grid(row=1, column=0, columnspan=2, sticky="w")
+        inner_row = 2
 
         def field(label: str, variable: tk.StringVar, suffix: str = "", values: list[str] | None = None) -> None:
             nonlocal inner_row
@@ -342,7 +358,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         buttons = ttk.Frame(section, style="Card.TFrame")
         buttons.grid(row=inner_row + 1, column=0, columnspan=2, sticky="ew", pady=(4, 2))
         buttons.columnconfigure((0, 1, 2), weight=1)
-        self.gen_connect_button = ttk.Button(buttons, text="Conectar / leer",
+        self.gen_connect_button = ttk.Button(buttons, text="Leer estado",
                                              command=lambda: self._connect_generator(interactive=True))
         self.gen_connect_button.grid(row=0, column=0, sticky="ew", padx=(0, 3))
         self.gen_load_button = ttk.Button(buttons, text="Copiar del equipo", command=self._load_from_generator)
@@ -470,21 +486,66 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             return True
         return False
 
+    def _watch_generator(self) -> None:
+        """Background heartbeat: (re)connects and reports link changes to Tk."""
+        while not self._link_stop.is_set():
+            ok = self.generator.probe()
+            if ok != self._link_ok and not self._link_stop.is_set():
+                self.event_queue.put(EngineEvent("dg4162_link", {"connected": ok}))
+            self._link_stop.wait(LINK_CHECK_PERIOD_S)
+
+    def _set_link(self, connected: bool) -> None:
+        """Status light and generator buttons follow the communication state."""
+        self._link_ok = connected
+        if not hasattr(self, "link_light"):
+            return
+        self.link_light.itemconfigure(self.link_light_id, fill=LINK_ON_COLOR if connected else LINK_OFF_COLOR)
+        self.link_var.set(
+            "Comunicación OK con el DG4162" if connected
+            else "Sin comunicación con el DG4162 · buscando…"
+        )
+        state = "normal" if connected else "disabled"
+        for button in (self.gen_connect_button, self.gen_load_button, self.gen_apply_button):
+            button.configure(state=state)
+
+    def _sync_link(self) -> None:
+        """Refresh the light after a command (a failure closes the session)."""
+        if self.generator.connected != self._link_ok:
+            self._link_changed(self.generator.connected)
+
+    def _link_changed(self, connected: bool) -> None:
+        was = self._link_ok
+        self._set_link(connected)
+        if connected and not was:
+            self._connect_generator(interactive=False)
+        elif was and not connected:
+            self.gen_status_var.set("DG4162 sin comunicación. Se reconectará solo al volver a estar disponible.")
+            self._append_log("DG4162: comunicación perdida; buscando el generador…")
+
     def _connect_generator(self, *, interactive: bool) -> bool:
-        self._connect_after = None
+        """Read and show the generator state; False (with a message) without link."""
         if self._closing:
             return False
+        if not self.generator.connected:
+            self._sync_link()
+            if interactive:
+                messagebox.showwarning(
+                    "DG4162", "Sin comunicación con el generador. Espere a que la luz se ponga verde.",
+                )
+            return False
         try:
-            identity = self.generator.connect()
             state = self.generator.read_state()
         except Exception as exc:
-            self.gen_status_var.set(f"DG4162 sin conexión: {exc}")
-            self._append_log(f"DG4162 sin conexión: {exc}")
+            self._sync_link()
+            self.gen_status_var.set(f"DG4162 sin comunicación: {exc}")
+            self._append_log(f"DG4162 sin comunicación: {exc}")
             if interactive:
                 messagebox.showerror("DG4162", str(exc))
             return False
+        if not self._link_ok:
+            self._set_link(True)
         self.gen_status_var.set(state.summary())
-        self._append_log(f"DG4162 conectado: {identity}")
+        self._append_log(f"DG4162 conectado: {self.generator.identity}")
         self._append_log("DG4162 estado actual (solo lectura): " + state.summary().replace("\n", " | "))
         return True
 
@@ -494,6 +555,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         try:
             state = self.generator.read_state()
         except Exception as exc:
+            self._sync_link()
             messagebox.showerror("DG4162", str(exc))
             return
         self.ch1_mvpp_var.set(f"{state.ch1_vpp * 1000:g}")
@@ -516,6 +578,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 self.generator.set_output(2, True)
                 state = self.generator.read_state()
         except Exception as exc:
+            self._sync_link()
             self._append_log(f"DG4162: no se pudo aplicar: {exc}")
             messagebox.showerror("DG4162", str(exc))
             return
@@ -534,6 +597,14 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             needs_confirmation = settings.validate()
         except ValueError as exc:
             messagebox.showerror("No se puede iniciar", f"Generador DG4162: {exc}")
+            return False
+        if not self.generator.connected:
+            self._sync_link()
+            messagebox.showerror(
+                "No se puede iniciar",
+                "Sin comunicación con el DG4162 (luz apagada). Espere a que la luz se ponga verde "
+                "o desmarque 'Controlar DG4162 en cada adquisición'.",
+            )
             return False
         if needs_confirmation and confirm and not self._confirm_high_voltage(settings):
             return False
@@ -638,6 +709,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             self._output1_on = False
             self._append_log(f"DG4162: OUTPUT1 OFF ({reason}).")
         except Exception as exc:
+            self._sync_link()
             self._append_log(f"DG4162: ERROR al apagar OUTPUT1: {exc}")
             messagebox.showwarning(
                 "DG4162", f"No se pudo apagar OUTPUT1: {exc}\n\nApáguelo manualmente en el panel del generador.",
@@ -646,9 +718,14 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
     def _on_oct_start_failed(self) -> None:
         self.engine.before_acquire = None
         self._generator_off("inicio fallido")
+        self._sync_link()
         super()._on_oct_start_failed()
 
     def _handle_event(self, event: EngineEvent) -> None:
+        if event.kind == "dg4162_link":
+            if not self._closing:
+                self._link_changed(bool(event.payload.get("connected")))
+            return
         if event.kind == "dg4162":
             self._append_log(f"DG4162: {event.payload.get('message', '')}")
             if self._applied_state is not None:
@@ -985,7 +1062,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         if self._sequence_active:
             self._finish_sequence("Secuencia cancelada al cerrar la aplicación.")
         self._cancel_retry()
-        for name in ("_connect_after", "_square_after"):
+        self._link_stop.set()
+        if self._link_thread is not None:
+            self._link_thread.join(timeout=5.0)
+        for name in ("_square_after",):
             callback = getattr(self, name)
             if callback is not None:
                 try:

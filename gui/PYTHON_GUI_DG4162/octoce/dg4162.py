@@ -209,6 +209,39 @@ class DG4162Controller:
     def connected(self) -> bool:
         return self._inst is not None
 
+    def probe(self) -> bool:
+        """Heartbeat: reconnect when the instrument is present; check it answers.
+
+        Never raises. A failed check closes the session so that the next probe
+        opens a fresh one (needed after the generator is switched off and on).
+        """
+        with self._lock:
+            if self._inst is None:
+                if not self._resource_present():
+                    return False
+                try:
+                    self.connect()
+                except DG4162Error:
+                    return False
+                return True
+            try:
+                self._query("*IDN?")
+            except DG4162Error:
+                return False
+            return True
+
+    def _resource_present(self) -> bool:
+        """Fast USB enumeration check, so a missing instrument costs no timeout."""
+        try:
+            if self._rm is None:
+                import pyvisa
+
+                self._rm = pyvisa.ResourceManager(self.visa_backend)
+            wanted = self.resource.upper()
+            return any(str(name).upper() == wanted for name in self._rm.list_resources())
+        except Exception:
+            return False
+
     def connect(self) -> str:
         with self._lock:
             if self._inst is not None:
@@ -317,6 +350,15 @@ class DG4162Controller:
             self._extra_blank_line = False
             self._clear_io()
 
+    def _lost(self, command: str, exc: Exception) -> DG4162Error:
+        """Close a session that stopped answering (e.g. generator switched off).
+
+        Reusing it, or sending a device clear to it, can block the GUI for many
+        timeouts; the next probe() opens a fresh session instead.
+        """
+        self._release()
+        return DG4162Error(f"Comunicación perdida con el DG4162 ({command}): {exc}")
+
     def _query(self, command: str) -> str:
         inst = self._require()
         try:
@@ -324,11 +366,7 @@ class DG4162Controller:
             if self._extra_blank_line and _EXTRA_BLANK_LINE.match(command):
                 inst.read()  # already in the output buffer: no wait
         except Exception as exc:
-            try:
-                self._clear_io()  # realign the next query
-            except DG4162Error:
-                pass
-            raise DG4162Error(f"Sin respuesta a {command}: {exc}") from exc
+            raise self._lost(command, exc) from exc
         return answer
 
     def _query_float(self, command: str) -> float:
@@ -365,7 +403,7 @@ class DG4162Controller:
             try:
                 inst.write(command)
             except Exception as exc:
-                raise DG4162Error(f"No se pudo enviar {command}: {exc}") from exc
+                raise self._lost(command, exc) from exc
             errors = self._clear_errors()
             if errors:
                 raise DG4162Error(f"{command} → {'; '.join(errors)}")

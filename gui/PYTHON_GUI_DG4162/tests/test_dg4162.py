@@ -34,6 +34,7 @@ class FakeDG4162:
         self.errors: list[str] = []
         self.writes: list[str] = []
         self.closed = False
+        self.alive = True  # False = generator switched off (every I/O times out)
         self.state: dict[str, object] = {
             ":OUTP1": "OFF", ":OUTP2": "OFF",
             ":SOUR1:FUNC": "SIN", ":SOUR1:FREQ": 948070.0, ":SOUR1:VOLT": 0.5,
@@ -45,6 +46,8 @@ class FakeDG4162:
         }
 
     def write(self, command: str) -> None:
+        if not self.alive:
+            raise OSError("VI_ERROR_TMO (-1073807339): Timeout expired before operation completed.")
         self.writes.append(command)
         if command.endswith("?"):
             self._answer(command)
@@ -93,10 +96,20 @@ class FakeDG4162:
 
 
 class FakeResourceManager:
+    RESOURCE = "USB0::0x1AB1::0x0641::DG4E253001553::INSTR"
+
     def __init__(self, instrument: FakeDG4162) -> None:
         self.instrument = instrument
+        self.present = True  # False = USB device not enumerated (powered off)
+
+    def list_resources(self) -> tuple[str, ...]:
+        return (self.RESOURCE,) if self.present else ()
 
     def open_resource(self, _resource: str) -> FakeDG4162:
+        if not self.present:
+            raise OSError("VI_ERROR_RSRC_NFOUND: Insufficient location information.")
+        self.instrument.closed = False
+        self.instrument.pending.clear()
         return self.instrument
 
 
@@ -191,6 +204,25 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(waveform_scpi("Gaussiana"), "GAUSS")
         self.assertEqual(waveform_label("GAUSSPULSE"), "Pulso gaussiano")
         self.assertEqual(waveform_label("PULSE"), "Pulso")
+
+    def test_lost_session_is_closed_and_probe_reconnects(self) -> None:
+        controller, instrument = fake_controller()
+        manager = controller._rm
+        self.assertTrue(controller.probe())  # first probe connects
+        instrument.alive = False  # generator switched off with the session open
+        started = time.monotonic()
+        with self.assertRaisesRegex(DG4162Error, "Comunicación perdida"):
+            controller.read_state()
+        self.assertFalse(controller.connected)  # dead session released, no retries
+        with self.assertRaisesRegex(DG4162Error, "no conectado"):
+            controller.set_output(1, False)  # fails at once instead of timing out
+        self.assertLess(time.monotonic() - started, 1.0)
+        manager.present = False
+        self.assertFalse(controller.probe())
+        manager.present = True
+        instrument.alive = True  # switched back on
+        self.assertTrue(controller.probe())
+        self.assertTrue(controller.connected)
 
     def test_voltage_policy(self) -> None:
         self.assertFalse(check_ch1_vpp(1.0, Excitation.NON_CONTACT))
@@ -313,6 +345,8 @@ class DG4162GuiTests(unittest.TestCase):
         app.sync_var.set("2")
         app.ch1_mvpp_var.set("300")
         app.ch2_freq_var.set("2000")
+        self.controller.connect()
+        app._link_changed(True)
 
     def tearDown(self) -> None:
         if self.root.winfo_exists():
@@ -581,6 +615,56 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertAlmostEqual(saved.center_y, 200)
         self.assertTrue(saved.flip_y)
         self.assertIn("automáticamente", setup.result_message)
+
+    def test_without_link_light_is_off_and_generator_actions_are_blocked(self) -> None:
+        from octoce.gui_dg4162 import LINK_OFF_COLOR, LINK_ON_COLOR
+
+        app = self.app
+        self.assertEqual(app.link_light.itemcget(app.link_light_id, "fill"), LINK_ON_COLOR)
+        self.instrument.alive = False
+        with patch("octoce.gui_dg4162.messagebox.showerror"):
+            app.gen_connect_button.invoke()  # the read fails: the GUI must not hang or crash
+        self.assertFalse(self.controller.connected)
+        self.assertEqual(app.link_light.itemcget(app.link_light_id, "fill"), LINK_OFF_COLOR)
+        for button in (app.gen_connect_button, app.gen_load_button, app.gen_apply_button):
+            self.assertEqual(str(button.cget("state")), "disabled")
+        with patch("octoce.gui_dg4162.messagebox.showerror") as error, patch.object(app.engine, "start") as start:
+            self.assertFalse(app._start())
+        start.assert_not_called()
+        self.assertIn("Sin comunicación", error.call_args.args[1])
+        app.gen_enabled_var.set(False)  # acquisitions without the generator still work
+        with patch.object(app.engine, "start") as start:
+            self.assertTrue(app._start())
+        start.assert_called_once()
+
+    def test_watcher_reconnects_after_generator_power_cycle(self) -> None:
+        import threading
+        from octoce.gui_dg4162 import LINK_ON_COLOR
+
+        app = self.app
+        manager = self.controller._rm
+        self.controller.disconnect()
+        app._link_changed(False)
+        manager.present = False  # generator off
+        with patch("octoce.gui_dg4162.LINK_CHECK_PERIOD_S", 0.05):
+            app._link_thread = threading.Thread(target=app._watch_generator, daemon=True)
+            app._link_thread.start()
+            end = time.monotonic() + 0.3
+            while time.monotonic() < end:  # several probes with the generator off
+                self.root.update()
+                time.sleep(0.01)
+            self.assertFalse(app._link_ok)
+            manager.present = True  # switched on: connects by itself
+            self.pump(lambda: app._link_ok)
+            self.assertEqual(app.link_light.itemcget(app.link_light_id, "fill"), LINK_ON_COLOR)
+            self.assertEqual(str(app.gen_apply_button.cget("state")), "normal")
+            self.instrument.alive = False  # switched off again
+            manager.present = False
+            self.pump(lambda: not app._link_ok)
+            self.assertEqual(str(app.gen_apply_button.cget("state")), "disabled")
+            self.instrument.alive = True
+            manager.present = True
+            self.pump(lambda: app._link_ok)
 
     def test_excel_sequence_runs_all_jobs(self) -> None:
         from openpyxl import Workbook
