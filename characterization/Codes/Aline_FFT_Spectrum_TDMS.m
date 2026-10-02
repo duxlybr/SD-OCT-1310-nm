@@ -32,7 +32,8 @@ mostrarSoloSegmentoPico = false; % CAMBIAR A true para ver solo el pico mayor
 semiAnchoSegmento_um    = 100;   % intervalo mostrado: pico +/- este valor [um]
 profundidadMinPico_um   = 75;    % evita seleccionar residuos cercanos al DC
 
-% Opcional: guardar cada figura como PNG dentro de Spectrum/Figuras_Aline_FFT.
+% Opcional: guardar cada figura como PNG en una carpeta con el nombre del
+% archivo TDMS procesado (junto a ese archivo).
 guardarFiguras = false;
 
 %% ======================= ARCHIVOS Y EJES ===============================
@@ -66,11 +67,6 @@ if usarHanning
     ventana = 0.5 - 0.5*cos(2*pi*n/(nPix-1));
 else
     ventana = ones(nPix, 1);
-end
-
-if guardarFiguras
-    carpetaSalida = fullfile(carpeta, 'Figuras_Aline_FFT');
-    if ~isfolder(carpetaSalida), mkdir(carpetaSalida); end
 end
 
 %% ======================= LECTURA Y FIGURAS =============================
@@ -151,8 +147,10 @@ for iArchivo = 1:numel(archivos)
 
     if guardarFiguras
         [~, nombreBase] = fileparts(archivos(iArchivo).name);
-        exportgraphics(fig, fullfile(carpetaSalida, [nombreBase '.png']), ...
-            'Resolution', 200);
+        carpetaSalida = fullfile(archivos(iArchivo).folder, nombreBase);
+        if ~isfolder(carpetaSalida), mkdir(carpetaSalida); end
+        exportgraphics(fig, fullfile(carpetaSalida, ...
+            [nombreBase '_Aline_FFT.png']), 'Resolution', 200);
     end
 
     fprintf('  %-24s %3d A-lines | pico = %8.1f um\n', ...

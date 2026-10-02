@@ -123,6 +123,11 @@ A completed scientific run can save:
 Results/<subExperiment>/<filename-without-.bin>/PhaseSpeed.mat
 ```
 
+Every output of one acquisition goes to a folder named after the processed file,
+resolved by `oce.pipeline.resolveOutputDirectory`. The standalone stepwise
+workflows (`run_acquisition_stepwise.m`, `run_raster_enface_stepwise.m`) use the
+same owner, writing to `<.bin folder>/Results/<filename-without-.bin>/`.
+
 `oce.io.saveScientificResult` writes the validated `oce_result` through a temporary
 file and verifies its round-trip. `loadScientificResult` is the strict read boundary;
 see the [scientific schema](scientific_result_schema.md) for supported data and provenance.

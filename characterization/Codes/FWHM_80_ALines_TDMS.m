@@ -194,8 +194,9 @@ parametrosSistema.kLinearization.ancla = string(anclaLambda);
 % Sin optimizacion no se sobrescriben parametros guardados previamente.
 guardarParametros = guardarParametros && optimizarDisp;
 if guardarParametros
+    % Resultados en una carpeta con el nombre del archivo procesado.
     parametrosSistema = guardarParametrosSistema(parametrosSistema, ...
-        fileparts(archivoTDMS), nombreArchivo);
+        fullfile(fileparts(archivoTDMS), nombreArchivo), nombreArchivo);
 end
 resultado = table(string(nombreCompleto), nLines, profundidad_um, pkPx, ...
     10*log10(pkAmp), string(P.modeloAjuste), fwhmAjuste_um, fwhmDatos_um, R2, ...
@@ -563,6 +564,7 @@ end
 
 function P = guardarParametrosSistema(P, carpeta, nombreBase)
 % Guarda los parametros en MAT (struct completo) y la LUT en CSV.
+    if ~isfolder(carpeta), mkdir(carpeta); end
     P.export.matFile = string(fullfile(carpeta, [nombreBase '_OCT_parametros.mat']));
     P.export.csvFile = string(fullfile(carpeta, [nombreBase '_K_LUT.csv']));
 
