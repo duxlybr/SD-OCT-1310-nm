@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import tkinter as tk
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox, ttk
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 from PIL import Image, ImageTk
@@ -15,6 +16,31 @@ from .usb_camera import USBCameraStream
 from .camera_roi import CameraROI, DEFAULT_ROI_PATH, render_pattern
 from .camera_roi_setup import CameraROISetup
 from .paths import ACQUISITIONS_DIR
+
+
+BRIGHTNESS_MIN, BRIGHTNESS_MAX = 0, 255
+CAPTURE_AREAS = ("FOV completo", "Solo ROI")
+
+
+def oriented_view(frame: np.ndarray, roi: CameraROI, *, crop: bool) -> tuple[np.ndarray, CameraROI]:
+    """Crop to the ROI (optional) and mirror per flip_x/flip_y.
+
+    After mirroring, +X/+Y of the galvos run right/down in the image, so the
+    returned ROI (for drawing the pattern) has no flips left.
+    """
+    left, top, right, bottom = roi.bounds(frame.shape[1], frame.shape[0])
+    if crop:
+        frame = frame[top:bottom, left:right]
+    if roi.flip_x:
+        frame = frame[:, ::-1]
+    if roi.flip_y:
+        frame = frame[::-1]
+    drawn = replace(
+        roi, flip_x=False, flip_y=False,
+        center_x=roi.frame_width - 1 - roi.center_x if roi.flip_x and not crop else roi.center_x,
+        center_y=roi.frame_height - 1 - roi.center_y if roi.flip_y and not crop else roi.center_y,
+    )
+    return np.ascontiguousarray(frame), drawn
 
 
 class _CameraSetupDialog:
@@ -56,8 +82,9 @@ class _CameraSetupDialog:
         self.focus_var = tk.StringVar(value="0")
         self.brightness_var = tk.StringVar(value="0")
         self.focus_scale = self._control_row(side, "Foco manual", self.focus_var, 0, 255)
+        # Measured on the USB camera (DirectShow): brightness outside 0–255 is rejected.
         self.brightness_scale = self._control_row(
-            side, "Brillo", self.brightness_var, -255, 255
+            side, "Brillo (0–255)", self.brightness_var, BRIGHTNESS_MIN, BRIGHTNESS_MAX
         )
         ttk.Button(side, text="Aplicar foco y brillo", command=self._apply).pack(
             fill="x", pady=(16, 8)
@@ -133,7 +160,7 @@ class _CameraSetupDialog:
             self.focus_var.set(f"{focus:g}")
             self.brightness_var.set(f"{brightness:g}")
             self.focus_scale.set(max(0, min(255, float(focus))))
-            self.brightness_scale.set(max(-255, min(255, float(brightness))))
+            self.brightness_scale.set(max(BRIGHTNESS_MIN, min(BRIGHTNESS_MAX, float(brightness))))
         parts = [
             f"Foco leído: {focus:g}" if focus is not None else "Foco: no disponible",
             f"Brillo leído: {brightness:g}" if brightness is not None else "Brillo: no disponible",
@@ -157,6 +184,11 @@ class _CameraSetupDialog:
         try:
             focus = float(self.focus_var.get().replace(",", "."))
             brightness = float(self.brightness_var.get().replace(",", "."))
+            if not BRIGHTNESS_MIN <= brightness <= BRIGHTNESS_MAX:
+                raise ValueError(
+                    f"la cámara solo acepta brillo entre {BRIGHTNESS_MIN} y {BRIGHTNESS_MAX} "
+                    f"({BRIGHTNESS_MIN} = más oscuro)."
+                )
             controls = self.stream.camera_controls(focus=focus, brightness=brightness)
             self._show_controls(controls)
             return (
@@ -305,6 +337,15 @@ class OCTOCEUSBApp(OCTOCEApp):
             values=("Sin captura", "Foto", "Video"), state="readonly", width=12,
         )
         self.capture_mode_combo.pack(side="left", padx=(6, 0))
+        area_controls = ttk.Frame(self.usb_settings, style="Card.TFrame")
+        area_controls.grid(row=2, column=0, sticky="ew", pady=(3, 5))
+        ttk.Label(area_controls, text="Área a guardar:", style="Card.TLabel").pack(side="left")
+        self.capture_area_var = tk.StringVar(value=CAPTURE_AREAS[0])
+        self.capture_area_combo = ttk.Combobox(
+            area_controls, textvariable=self.capture_area_var, values=CAPTURE_AREAS,
+            state="readonly", width=14,
+        )
+        self.capture_area_combo.pack(side="left", padx=(6, 0))
         self.usb_setup_button = ttk.Button(
             self.usb_settings, text="Ajustar foco y brillo · vista grande",
             command=self._open_usb_setup,
@@ -318,11 +359,14 @@ class OCTOCEUSBApp(OCTOCEApp):
                         command=self._render_usb).pack(anchor="w")
         ttk.Checkbutton(roi_controls, text="Indicador rojo del patrón", variable=self.pattern_overlay_var,
                         command=self._render_usb).pack(anchor="w")
-        ttk.Button(roi_controls, text="Recargar calibración ROI", command=self._reload_camera_roi).pack(fill="x")
         self.roi_setup_button = ttk.Button(
             roi_controls, text="Setup de cámara · calibrar ROI 15 × 15 mm…", command=self._open_roi_setup,
         )
         self.roi_setup_button.pack(fill="x", pady=(5, 0))
+        ttk.Label(
+            roi_controls, style="Muted.TLabel", wraplength=260, justify="left",
+            text="Los cambios del setup (ROI e inversión X/Y) se guardan al cerrarlo.",
+        ).pack(anchor="w", pady=(3, 0))
         ttk.Button(self.usb_settings, text="Cerrar", command=self.usb_settings_window.withdraw).grid(
             row=6, column=0, sticky="e", pady=(12, 0))
 
@@ -411,21 +455,54 @@ class OCTOCEUSBApp(OCTOCEApp):
         if not self._usb_stream.running:
             self._usb_stream.start(index)
         self._usb_stream.restore_manual_controls()
+        transform = self._media_transform()
+        area = self.capture_area_var.get().lower()
         if mode == "Foto":
             path = self._media_path(output, ".png")
-            self._usb_stream.capture_photo(path)
-            self._append_log(f"Foto USB capturada antes de OCT: {path}")
+            self._usb_stream.capture_photo(path, transform=transform)
+            self._append_log(f"Foto USB ({area}) capturada antes de OCT: {path}")
             return
         if mode != "Video":
             raise ValueError("Elija Sin captura, Foto o Video para la cámara USB.")
         path = self._media_path(output, ".mp4")
-        self._usb_stream.start_recording(path)
+        self._usb_stream.start_recording(path, transform=transform)
         self._video_active_path = path
         self.capture_mode_combo.configure(state="disabled")
+        self.capture_area_combo.configure(state="disabled")
         self.usb_selector.configure(state="disabled")
         self.usb_connect_button.configure(state="disabled")
         self.usb_setup_button.configure(state="disabled")
         self._append_log(f"Video USB iniciado antes de OCT: {path}")
+
+    def _usable_roi(self) -> CameraROI | None:
+        roi = self._camera_roi
+        if roi is None or int(self.usb_index_var.get()) != roi.camera_index:
+            return None
+        return roi
+
+    def _media_transform(self) -> Callable[[np.ndarray], np.ndarray] | None:
+        """Frame transform for photo/video: ROI crop (optional) + X/Y inversion."""
+        crop = self.capture_area_var.get() == "Solo ROI"
+        roi = self._usable_roi()
+        if roi is None:
+            if crop:
+                raise ValueError(
+                    "No hay ROI calibrada para esta cámara: use 'FOV completo' o el setup de cámara."
+                )
+            return None
+        if not crop and not (roi.flip_x or roi.flip_y):
+            return None
+
+        def transform(frame: np.ndarray) -> np.ndarray:
+            return oriented_view(frame, roi, crop=crop)[0]
+
+        latest, _status = self._usb_stream.peek_frame()
+        if latest is not None:
+            try:
+                transform(latest)  # fail before OCT starts, not inside the video thread
+            except ValueError as exc:
+                raise ValueError(f"No se puede guardar el área seleccionada: {exc}") from exc
+        return transform
 
     def _stop_usb_video(self) -> None:
         if self._video_active_path is None:
@@ -440,6 +517,7 @@ class OCTOCEUSBApp(OCTOCEApp):
         finally:
             self._video_active_path = None
             self.capture_mode_combo.configure(state="readonly")
+            self.capture_area_combo.configure(state="readonly")
             self.usb_selector.configure(state="readonly")
             self.usb_connect_button.configure(state="normal")
             self.usb_setup_button.configure(state="normal")
@@ -511,10 +589,8 @@ class OCTOCEUSBApp(OCTOCEApp):
             try:
                 if int(self.usb_index_var.get()) != roi.camera_index:
                     raise ValueError("Cámara distinta a la calibrada; repita el setup ROI.")
-                roi.bounds(frame.shape[1], frame.shape[0])
+                frame, roi = oriented_view(frame, roi, crop=self.roi_enabled_var.get())
                 calibrated = True
-                if self.roi_enabled_var.get():
-                    frame = roi.crop(frame)
             except ValueError as exc:
                 warning = str(exc)
         elif self.pattern_overlay_var.get():
@@ -550,7 +626,9 @@ class OCTOCEUSBApp(OCTOCEApp):
         window = tk.Toplevel(self.root)
         window.transient(self.root)
         try:
-            CameraROISetup(window, self._usb_stream, int(self.usb_index_var.get()), DEFAULT_ROI_PATH)
+            self._roi_setup = CameraROISetup(
+                window, self._usb_stream, int(self.usb_index_var.get()), DEFAULT_ROI_PATH, autosave=True,
+            )
         except (RuntimeError, ValueError) as exc:
             window.destroy()
             messagebox.showerror("Setup de cámara", str(exc), parent=self.root)
@@ -569,8 +647,10 @@ class OCTOCEUSBApp(OCTOCEApp):
     def _resume_after_roi_setup(self) -> None:
         if self._closing or not self.root.winfo_exists():
             return
+        setup, self._roi_setup = getattr(self, "_roi_setup", None), None
+        message = getattr(setup, "result_message", "")
         self._reload_camera_roi()
-        self._append_log(self._roi_load_error or "Calibración ROI de la cámara recargada.")
+        self._append_log(self._roi_load_error or message or "Setup de cámara cerrado sin cambios.")
         self._connect_usb()
 
     def _reload_camera_roi(self) -> None:

@@ -476,8 +476,12 @@ class DG4162GuiTests(unittest.TestCase):
         opened = []
 
         class FakeSetup:
-            def __init__(self, window, stream, index, path):
+            def __init__(self, window, stream, index, path, *, autosave=False):
+                self.result_message = "ROI guardada automáticamente"
                 opened.append((window, stream, index, path))
+                self.assertTrue(autosave)
+
+            assertTrue = staticmethod(self.assertTrue)
 
         with patch("octoce.gui_usb.CameraROISetup", FakeSetup):
             app.roi_setup_button.invoke()
@@ -488,6 +492,95 @@ class DG4162GuiTests(unittest.TestCase):
         starts = len(stream.started)
         window.destroy()
         self.pump(lambda: len(stream.started) > starts)
+
+    def test_buttons_live_inside_their_sections(self) -> None:
+        app = self.app
+
+        def texts(widget):
+            for child in widget.winfo_children():
+                try:
+                    yield child.cget("text")
+                except tk.TclError:
+                    pass
+                yield from texts(child)
+
+        self.assertIn("Configuración de hardware…", list(texts(app.plan_section.body)))
+        self.assertIn("Secuencia desde Excel…", list(texts(app.generator_section.body)))
+        self.assertNotIn("Recargar calibración ROI", list(texts(app.usb_settings)))
+
+    def test_brightness_range_matches_camera(self) -> None:
+        from octoce.gui_usb import _CameraSetupDialog
+
+        stream = self.app._usb_stream
+        stream.running = True
+        dialog = _CameraSetupDialog(self.root, stream, acquisition=False)
+        try:
+            self.assertEqual((dialog.brightness_scale.cget("from"), dialog.brightness_scale.cget("to")), (0.0, 255.0))
+            dialog.brightness_var.set("-20")
+            self.assertFalse(dialog._apply())
+            self.assertIn("0 y 255", dialog.readback_var.get())
+            dialog.brightness_var.set("40")
+            self.assertTrue(dialog._apply())
+        finally:
+            dialog._close()
+
+    def test_capture_area_full_fov_or_roi(self) -> None:
+        import numpy as np
+        from octoce.camera_roi import CameraROI
+
+        app = self.app
+        app._camera_roi = None
+        app.capture_area_var.set("Solo ROI")
+        with self.assertRaisesRegex(ValueError, "ROI"):
+            app._media_transform()
+        app.capture_area_var.set("FOV completo")
+        self.assertIsNone(app._media_transform())
+        app._camera_roi = CameraROI(0, 640, 480, 20, 320, 240, flip_x=True)
+        app.usb_index_var.set("0")
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        frame[:, :10] = 255  # bright strip on the left edge of the sensor
+        full = app._media_transform()(frame)
+        self.assertEqual(full.shape, (480, 640, 3))
+        self.assertTrue(full[:, -1].all() and not full[:, 0].any())  # mirrored in X
+        app.capture_area_var.set("Solo ROI")
+        self.assertEqual(app._media_transform()(frame).shape, (300, 300, 3))
+
+    def test_roi_setup_autosaves_flip_and_new_geometry(self) -> None:
+        import numpy as np
+        from types import SimpleNamespace
+        from octoce.camera_roi import CameraROI
+        from octoce.camera_roi_setup import CameraROISetup
+
+        path = self.folder / "camera_roi.json"
+        CameraROI(0, 640, 480, 20, 320, 240).save(path)
+        stream = self.app._usb_stream
+        stream.frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        window = tk.Toplevel(self.root)
+        setup = CameraROISetup(window, stream, 0, path, autosave=True)
+        self.root.update()
+        setup.flip_y.set(True)
+        setup.close()
+        saved = CameraROI.load(path)
+        self.assertEqual((saved.flip_x, saved.flip_y, saved.center_x), (False, True, 320))
+        self.assertIn("Inversión", setup.result_message)
+
+        stream.frame = np.zeros((480, 640, 3), dtype=np.uint8)  # the main view consumed the last one
+        window = tk.Toplevel(self.root)
+        setup = CameraROISetup(window, stream, 0, path, autosave=True)
+        self.assertTrue(setup.flip_y.get())  # starts from the saved ROI
+        self.root.update()
+        setup.freeze()
+        self.root.update()
+        ox, oy, scale = setup.transform
+        for x, y in ((100, 200), (300, 200)):
+            setup.click(SimpleNamespace(x=ox + x * scale, y=oy + y * scale))
+        setup.approve_geometry()
+        setup.close()
+        saved = CameraROI.load(path)
+        self.assertAlmostEqual(saved.center_x, 200)
+        self.assertAlmostEqual(saved.center_y, 200)
+        self.assertTrue(saved.flip_y)
+        self.assertIn("automáticamente", setup.result_message)
 
     def test_excel_sequence_runs_all_jobs(self) -> None:
         from openpyxl import Workbook
@@ -524,6 +617,34 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
         self.assertEqual(self.instrument.state[":SOUR2:FUNC"], "SIN")
         self.assertIn("completa", window.status_var.get())
+
+
+
+class USBTransformTests(unittest.TestCase):
+    def test_photo_and_video_apply_the_frame_transform(self) -> None:
+        import cv2
+        from PIL import Image
+        from octoce.usb_camera import USBCameraStream
+        from test_gui_usb import _FakeCapture
+
+        stream = USBCameraStream(capture_factory=lambda _index: _FakeCapture())
+        crop = lambda frame: frame[1:3, 2:6]  # noqa: E731 - 4 × 2 px region
+        with tempfile.TemporaryDirectory() as directory:
+            stream.start(0)
+            try:
+                photo = stream.capture_photo(Path(directory) / "roi.png", transform=crop)
+                with Image.open(photo) as saved:
+                    self.assertEqual(saved.size, (4, 2))
+                video = Path(directory) / "roi.mp4"
+                stream.start_recording(video, transform=crop)
+                time.sleep(0.2)
+                stream.stop_recording()
+            finally:
+                self.assertTrue(stream.stop())
+            reader = cv2.VideoCapture(str(video))
+            size = (reader.get(cv2.CAP_PROP_FRAME_WIDTH), reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            reader.release()
+            self.assertEqual(size, (4.0, 2.0))
 
 
 if __name__ == "__main__":

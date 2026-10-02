@@ -351,10 +351,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.gen_apply_button.grid(row=0, column=2, sticky="ew", padx=(3, 0))
         ttk.Label(section, textvariable=self.gen_status_var, style="Muted.TLabel", wraplength=330,
                   justify="left").grid(row=inner_row + 2, column=0, columnspan=2, sticky="w", pady=(2, 2))
-        # Outside the section: stays reachable when the generator panel is collapsed.
-        self.sequence_button = ttk.Button(parent, text="Secuencia desde Excel…", command=self._open_sequence)
-        self.sequence_button.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
-        return row + 2
+        self.sequence_button = ttk.Button(section, text="Secuencia desde Excel…", command=self._open_sequence)
+        self.sequence_button.grid(row=inner_row + 3, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        return row + 1
 
     def _square_usb_view(self) -> None:
         """Start with the USB camera pane as wide as it is tall (square view)."""
