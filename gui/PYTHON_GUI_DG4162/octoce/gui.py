@@ -97,6 +97,32 @@ class _ScrollablePanel(ttk.Frame):
         self.canvas.yview_scroll(-int(event.delta / 120), "units")
 
 
+class _CollapsibleSection(ttk.Frame):
+    """Card section whose header shows or hides its body (expanded by default)."""
+
+    def __init__(self, parent: tk.Misc, title: str, *, expanded: bool = True):
+        super().__init__(parent, style="Card.TFrame")
+        self.columnconfigure(0, weight=1)
+        self._title = title
+        self.expanded = expanded
+        self.header = ttk.Button(self, style="Section.TButton", command=self.toggle)
+        self.header.grid(row=0, column=0, sticky="ew")
+        self.body = ttk.Frame(self, style="Card.TFrame", padding=(0, 8, 0, 4))
+        self.body.columnconfigure(1, weight=1)
+        self._refresh()
+
+    def toggle(self) -> None:
+        self.expanded = not self.expanded
+        self._refresh()
+
+    def _refresh(self) -> None:
+        self.header.configure(text=f"{'▾' if self.expanded else '▸'}  {self._title}")
+        if self.expanded:
+            self.body.grid(row=1, column=0, sticky="ew")
+        else:
+            self.body.grid_remove()
+
+
 def _human_bytes(value: int) -> str:
     amount = float(value)
     for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
@@ -184,6 +210,11 @@ class OCTOCEApp:
         style.configure("Danger.TButton", font=("Segoe UI", 10, "bold"), padding=(16, 9))
         style.configure("TButton", font=("Segoe UI", 9), padding=(9, 6))
         style.configure("Settings.TButton", font=("Segoe UI Symbol", 11), padding=(3, 1))
+        style.configure(
+            "Section.TButton", font=("Segoe UI", 11, "bold"), anchor="w", padding=(8, 6),
+            background="#e8eef6", foreground="#14243c", borderwidth=0,
+        )
+        style.map("Section.TButton", background=[("active", "#dbe5f1")])
         style.configure("TEntry", padding=5)
         style.configure("TCombobox", padding=4)
         style.configure("Horizontal.TProgressbar", troughcolor="#dfe6ee", background="#1da56d", lightcolor="#1da56d", darkcolor="#1da56d")
@@ -304,31 +335,33 @@ class OCTOCEApp:
         self._build_previews(previews)
 
     def _build_controls(self, parent: ttk.Frame) -> None:
-        ttk.Label(parent, text="Plan de adquisición", style="CardTitle.TLabel").grid(
-            row=0, column=0, columnspan=2, sticky="w", pady=(0, 12)
-        )
         parent.columnconfigure(1, weight=1)
-        row = 1
+        self.plan_section = _CollapsibleSection(parent, "Plan de adquisición")
+        self.plan_section.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 6))
+        plan = self.plan_section.body
+        rows = {plan: 0, parent: 1}
 
-        def combo(label: str, variable: tk.StringVar, values: list[str]) -> ttk.Combobox:
-            nonlocal row
-            ttk.Label(parent, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=5)
-            widget = ttk.Combobox(parent, textvariable=variable, values=values, state="readonly", width=24)
+        def combo(
+            label: str, variable: tk.StringVar, values: list[str], container: ttk.Frame = plan,
+        ) -> ttk.Combobox:
+            row = rows[container]
+            ttk.Label(container, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=5)
+            widget = ttk.Combobox(container, textvariable=variable, values=values, state="readonly", width=24)
             widget.grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=5)
-            row += 1
+            rows[container] = row + 1
             return widget
 
         def entry(label: str, variable: tk.StringVar, suffix: str = "") -> ttk.Entry:
-            nonlocal row
-            ttk.Label(parent, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=5)
-            holder = ttk.Frame(parent, style="Card.TFrame")
+            row = rows[plan]
+            ttk.Label(plan, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=5)
+            holder = ttk.Frame(plan, style="Card.TFrame")
             holder.grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=5)
             holder.columnconfigure(0, weight=1)
             widget = ttk.Entry(holder, textvariable=variable, width=15)
             widget.grid(row=0, column=0, sticky="ew")
             if suffix:
                 ttk.Label(holder, text=suffix, style="Muted.TLabel").grid(row=0, column=1, padx=(6, 0))
-            row += 1
+            rows[plan] = row + 1
             return widget
 
         self.mode_combo = combo("Modo", self.mode_var, list(MODE_LABELS))
@@ -341,14 +374,10 @@ class OCTOCEApp:
         entry("BFramesDelay", self.bframes_delay_var, "µs")
         entry("Longitud X", self.x_length_var, "mm")
         entry("Longitud Y", self.y_length_var, "mm")
-        entry("Inicio λ para k", self.k_start_var, "nm")
-        entry("Fin λ para k", self.k_end_var, "nm")
-        entry("Dispersión D2", self.d2_var, "rad")
-        entry("Dispersión D3", self.d3_var, "rad")
+        # λ range and dispersion live in the hardware dialog.
 
-        ttk.Separator(parent).grid(row=row, column=0, columnspan=2, sticky="ew", pady=12)
-        row += 1
-        combo("Ejecución", self.backend_var, ["Simulación", "Hardware NI"])
+        combo("Ejecución", self.backend_var, ["Simulación", "Hardware NI"], container=parent)
+        row = rows[parent]
         ttk.Checkbutton(
             parent,
             text="Guardar datos crudos (.bin), sin preview",
@@ -2008,15 +2037,28 @@ class OCTOCEApp:
             ("park_ramp_points", "Puntos rampa a park", int),
             ("external_buffer_trigger_line", "Línea External NI-IMAQ", int),
         ]
+        processing = (
+            (self.k_start_var, "Inicio λ para k (nm)"),
+            (self.k_end_var, "Fin λ para k (nm)"),
+            (self.d2_var, "Dispersión D2 (rad)"),
+            (self.d3_var, "Dispersión D3 (rad)"),
+        )
+        processing_vars: list[tuple[tk.StringVar, tk.StringVar, str]] = []
+        for row, (target, label) in enumerate(processing, start=1):
+            ttk.Label(body, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=3)
+            variable = tk.StringVar(value=target.get())
+            ttk.Entry(body, textvariable=variable).grid(row=row, column=1, sticky="ew", padx=(15, 0), pady=3)
+            processing_vars.append((target, variable, label))
+        first_spec_row = len(processing) + 1
         variables: dict[str, tk.StringVar] = {}
         converters: dict[str, type] = {}
-        for row, (name, label, converter) in enumerate(specs, start=1):
+        for row, (name, label, converter) in enumerate(specs, start=first_spec_row):
             ttk.Label(body, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=3)
             variable = tk.StringVar(value=str(getattr(self.hardware, name)))
             ttk.Entry(body, textvariable=variable).grid(row=row, column=1, sticky="ew", padx=(15, 0), pady=3)
             variables[name] = variable
             converters[name] = converter
-        bool_row = len(specs) + 1
+        bool_row = len(specs) + first_spec_row
         oce_var = tk.BooleanVar(value=self.hardware.oce_enabled)
         sensor_var = tk.BooleanVar(value=self.hardware.configure_sensor_trigger)
         require_sensor_var = tk.BooleanVar(value=self.hardware.require_external_sensor_trigger)
@@ -2051,6 +2093,11 @@ class OCTOCEApp:
 
         def apply() -> None:
             try:
+                for _target, variable, label in processing_vars:
+                    try:
+                        float(variable.get().replace(",", "."))
+                    except ValueError as exc:
+                        raise ValueError(f"{label}: '{variable.get()}' no es un número.") from exc
                 changes: dict[str, Any] = {}
                 for name, variable in variables.items():
                     converter = converters[name]
@@ -2066,6 +2113,8 @@ class OCTOCEApp:
                 scan, _ = self._configs()
                 candidate.validate(scan)
                 self.hardware = candidate
+                for target, variable, _label in processing_vars:
+                    target.set(variable.get().strip())
                 dialog.destroy()
                 self._refresh_plan()
                 self._append_log("Configuración de hardware actualizada.")

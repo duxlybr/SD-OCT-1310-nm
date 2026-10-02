@@ -434,6 +434,61 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertLessEqual(abs(app.usb_canvas.winfo_width() - app.usb_canvas.winfo_height()), 6)
         app._toggle_fullscreen()
 
+    def test_sections_start_expanded_and_collapse(self) -> None:
+        app = self.app
+        self.root.update()
+        for section in (app.plan_section, app.generator_section):
+            self.assertTrue(section.expanded)
+            self.assertTrue(section.body.winfo_ismapped())
+            section.header.invoke()
+            self.root.update()
+            self.assertFalse(section.body.winfo_ismapped())
+            section.header.invoke()
+            self.root.update()
+            self.assertTrue(section.body.winfo_ismapped())
+
+    def test_lambda_and_dispersion_moved_to_hardware_dialog(self) -> None:
+        from tkinter import ttk
+
+        app = self.app
+
+        def entries(widget):
+            for child in widget.winfo_children():
+                if isinstance(child, ttk.Entry):
+                    yield child
+                yield from entries(child)
+
+        plan_vars = {str(e.cget("textvariable")) for e in entries(app.plan_section.body)}
+        for variable in (app.k_start_var, app.k_end_var, app.d2_var, app.d3_var):
+            self.assertNotIn(str(variable), plan_vars)
+        app._open_hardware_dialog()
+        dialog = next(w for w in self.root.winfo_children()
+                      if isinstance(w, tk.Toplevel) and w.title() == "Configuración de hardware")
+        first = next(entries(dialog))  # "Inicio λ para k (nm)"
+        first.delete(0, "end")
+        first.insert(0, "1470.5")
+        apply = next(b for b in dialog.winfo_children()[-1].winfo_children() if b.cget("text") == "Aplicar")
+        apply.invoke()
+        self.assertEqual(app.k_start_var.get(), "1470.5")
+
+    def test_roi_setup_button_opens_setup_and_reconnects_camera(self) -> None:
+        app = self.app
+        opened = []
+
+        class FakeSetup:
+            def __init__(self, window, stream, index, path):
+                opened.append((window, stream, index, path))
+
+        with patch("octoce.gui_usb.CameraROISetup", FakeSetup):
+            app.roi_setup_button.invoke()
+        self.assertEqual(len(opened), 1)
+        window, stream, index, _path = opened[0]
+        self.assertIs(stream, app._usb_stream)
+        self.assertEqual(index, int(app.usb_index_var.get()))
+        starts = len(stream.started)
+        window.destroy()
+        self.pump(lambda: len(stream.started) > starts)
+
     def test_excel_sequence_runs_all_jobs(self) -> None:
         from openpyxl import Workbook
         from octoce.sequence import COLUMN_KEYS
