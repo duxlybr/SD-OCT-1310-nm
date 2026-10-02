@@ -9,38 +9,36 @@
 
 clear; close all; clc;
 
-%% ======================= LINEALIZACIÓN EN K =============================
-usarLinealK      = true;       % remuestrea el espectro a k uniforme antes de la FFT
-lambdaIni_nm     = 1263.82; % longitud de onda en el píxel 1 [nm]
-lambdaFin_nm     = 1466.58; %    longitud de onda en el píxel nPix [nm] (lineal en píxel)
-metodoInterpK    = 'spline';   % 'spline', 'pchip', 'linear' (interp1)
+%% ================= PROCESAMIENTO COMPARTIDO (OCT_Parametros.m) =========
+% La linealización en k (lambdaIni_nm / lambdaFin_nm), la FFT, el promedio de
+% A-lines, la búsqueda del pico y el ajuste del FWHM se configuran en
+% OCT_Parametros.m, el mismo archivo que usa FWHM_80_ALines_TDMS.m. Así ambos
+% scripts dan el mismo FWHM para un mismo TDMS.
+cfg = OCT_Parametros();
+usarLinealK      = cfg.usarLinealK;
+lambdaIni_nm     = cfg.lambdaIni_nm;
+lambdaFin_nm     = cfg.lambdaFin_nm;
+metodoInterpK    = cfg.metodoInterpK;
+nPix             = cfg.nPix;
+nFFT             = cfg.nFFT;
+usarHanning      = cfg.usarHanning;
+promediarALines  = cfg.promediarALines;
+indiceALine      = cfg.indiceALine;
+promedioAntesFFT = cfg.promedioAntesFFT;
+pxMinBusqueda    = cfg.pxMinBusqueda;
+pxMaxBusqueda    = cfg.pxMaxBusqueda;
+modeloAjuste     = cfg.modeloAjuste;
+anchoVentana     = cfg.anchoVentana;
+ventanaAutoAdapt = cfg.ventanaAutoAdapt;
 
 %% ======================= PARÁMETROS DE USUARIO ==========================
 carpeta          = '';       % carpeta con los .tdms ('' = elegirla con un diálogo)
-nPix             = 2048;     % píxeles por A-line (cámara)
-nFFT             = 8192;     % puntos de la FFT (zero-padding)
 dMicrometroRef   = 0;       % lectura del micrómetro de la primera medición [um]
 pxRef            = 72;       % posición real (px, FFT de nFFT) de esa medición
 anclarReferencia = false;     % true: recta forzada a pasar por (28 um, 50 px)
                              % false: ajuste lineal libre
-usarHanning      = false;     % true: aplica ventana Hanning al espectro antes de la FFT
-                             % (picos, calibración y caída de 10 dB). El FWHM se mide
-                             % SIEMPRE sin ventana (Hanning ensancharía el pico)
-promediarALines  = true;     % true : promedia las A-lines de cada medición
-                             % false: usa solo la A-line indiceALine
-indiceALine      = 40;       % A-line usada cuando promediarALines = false
-promedioAntesFFT = false;    % (solo si promediarALines = true)
-                             % false (default): promedia |FFT| de cada A-line (inmune a deriva de fase)
-                             % true : promedia los espectros antes de la FFT (pierde 2.5-6 dB)
-pxMinBusqueda    = 25;      % ignora bins cercanos al DC al buscar el pico
-pxMaxBusqueda    = 4000;     % ignora el artefacto cerca de Nyquist (bin 4096)
-
 ajusteManual     = false;    % false (default): ajuste automático
                              % true : abre GUI para ajustar a mano los parámetros
-modeloAjuste     = 'gauss';  % 'gauss' o 'sinc' (modelo inicial / automático)
-anchoVentana     = 100;      % puntos de la ventana centrada en el pico (ajuste manual)
-ventanaAutoAdapt = true;     % auto: ventana = max(anchoVentana, 3*FWHM medido) para
-                             % que los picos profundos (más anchos) quepan completos
 caidaObjetivo_dB = -10;      % nivel de caída a marcar
 
 %% ======================= PARAMETROS DE ARCHIVOS =========================
@@ -95,53 +93,25 @@ fprintf('%d archivos encontrados; %d se usarán para calibración.\n', nMed, nCa
 
 nHalf  = nFFT/2;
 pxAxis = (0:nHalf-1).';                 % bin 0 = DC
-if usarHanning
-    win = hannWin(nPix);                % ventana Hanning
-else
-    win = ones(nPix, 1);                % sin ventana (rectangular)
-end
-winRect = ones(nPix, 1);
-Aabs   = zeros(nHalf, nMed);            % |FFT| (lineal) de cada medición, con 'win'
+Aabs   = zeros(nHalf, nMed);            % |FFT| (lineal) de cada medición, con ventana
 Arect  = zeros(nHalf, nMed);            % |FFT| sin ventana: sólo para el FWHM
 nLines = zeros(nMed,1);
 
-% Linealización en k: lambda lineal en píxel -> k = 2*pi/lambda (no uniforme)
+% Malla uniforme en k (solo para la resolución teórica; el remuestreo lo hace
+% OCT_Comun.ascan con lambda lineal en píxel -> k = 2*pi/lambda)
 lam  = linspace(lambdaIni_nm, lambdaFin_nm, nPix).';
 kPix = flipud(2*pi ./ lam);                          % ascendente
 kU   = linspace(kPix(1), kPix(end), nPix).';         % malla uniforme en k
-if usarLinealK
-    linK = @(S) interp1(kPix, flipud(S), kU, metodoInterpK);
-else
-    linK = @(S) S;
-end
 
 fprintf('Leyendo %d mediciones...\n', nMed);
 for k = 1:nMed
-    raw = tdmsread(fullfile(carpeta, archivos(k).name), ...
-        'ChannelGroupName', "Acquisition", 'ChannelNames', "Raw_B_scans");
-    x = double(raw{1}.Raw_B_scans(:));
-    nLines(k) = floor(numel(x)/nPix);
-    if nLines(k) < 1
-        error('%s no contiene una A-line completa de %d muestras.', archivos(k).name, nPix);
+    M = OCT_Comun.leerTDMS(fullfile(carpeta, archivos(k).name), nPix);
+    nLines(k) = size(M, 2);
+    if ~promediarALines && indiceALine > nLines(k)
+        error('%s tiene %d A-lines; indiceALine = %d no existe.', ...
+            archivos(k).name, nLines(k), indiceALine);
     end
-    M = reshape(x(1:nLines(k)*nPix), nPix, nLines(k));   % columnas = A-lines
-
-    if ~promediarALines
-        if indiceALine > nLines(k)
-            error('%s tiene %d A-lines; indiceALine = %d no existe.', ...
-                archivos(k).name, nLines(k), indiceALine);
-        end
-        S = M(:, indiceALine);                % una sola A-line
-    elseif promedioAntesFFT
-        S = mean(M, 2);                       % promedio de A-lines
-    else
-        S = M;                                % se promedia |FFT| después
-    end
-    S = linK(S - mean(S,1));                  % quita DC, lineal en k
-    F  = mean(abs(fft(S .* win,     nFFT)), 2);
-    Fr = mean(abs(fft(S .* winRect, nFFT)), 2);
-    Aabs(:,k)  = F(1:nHalf);
-    Arect(:,k) = Fr(1:nHalf);
+    [Aabs(:,k), Arect(:,k)] = OCT_Comun.ascan(M, cfg);
 end
 fprintf('A-lines por medición: %s\n', mat2str(unique(nLines).'));
 if ~promediarALines
@@ -164,7 +134,8 @@ if pxMinBusqueda >= pxMaxBusqueda
 end
 rango = (pxMinBusqueda:pxMaxBusqueda) + 1;
 for k = 1:nMed
-    [pkPx(k), pkIdx(k), pkAmp(k)] = buscarPico(pxAxis, Aabs(:,k), rango);
+    % Reflector, no la cola del DC (que puede ser mas alta que un espejo profundo)
+    [pkPx(k), pkIdx(k), pkAmp(k)] = OCT_Comun.buscarPicoReflector(pxAxis, Aabs(:,k), rango);
 end
 % Validación: sólo las mediciones con posición conocida deben seguir una
 % recta vs el micrómetro. Los archivos auxiliares permanecen en el análisis.
@@ -194,7 +165,7 @@ for q = find(~okCal).'
     k = idxCal(q);
     c = round(polyval(pr, dMic(k))) + 1;
     r = max(rango(1), c-semiBusq) : min(rango(end), c+semiBusq);
-    [pkPx(k), pkIdx(k), pkAmp(k)] = buscarPico(pxAxis, Aabs(:,k), r);
+    [pkPx(k), pkIdx(k), pkAmp(k)] = OCT_Comun.buscarPico(pxAxis, Aabs(:,k), r);
     fprintf('Aviso: pico de %s re-buscado cerca de px %d (máximo global no era el espejo)\n', ...
         archivos(k).name, c-1);
 end
@@ -247,35 +218,26 @@ fprintf('  Medición más cercana: %s  (%.1f dB, z real = %.1f um)\n', ...
 if ~isnan(zCruce), fprintf('  Cruce interpolado a %g dB: z = %.1f um\n', caidaObjetivo_dB, zCruce); end
 
 %% ============================== AJUSTE ==================================
-% El FWHM se mide sobre las A-scans SIN ventana (Arect). Se re-localiza el pico
-% en +-5 bins del encontrado arriba.
+% El FWHM se mide sobre las A-scans SIN ventana (Arect) con OCT_Comun.medirPico
+% (el mismo que usa FWHM_80_ALines_TDMS.m): re-localiza el pico en +-5 bins del
+% encontrado arriba, mide el FWHM directo y ajusta modeloAjuste.
 iMin = pxMinBusqueda + 1;                 % la ventana nunca incluye el DC
-pkIdxR = zeros(nMed,1);  pkPxR = zeros(nMed,1);  pkAmpR = zeros(nMed,1);
-for k = 1:nMed
-    r = max(iMin, pkIdx(k)-5) : min(nHalf-1, pkIdx(k)+5);
-    [pkPxR(k), pkIdxR(k), pkAmpR(k)] = buscarPico(pxAxis, Arect(:,k), r);
-end
-fwhmDatosPx = arrayfun(@(k) fwhmDirecto(pxAxis, Arect(:,k), pkIdxR(k)), (1:nMed).');
-fwhmDatosUm = fwhmDatosPx * umPorPx;
-
+pkIdxR = zeros(nMed,1);
+fwhmDatosPx = zeros(nMed,1);
 ajustes = struct('modelo', [], 'p', [], 'xw', [], 'yw', [], 'R2', []);
 ajustes = repmat(ajustes, nMed, 1);
 for k = 1:nMed
-    n = anchoVentana;
-    if ventanaAutoAdapt && isfinite(fwhmDatosPx(k))
-        n = max(n, ceil(3*fwhmDatosPx(k)));
-    end
-    [xw, yw] = ventanaPico(pxAxis, Arect(:,k), pkIdxR(k), n, iMin);
-    fwhmSemilla = fwhmDatosPx(k);
-    if ~isfinite(fwhmSemilla), fwhmSemilla = max(2, anchoVentana/10); end
-    p = ajustarPico(xw, yw, modeloAjuste, [pkAmpR(k), pkPxR(k), fwhmSemilla, 0]);
-    ajustes(k) = struct('modelo', modeloAjuste, 'p', p, 'xw', xw, 'yw', yw, ...
-                        'R2', calcR2(yw, modeloPico(p, xw, modeloAjuste)));
+    medicion = OCT_Comun.medirPico(pxAxis, Arect(:,k), pkIdx(k), cfg);
+    pkIdxR(k) = medicion.pkIdx;
+    fwhmDatosPx(k) = medicion.fwhmDatosPx;
+    ajustes(k) = medicion.ajuste;
 end
+fwhmDatosUm = fwhmDatosPx * umPorPx;
 if ajusteManual
     % Ventana fija de anchoVentana puntos, semilla = ajuste automático
     for k = 1:nMed
-        [ajustes(k).xw, ajustes(k).yw] = ventanaPico(pxAxis, Arect(:,k), pkIdxR(k), anchoVentana, iMin);
+        [ajustes(k).xw, ajustes(k).yw] = OCT_Comun.ventanaPico(pxAxis, Arect(:,k), ...
+            pkIdxR(k), anchoVentana, iMin);
     end
     ajustes = guiAjusteManual(ajustes, archivos, umPorPx);
 end
@@ -366,7 +328,7 @@ for k = 1:nMed
     s = ajustes(k);
     xf = linspace(s.xw(1), s.xw(end), 400);
     plot(s.xw*umPorPx, s.yw, '.', 'Color', [0.4 0.4 0.4]); hold on;
-    plot(xf*umPorPx, modeloPico(s.p, xf, s.modelo), 'r-', 'LineWidth', 1.2);
+    plot(xf*umPorPx, OCT_Comun.modeloPico(s.p, xf, s.modelo), 'r-', 'LineWidth', 1.2);
     title(sprintf('%s | %.1f \\mum', erase(archivos(k).name,'.tdms'), fwhmUm(k)), ...
         'FontSize', 7, 'FontWeight', 'normal');
     set(gca, 'FontSize', 6, 'YTick', []); axis tight;
@@ -378,7 +340,9 @@ save(fullfile(carpeta, 'Penetration_resultados.mat'), 'T', 'pxPorUm', 'umPorPx',
     'a', 'b', 'zCruce', 'iCaida', 'ajustes', 'nFFT', 'nPix', 'promedioAntesFFT', ...
     'promediarALines', 'indiceALine', 'usarHanning', 'usarLinealK', ...
     'lambdaIni_nm', 'lambdaFin_nm', 'patronArchivos', 'archivoPosiciones', ...
-    'extraerPosicionNombre', 'usarUltimoNumeroNombre');
+    'extraerPosicionNombre', 'usarUltimoNumeroNombre', 'metodoInterpK', ...
+    'pxMinBusqueda', 'pxMaxBusqueda', 'modeloAjuste', 'anchoVentana', ...
+    'ventanaAutoAdapt', 'cfg');
 fprintf('\nResultados guardados en Penetration_resultados.csv / .mat\n');
 
 %% ======================== FUNCIONES LOCALES =============================
@@ -430,83 +394,6 @@ function [dMic, fuente] = resolverPosiciones(archivos, carpeta, archivoCSV, extr
             end
         end
     end
-end
-
-function w = hannWin(N)
-    w = 0.5*(1 - cos(2*pi*(0:N-1).'/(N-1)));
-end
-
-% Máximo dentro de 'rango' (índices MATLAB) con refinamiento parabólico en dB
-function [px, i, amp] = buscarPico(x, y, rango)
-    [amp, i] = max(y(rango));
-    i = rango(i);
-    v = 10*log10(max(y(i-1:i+1), eps));
-    den = v(1)-2*v(2)+v(3);
-    if den == 0
-        px = x(i);
-    else
-        px = x(i) + 0.5*(v(1)-v(3)) / den;
-    end
-end
-
-function [xw, yw] = ventanaPico(x, y, i, n, iMin)
-    i0 = max(iMin, i - floor(n/2));
-    i1 = min(numel(x), i0 + n - 1);
-    i0 = max(iMin, i1 - n + 1);
-    xw = x(i0:i1); yw = y(i0:i1);
-end
-
-% Modelos parametrizados directamente con el FWHM: p = [A, x0, FWHM, C]
-function y = modeloPico(p, x, modelo)
-    u = (x - p(2)) / abs(p(3));
-    switch lower(modelo)
-        case 'gauss', y = p(1)*exp(-4*log(2)*u.^2) + p(4);
-        case 'sinc',  y = p(1)*abs(sincN(2*0.603355*u)) + p(4);   % |sinc| = 0.5 en u=±0.5
-    end
-end
-
-function y = sincN(x)
-    y = ones(size(x));
-    nz = x ~= 0;
-    y(nz) = sin(pi*x(nz)) ./ (pi*x(nz));
-end
-
-function p = ajustarPico(xw, yw, modelo, p0)
-    if nargin < 4 || isempty(p0)
-        [A, i] = max(yw);
-        C = min(yw);
-        above = find(yw - C >= (A - C)/2);
-        F = max(xw(above(end)) - xw(above(1)), 2);
-        p0 = [A - C, xw(i), F, C];
-    end
-    % Límites físicos: A>0, centro dentro de la ventana, 1 px <= FWHM <= 3*ventana, C>=0
-    anchoW = xw(end) - xw(1);
-    lb = [0,        xw(1),   1,          0];
-    ub = [2*max(yw), xw(end), 3*anchoW,  max(yw)];
-    p0 = min(max(p0, lb), ub);
-    sse = @(p) sum((yw - modeloPico(p, xw, modelo)).^2) + 1e30*any(p < lb | p > ub);
-    opts = optimset('MaxFunEvals', 2e4, 'MaxIter', 2e4, 'TolX', 1e-6, 'TolFun', 1e-8, ...
-                    'Display', 'off');
-    p = fminsearch(sse, p0, opts);
-end
-
-function r2 = calcR2(y, yf)
-    sst = sum((y - mean(y)).^2);
-    if sst == 0, r2 = NaN; else, r2 = 1 - sum((y - yf).^2) / sst; end
-end
-
-% FWHM directo sobre |FFT| lineal, con interpolación en los cruces de media altura
-function f = fwhmDirecto(x, y, i)
-    h = y(i)/2;
-    L = i; while L > 1 && y(L) > h, L = L - 1; end
-    R = i; while R < numel(y) && y(R) > h, R = R + 1; end
-    if L == i || R == i || L == 1 || R == numel(y)
-        f = NaN;
-        return;
-    end
-    xL = interp1(y([L L+1]), x([L L+1]), h);
-    xR = interp1(y([R-1 R]), x([R-1 R]), h);
-    f = xR - xL;
 end
 
 %% --------------------------- GUI manual ---------------------------------
@@ -583,7 +470,7 @@ function ajustes = guiAjusteManual(ajustes, archivos, umPorPx)
 
     function autoAjuste()
         s = st.aj(st.k);
-        st.p = ajustarPico(s.xw, s.yw, ddMod.Value, st.p);
+        st.p = OCT_Comun.ajustarPico(s.xw, s.yw, ddMod.Value, st.p);
         refrescar();
     end
 
@@ -598,7 +485,7 @@ function ajustes = guiAjusteManual(ajustes, archivos, umPorPx)
         s = st.aj(st.k);
         st.aj(st.k).modelo = ddMod.Value;
         st.aj(st.k).p = st.p;
-        st.aj(st.k).R2 = calcR2(s.yw, modeloPico(st.p, s.xw, ddMod.Value));
+        st.aj(st.k).R2 = OCT_Comun.calcR2(s.yw, OCT_Comun.modeloPico(st.p, s.xw, ddMod.Value));
     end
 
     function terminar()
@@ -614,12 +501,12 @@ function ajustes = guiAjusteManual(ajustes, archivos, umPorPx)
         xf = linspace(s.xw(1), s.xw(end), 400);
         cla(ax);
         plot(ax, s.xw*umPorPx, s.yw, 'k.', 'MarkerSize', 10); hold(ax, 'on');
-        plot(ax, xf*umPorPx, modeloPico(st.p, xf, m), 'r-', 'LineWidth', 1.5);
+        plot(ax, xf*umPorPx, OCT_Comun.modeloPico(st.p, xf, m), 'r-', 'LineWidth', 1.5);
         hm = st.p(1)/2 + st.p(4);
         plot(ax, (st.p(2) + [-1 1]*st.p(3)/2)*umPorPx, [hm hm], 'g-', 'LineWidth', 2);
         hold(ax, 'off'); axis(ax, 'tight');
         title(ax, sprintf('%s  (%s)', nombres(st.k), m));
         lblInfo.Text = sprintf('FWHM = %.2f px = %.2f um', st.p(3), st.p(3)*umPorPx);
-        lblR2.Text = sprintf('R^2 = %.4f', calcR2(s.yw, modeloPico(st.p, s.xw, m)));
+        lblR2.Text = sprintf('R^2 = %.4f', OCT_Comun.calcR2(s.yw, OCT_Comun.modeloPico(st.p, s.xw, m)));
     end
 end

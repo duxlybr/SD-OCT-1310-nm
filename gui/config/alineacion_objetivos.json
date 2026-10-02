@@ -1,0 +1,67 @@
+{
+  "reference_min_pct": 50.0,
+  "reference_max_pct": 65.0,
+  "interference_max_pct": 90.0,
+  "sample_min_pct": 1.0,
+  "dark_max_pct": 10.0,
+  "shallow_depth_um": [
+    150.0,
+    600.0
+  ],
+  "focus_depth_um": [
+    1500.0,
+    2600.0
+  ],
+  "visibility_good": 0.7,
+  "visibility_warn": 0.5,
+  "snr_good_db": 30.0,
+  "blue_red": [
+    1.0,
+    1.3
+  ],
+  "blue_red_warn": [
+    0.85,
+    1.45
+  ],
+  "rolloff_db_mm": -1.89,
+  "sharpness_drop_warn": 0.85,
+  "contrast_curve": [
+    [
+      79.0,
+      0.867
+    ],
+    [
+      579.0,
+      0.815
+    ],
+    [
+      1080.0,
+      0.679
+    ],
+    [
+      1580.0,
+      0.602
+    ],
+    [
+      2080.0,
+      0.497
+    ],
+    [
+      2580.0,
+      0.407
+    ],
+    [
+      3078.0,
+      0.322
+    ],
+    [
+      3579.0,
+      0.24
+    ],
+    [
+      4079.0,
+      0.17
+    ]
+  ],
+  "_descripcion": "Objetivos del pipeline de alineación. Porcentajes respecto a la saturación del sensor; roll-off del contraste de franjas en dB/mm (10*log10, convención de Penetration_Analysis); contrast_curve = contraste de franjas de Penetration_3 frente a la profundidad (µm)."
+}
