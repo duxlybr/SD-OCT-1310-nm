@@ -375,6 +375,9 @@ class OCTOCEApp:
         entry("Longitud X", self.x_length_var, "mm")
         entry("Longitud Y", self.y_length_var, "mm")
         # λ range and dispersion live in the hardware dialog.
+        ttk.Button(plan, text="Configuración de hardware…", command=self._open_hardware_dialog).grid(
+            row=rows[plan], column=0, columnspan=2, sticky="ew", pady=(8, 2)
+        )
 
         combo("Ejecución", self.backend_var, ["Simulación", "Hardware NI"], container=parent)
         row = rows[parent]
@@ -389,11 +392,6 @@ class OCTOCEApp:
         row += 1
         row = self._build_output_controls(parent, row)
         row = self._build_extra_controls(parent, row)
-
-        ttk.Button(parent, text="Configuración de hardware…", command=self._open_hardware_dialog).grid(
-            row=row, column=0, columnspan=2, sticky="ew", pady=(8, 4)
-        )
-        row += 1
         info = ttk.Frame(parent, style="Card.TFrame", padding=(0, 8))
         info.grid(row=row, column=0, columnspan=2, sticky="ew")
         ttk.Label(

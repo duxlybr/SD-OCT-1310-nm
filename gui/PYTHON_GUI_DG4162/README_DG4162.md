@@ -93,13 +93,20 @@ costaba ~2 s por consulta y causaba la demora de ~10 s antes de OUTPUT1.
 
 ## Interfaz
 
-- **Plan de adquisición** y **Generador DG4162** son secciones desplegables;
-  ambas empiezan abiertas.
+- **Plan de adquisición** (incluye *Configuración de hardware…*) y
+  **Generador DG4162** (incluye *Secuencia desde Excel…*) son secciones
+  desplegables; ambas empiezan abiertas.
 - λ inicial/final para k y dispersión D2/D3 están en *Configuración de hardware…*.
-- El setup de cámara (calibrar la ROI de 15 × 15 mm, antes
-  `run_camera_roi_setup.bat`) se abre desde ⚙ en *Cámara USB* →
-  *Setup de cámara · calibrar ROI…*. Al guardar o cerrar, la GUI recarga la ROI
-  y reconecta la vista USB.
+- **Cámara USB (⚙):**
+  - *Al adquirir:* sin captura, foto o video.
+  - *Área a guardar:* FOV completo o solo la ROI de 15 × 15 mm.
+  - *Setup de cámara · calibrar ROI…* (antes `run_camera_roi_setup.bat`).
+    Parte de la ROI guardada (rojo discontinuo) y las flechas +X/+Y muestran
+    la orientación de los galvos. Al cerrar el setup se guarda automáticamente
+    la ROI aprobada, o solo la inversión X/Y si es lo único que cambió.
+  - *Invertir X/Y* voltea la imagen (vista, foto y video) para que +X/+Y de
+    los galvos queden a la derecha/abajo.
+  - Brillo: la cámara solo admite 0–255 (0 = más oscuro).
 - La ventana arranca maximizada; F11 activa o desactiva la pantalla completa.
 - La vista de la cámara USB empieza como un cuadrado.
 - El plot del patrón X/Y usa la misma escala en X e Y.

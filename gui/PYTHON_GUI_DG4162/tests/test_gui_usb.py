@@ -30,6 +30,7 @@ class _FakeStream:
         self.recording = False
         self.recorded_paths: list[str] = []
         self.photo_paths: list[str] = []
+        self.transforms: list = []
         self.last_record_error = None
         self.focus = 20.0
         self.brightness = 90.0
@@ -64,15 +65,17 @@ class _FakeStream:
             "brightness_verified": True if brightness is not None else None,
         }
 
-    def start_recording(self, path) -> None:
+    def start_recording(self, path, transform=None) -> None:
         self.recorded_paths.append(str(path))
+        self.transforms.append(transform)
         self.recording = True
 
     def restore_manual_controls(self):
         return self.camera_controls(focus=self.focus, brightness=self.brightness)
 
-    def capture_photo(self, path):
+    def capture_photo(self, path, transform=None):
         self.photo_paths.append(str(path))
+        self.transforms.append(transform)
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         Image.fromarray(
             np.zeros((4, 6, 3), dtype=np.uint8), mode="RGB"

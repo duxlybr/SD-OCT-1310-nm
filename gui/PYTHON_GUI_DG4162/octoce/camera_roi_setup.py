@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import math
 import tkinter as tk
+from dataclasses import replace
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -47,8 +48,17 @@ def geometry_center(points):
 
 
 class CameraROISetup:
-    def __init__(self, root, stream, camera_index=0, path=DEFAULT_ROI_PATH):
+    """Calibrate the 15 × 15 mm ROI. With ``autosave`` (GUI use) closing saves the changes."""
+
+    def __init__(self, root, stream, camera_index=0, path=DEFAULT_ROI_PATH, *, autosave=False):
         self.root, self.stream, self.index, self.path = root, stream, camera_index, path
+        self.autosave = autosave
+        self.result_message = ""
+        self._saved = False
+        try:
+            self.existing = CameraROI.load(path)
+        except (OSError, ValueError, TypeError, KeyError):
+            self.existing = None
         self.frame = None
         self.points = []
         self.center = None
@@ -85,9 +95,15 @@ class CameraROISetup:
         ttk.Button(actions, text="Guardar ROI", command=self.save).pack(side="left", padx=4)
         axes = ttk.Frame(root, padding=(8, 0, 8, 8))
         axes.pack(fill="x")
-        self.flip_x, self.flip_y = tk.BooleanVar(), tk.BooleanVar()
-        ttk.Checkbutton(axes, text="Invertir X del patrón", variable=self.flip_x).pack(side="left")
-        ttk.Checkbutton(axes, text="Invertir Y del patrón", variable=self.flip_y).pack(side="left", padx=12)
+        self.flip_x = tk.BooleanVar(value=bool(self.existing and self.existing.flip_x))
+        self.flip_y = tk.BooleanVar(value=bool(self.existing and self.existing.flip_y))
+        ttk.Checkbutton(axes, text="Invertir X del patrón", variable=self.flip_x,
+                        command=self.render).pack(side="left")
+        ttk.Checkbutton(axes, text="Invertir Y del patrón", variable=self.flip_y,
+                        command=self.render).pack(side="left", padx=12)
+        ttk.Label(axes, text="Flechas: sentido +X/+Y de los galvos en la imagen; "
+                             "la vista de la GUI se voltea para mostrarlos a la derecha/abajo.").pack(
+            side="left", padx=12)
         self.status = tk.StringVar(value="Coloque una referencia en el plano de adquisición y congele la imagen.")
         ttk.Label(root, textvariable=self.status, padding=8, wraplength=1000).pack(fill="x")
         self.canvas = tk.Canvas(root, bg="#07111f", highlightthickness=0)
@@ -265,25 +281,78 @@ class CameraROISetup:
             self.status.set("Dibuje con dos clics o arrastre. Ajuste los extremos arrastrando los puntos; arrastre el interior para mover. Luego pulse Aprobar geometría.")
         else:
             self.status.set(f"Geometría aprobada · {self._approved_scale:.3f} px/mm. Centro de la ROI = centro de la geometría.")
+        shown = None
         if self.center is not None:
             try:
-                roi = self.roi()
-                left, top, right, bottom = roi.bounds(width, height)
+                shown = self.roi()
+                left, top, right, bottom = shown.bounds(width, height)
                 self.canvas.create_rectangle(ox + left*scale, oy + top*scale, ox + right*scale, oy + bottom*scale, outline="red", width=2)
-                self.status.set(f"ROI válida: 15 × 15 mm · {roi.pixels_per_mm:.3f} px/mm. Centrada en la geometría aprobada; puede guardar o editar la geometría.")
+                self.status.set(f"ROI válida: 15 × 15 mm · {shown.pixels_per_mm:.3f} px/mm. Centrada en la geometría aprobada; puede guardar o editar la geometría.")
             except ValueError as exc:
+                shown = None
                 self.status.set(str(exc))
+        elif self.existing is not None and self.existing.camera_index == self.index and not self.points:
+            try:
+                left, top, right, bottom = self.existing.bounds(width, height)
+                shown = self.existing
+                self.canvas.create_rectangle(ox + left*scale, oy + top*scale, ox + right*scale, oy + bottom*scale,
+                                             outline="red", width=2, dash=(6, 4))
+                if not self.frozen:
+                    self.status.set("ROI guardada (rojo discontinuo). Cambie la inversión X/Y o congele para recalibrar."
+                                    + (" Los cambios se guardan al cerrar." if self.autosave else ""))
+            except ValueError:
+                shown = None
+        if shown is not None:
+            self._draw_axes(shown, ox, oy, scale)
+
+    def _draw_axes(self, roi, ox, oy, scale):
+        """Arrows for the galvo +X/+Y directions in the camera image (per flips)."""
+        length = 15 * roi.pixels_per_mm * 0.3 * scale
+        cx, cy = ox + roi.center_x * scale, oy + roi.center_y * scale
+        sx = -1 if self.flip_x.get() else 1
+        sy = -1 if self.flip_y.get() else 1
+        for dx, dy, label in ((sx * length, 0, "+X"), (0, sy * length, "+Y")):
+            self.canvas.create_line(cx, cy, cx + dx, cy + dy, fill="#ff5a5a", width=3, arrow="last",
+                                    arrowshape=(12, 14, 5))
+            self.canvas.create_text(cx + dx * 1.18, cy + dy * 1.18, text=label, fill="#ff5a5a",
+                                    font=("Segoe UI", 11, "bold"))
 
     def save(self):
         try:
-            self.roi().save(self.path)
+            roi = self.roi()
+            roi.save(self.path)
         except (ValueError, OSError) as exc:
             messagebox.showerror("ROI", str(exc), parent=self.root)
             return
+        self._saved = True
+        self.result_message = f"ROI guardada: {roi.pixels_per_mm:.3f} px/mm en {self.path.name}."
         messagebox.showinfo("ROI guardada", f"Configuración guardada en {self.path}", parent=self.root)
         self.close()
 
+    def autosave_changes(self):
+        """Save a newly approved ROI, or only the X/Y inversion of the saved one."""
+        try:
+            if self.approved and self.center is not None:
+                roi = self.roi()
+                roi.save(self.path)
+                self.result_message = f"ROI guardada automáticamente: {roi.pixels_per_mm:.3f} px/mm."
+            elif self.existing is not None and (self.flip_x.get(), self.flip_y.get()) != (
+                self.existing.flip_x, self.existing.flip_y
+            ):
+                replace(self.existing, flip_x=self.flip_x.get(), flip_y=self.flip_y.get()).save(self.path)
+                self.result_message = (
+                    f"Inversión guardada automáticamente: X {'invertido' if self.flip_x.get() else 'normal'}, "
+                    f"Y {'invertido' if self.flip_y.get() else 'normal'}."
+                )
+            elif self.points and not self.approved:
+                self.result_message = "Setup cerrado con una geometría sin aprobar: se mantiene la ROI anterior."
+        except (ValueError, OSError) as exc:
+            self.result_message = f"No se guardó la ROI: {exc}"
+        self._saved = True
+
     def close(self):
+        if self.autosave and not self._saved:
+            self.autosave_changes()
         if self.after_id is not None:
             self.root.after_cancel(self.after_id)
         self.stream.stop()

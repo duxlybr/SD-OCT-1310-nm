@@ -49,6 +49,7 @@ class USBCameraStream:
         self._index: int | None = None
         self._record_path: Path | None = None
         self._record_writer: object | None = None
+        self._record_transform: Callable[[NDArray[np.uint8]], NDArray[np.uint8]] | None = None
         self._record_ready: threading.Event | None = None
         self._record_done = threading.Event()
         self._record_error: str | None = None
@@ -72,8 +73,14 @@ class USBCameraStream:
         with self._lock:
             return self._record_error
 
-    def start_recording(self, path: str | os.PathLike[str], timeout_s: float = 8.0) -> Path:
-        """Arm MP4 in the capture thread and wait until its first frame is written."""
+    def start_recording(
+        self, path: str | os.PathLike[str], timeout_s: float = 8.0, *,
+        transform: Callable[[NDArray[np.uint8]], NDArray[np.uint8]] | None = None,
+    ) -> Path:
+        """Arm MP4 in the capture thread and wait until its first frame is written.
+
+        ``transform`` (e.g. ROI crop / mirror) is applied to every frame written.
+        """
         destination = Path(path)
         if destination.suffix.lower() != ".mp4":
             raise ValueError("El video USB debe tener extensión .mp4.")
@@ -88,6 +95,7 @@ class USBCameraStream:
                 raise RuntimeError("Ya hay una grabación USB activa.")
             self._record_path = destination
             self._record_writer = None
+            self._record_transform = transform
             self._record_ready = ready
             self._record_done.clear()
             self._record_error = None
@@ -121,6 +129,7 @@ class USBCameraStream:
             ready = self._record_ready
             self._record_writer = None
             self._record_path = None
+            self._record_transform = None
             self._record_ready = None
             self._record_stop_requested = False
             self._record_error = error
@@ -189,7 +198,10 @@ class USBCameraStream:
         with self._lock:
             return self._latest_frame, self._status
 
-    def capture_photo(self, path: str | os.PathLike[str], timeout_s: float = 4.0) -> Path:
+    def capture_photo(
+        self, path: str | os.PathLike[str], timeout_s: float = 4.0, *,
+        transform: Callable[[NDArray[np.uint8]], NDArray[np.uint8]] | None = None,
+    ) -> Path:
         """Save the next camera frame as PNG, before the OCT acquisition starts."""
         from PIL import Image
 
@@ -209,6 +221,8 @@ class USBCameraStream:
             if self._latest_frame is None or self._frame_serial == previous:
                 raise RuntimeError("La cámara USB dejó de entregar imágenes.")
             frame = self._latest_frame.copy()
+        if transform is not None:
+            frame = np.ascontiguousarray(transform(frame))
         destination.parent.mkdir(parents=True, exist_ok=True)
         with destination.open("xb") as handle:
             Image.fromarray(frame, mode="RGB").save(handle, format="PNG")
@@ -368,6 +382,13 @@ class USBCameraStream:
                 with self._lock:
                     record_path = self._record_path
                     writer = self._record_writer
+                    transform = self._record_transform
+                if record_path is not None:
+                    try:
+                        recorded = frame if transform is None else np.ascontiguousarray(transform(frame))
+                    except Exception as exc:
+                        self._finish_recording(f"No se pudo recortar el video USB: {exc}")
+                        record_path = None
                 if record_path is not None:
                     if writer is None:
                         try:
@@ -376,7 +397,7 @@ class USBCameraStream:
                                 fps = 30.0
                             writer = cv2.VideoWriter(
                                 str(record_path), cv2.VideoWriter_fourcc(*"mp4v"),
-                                fps, (int(frame.shape[1]), int(frame.shape[0])),
+                                fps, (int(recorded.shape[1]), int(recorded.shape[0])),
                             )
                             if not writer.isOpened():
                                 raise RuntimeError("OpenCV no pudo abrir el codificador MP4.")
@@ -387,7 +408,7 @@ class USBCameraStream:
                             writer = None
                     if writer is not None:
                         try:
-                            writer.write(frame)
+                            writer.write(recorded)
                             with self._lock:
                                 self._record_frames += 1
                                 ready = self._record_ready
