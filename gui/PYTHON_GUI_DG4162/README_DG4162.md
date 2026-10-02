@@ -93,6 +93,14 @@ costaba ~2 s por consulta y causaba la demora de ~10 s antes de OUTPUT1.
 
 ## Interfaz
 
+- **Plan de adquisición** y **Generador DG4162** son secciones desplegables;
+  ambas empiezan abiertas.
+- λ inicial/final para k y dispersión D2/D3 están en *Configuración de hardware…*.
+- El setup de cámara (calibrar la ROI de 15 × 15 mm, antes
+  `run_camera_roi_setup.bat`) se abre desde ⚙ en *Cámara USB* →
+  *Setup de cámara · calibrar ROI…*. Al guardar o cerrar, la GUI recarga la ROI
+  y reconecta la vista USB.
+- La ventana arranca maximizada; F11 activa o desactiva la pantalla completa.
 - La vista de la cámara USB empieza como un cuadrado.
 - El plot del patrón X/Y usa la misma escala en X e Y.
 

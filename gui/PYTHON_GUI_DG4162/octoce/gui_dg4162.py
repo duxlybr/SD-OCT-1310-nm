@@ -21,7 +21,7 @@ from .dg4162 import (
     waveform_scpi,
 )
 from .engine import EngineEvent, EngineState
-from .gui import MODE_LABELS, ORIENTATION_LABELS, PATTERN_LABELS, _duration
+from .gui import MODE_LABELS, ORIENTATION_LABELS, PATTERN_LABELS, _CollapsibleSection, _duration
 from .gui_usb import OCTOCEUSBApp
 from .naming import MODE_PREFIX, clean_stem, default_stem, unique_path
 from .paths import ACQUISITIONS_DIR
@@ -307,20 +307,20 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         return row + 5
 
     def _build_extra_controls(self, parent: ttk.Frame, row: int) -> int:
-        ttk.Separator(parent).grid(row=row, column=0, columnspan=2, sticky="ew", pady=10)
-        ttk.Label(parent, text="Generador DG4162", style="CardTitle.TLabel").grid(
-            row=row + 1, column=0, columnspan=2, sticky="w", pady=(0, 4))
+        self.generator_section = _CollapsibleSection(parent, "Generador DG4162")
+        self.generator_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        section = self.generator_section.body
         ttk.Checkbutton(
-            parent, text="Controlar DG4162 en cada adquisición (OUTPUT1 on/off)",
+            section, text="Controlar DG4162 en cada adquisición (OUTPUT1 on/off)",
             variable=self.gen_enabled_var,
-        ).grid(row=row + 2, column=0, columnspan=2, sticky="w")
-        row += 3
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        inner_row = 1
 
         def field(label: str, variable: tk.StringVar, suffix: str = "", values: list[str] | None = None) -> None:
-            nonlocal row
-            ttk.Label(parent, text=label, style="Card.TLabel").grid(row=row, column=0, sticky="w", pady=3)
-            holder = ttk.Frame(parent, style="Card.TFrame")
-            holder.grid(row=row, column=1, sticky="ew", padx=(12, 0), pady=3)
+            nonlocal inner_row
+            ttk.Label(section, text=label, style="Card.TLabel").grid(row=inner_row, column=0, sticky="w", pady=3)
+            holder = ttk.Frame(section, style="Card.TFrame")
+            holder.grid(row=inner_row, column=1, sticky="ew", padx=(12, 0), pady=3)
             holder.columnconfigure(0, weight=1)
             if values is None:
                 widget: ttk.Widget = ttk.Entry(holder, textvariable=variable, width=12)
@@ -329,7 +329,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             widget.grid(row=0, column=0, sticky="ew")
             if suffix:
                 ttk.Label(holder, text=suffix, style="Muted.TLabel").grid(row=0, column=1, padx=(6, 0))
-            row += 1
+            inner_row += 1
 
         field("Excitación", self.excitation_var,
               values=[Excitation.NON_CONTACT.value, Excitation.CONTACT.value])
@@ -337,11 +337,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         field("CH2 frecuencia", self.ch2_freq_var, "Hz")
         field("CH2 forma de onda", self.ch2_wave_var, values=list(CH2_WAVEFORMS))
         field("CH2 retardo burst", self.ch2_delay_var, "ms")
-        ttk.Label(parent, textvariable=self.gen_warning_var, style="Warning.TLabel", wraplength=330,
-                  justify="left").grid(row=row, column=0, columnspan=2, sticky="w")
-        row += 1
-        buttons = ttk.Frame(parent, style="Card.TFrame")
-        buttons.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(4, 2))
+        ttk.Label(section, textvariable=self.gen_warning_var, style="Warning.TLabel", wraplength=330,
+                  justify="left").grid(row=inner_row, column=0, columnspan=2, sticky="w")
+        buttons = ttk.Frame(section, style="Card.TFrame")
+        buttons.grid(row=inner_row + 1, column=0, columnspan=2, sticky="ew", pady=(4, 2))
         buttons.columnconfigure((0, 1, 2), weight=1)
         self.gen_connect_button = ttk.Button(buttons, text="Conectar / leer",
                                              command=lambda: self._connect_generator(interactive=True))
@@ -350,11 +349,12 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.gen_load_button.grid(row=0, column=1, sticky="ew", padx=3)
         self.gen_apply_button = ttk.Button(buttons, text="Aplicar ahora", command=self._apply_generator_now)
         self.gen_apply_button.grid(row=0, column=2, sticky="ew", padx=(3, 0))
-        ttk.Label(parent, textvariable=self.gen_status_var, style="Muted.TLabel", wraplength=330,
-                  justify="left").grid(row=row + 1, column=0, columnspan=2, sticky="w", pady=(2, 6))
+        ttk.Label(section, textvariable=self.gen_status_var, style="Muted.TLabel", wraplength=330,
+                  justify="left").grid(row=inner_row + 2, column=0, columnspan=2, sticky="w", pady=(2, 2))
+        # Outside the section: stays reachable when the generator panel is collapsed.
         self.sequence_button = ttk.Button(parent, text="Secuencia desde Excel…", command=self._open_sequence)
-        self.sequence_button.grid(row=row + 2, column=0, columnspan=2, sticky="ew", pady=(4, 0))
-        return row + 3
+        self.sequence_button.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        return row + 2
 
     def _square_usb_view(self) -> None:
         """Start with the USB camera pane as wide as it is tall (square view)."""

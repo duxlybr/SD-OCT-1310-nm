@@ -13,6 +13,7 @@ from .engine import EngineEvent, EngineState
 from .gui import OCTOCEApp
 from .usb_camera import USBCameraStream
 from .camera_roi import CameraROI, DEFAULT_ROI_PATH, render_pattern
+from .camera_roi_setup import CameraROISetup
 from .paths import ACQUISITIONS_DIR
 
 
@@ -318,6 +319,10 @@ class OCTOCEUSBApp(OCTOCEApp):
         ttk.Checkbutton(roi_controls, text="Indicador rojo del patrón", variable=self.pattern_overlay_var,
                         command=self._render_usb).pack(anchor="w")
         ttk.Button(roi_controls, text="Recargar calibración ROI", command=self._reload_camera_roi).pack(fill="x")
+        self.roi_setup_button = ttk.Button(
+            roi_controls, text="Setup de cámara · calibrar ROI 15 × 15 mm…", command=self._open_roi_setup,
+        )
+        self.roi_setup_button.pack(fill="x", pady=(5, 0))
         ttk.Button(self.usb_settings, text="Cerrar", command=self.usb_settings_window.withdraw).grid(
             row=6, column=0, sticky="e", pady=(12, 0))
 
@@ -533,6 +538,40 @@ class OCTOCEUSBApp(OCTOCEApp):
         canvas.create_image(canvas_width / 2, canvas_height / 2, image=self._usb_photo, anchor="center")
         if warning:
             canvas.create_text(8, 8, anchor="nw", fill="#ffdf4d", width=max(80, canvas_width - 16), text=warning)
+
+    def _open_roi_setup(self) -> None:
+        """Run the camera ROI calibration (run_camera_roi_setup) inside the GUI."""
+        if self.engine.is_active or self._video_active_path is not None or self._alignment_active:
+            messagebox.showinfo(
+                "Setup de cámara", "Detenga la adquisición antes de calibrar la cámara.", parent=self.root,
+            )
+            return
+        self.usb_settings_window.withdraw()
+        window = tk.Toplevel(self.root)
+        window.transient(self.root)
+        try:
+            CameraROISetup(window, self._usb_stream, int(self.usb_index_var.get()), DEFAULT_ROI_PATH)
+        except (RuntimeError, ValueError) as exc:
+            window.destroy()
+            messagebox.showerror("Setup de cámara", str(exc), parent=self.root)
+            self._connect_usb()
+            return
+        window.grab_set()
+        window.bind("<Destroy>", lambda event: event.widget is window and self._roi_setup_closed())
+
+    def _roi_setup_closed(self) -> None:
+        # The setup stops the shared USB stream when it closes: reload and reconnect.
+        try:
+            self.root.after_idle(self._resume_after_roi_setup)
+        except tk.TclError:
+            pass  # main window already closing
+
+    def _resume_after_roi_setup(self) -> None:
+        if self._closing or not self.root.winfo_exists():
+            return
+        self._reload_camera_roi()
+        self._append_log(self._roi_load_error or "Calibración ROI de la cámara recargada.")
+        self._connect_usb()
 
     def _reload_camera_roi(self) -> None:
         try:
