@@ -155,11 +155,13 @@ class USBGuiTests(unittest.TestCase):
                     error.assert_called_once()
                 self.assertFalse(path.exists())
                 setup.approve_button.invoke()
+                # After approval clicks are ignored: the ROI is centred on the geometry.
                 setup.click(SimpleNamespace(x=ox + 320 * scale, y=oy + 240 * scale))
+                self.assertEqual(setup.center, (200, 200))
                 self.assertAlmostEqual(setup.roi().pixels_per_mm, 20)
                 with patch("octoce.camera_roi_setup.messagebox.showinfo"):
                     setup.save()
-                self.assertEqual(CameraROI.load(path).bounds(640, 480), (170, 90, 470, 390))
+                self.assertEqual(CameraROI.load(path).bounds(640, 480), (50, 50, 350, 350))
                 self.assertFalse(stream.running)
             finally:
                 try:
