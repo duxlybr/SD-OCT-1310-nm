@@ -1,9 +1,10 @@
 """SCPI control of the RIGOL DG4162 generator used for OCE excitation.
 
-Reference setup (front-panel state ``C:\\STATE 4:1040octoacus1000.RSF``):
+OCE setup (defaults in :class:`BaseSetup`):
 
-* CH1: 948.07 kHz sine carrier, AM 100 % from the EXT input, 50 Ω load. Its
-  amplitude (Vpp) sets the excitation; OUTPUT1 is only on during acquisitions.
+* CH1: 954.9 kHz sine (transducer resonance), offset -0.7 mV DC, no
+  modulation, 50 Ω load. Its amplitude (Vpp) sets the excitation; OUTPUT1 is
+  only on during acquisitions.
 * CH2: modulating pulse (2 kHz, 1 Vpp, offset 0.452 V, High-Z) in burst mode,
   1 cycle per external trigger (PFI13) with a trigger delay. OUTPUT2 stays on.
 
@@ -186,17 +187,16 @@ class GeneratorState:
 class BaseSetup:
     """OCE base configuration of the generator.
 
-    Defaults read from the instrument memory, front-panel STATE 4 =
-    ``1040octoacus1000.RSF`` (``*RCL 3``). Fixed parts: CH1 sine carrier,
-    offset 0 V, 50 Ω load, AM from the EXT input, no burst; CH2 High-Z, burst
-    triggered by EXT (PFI13) on the rising edge. The values
+    Fixed parts: CH1 sine, 50 Ω load, no modulation, no burst; CH2 High-Z,
+    no modulation, pulse duty 50 %, burst triggered by EXT (PFI13) on the
+    rising edge. The values
     below are editable in the GUI and saved in ``gui/config/dg4162_base.json``.
     ``ch1_vpp`` and the ``ch2_*`` waveform/frequency/delay are the defaults of
     the acquisition panel and the state left when the GUI closes.
     """
 
-    ch1_frequency_hz: float = 948_070.0  # transducer resonance (CH1 carrier)
-    am_depth_percent: float = 100.0
+    ch1_frequency_hz: float = 954_900.0  # transducer resonance (CH1 carrier)
+    ch1_offset_v: float = -0.0007  # -0.7 mV DC
     ch2_vpp: float = 1.0
     ch2_offset_v: float = 0.452
     burst_cycles: int = 1
@@ -208,8 +208,8 @@ class BaseSetup:
     def validate(self) -> None:
         if not isfinite(self.ch1_frequency_hz) or not 0 < self.ch1_frequency_hz <= 160e6:
             raise ValueError("La frecuencia de resonancia (CH1) debe estar entre 0 y 160 MHz.")
-        if not isfinite(self.am_depth_percent) or not 0 <= self.am_depth_percent <= 120:
-            raise ValueError("La profundidad AM debe estar entre 0 y 120 %.")
+        if not isfinite(self.ch1_offset_v) or abs(self.ch1_offset_v) > 1.0:
+            raise ValueError("El offset de CH1 debe estar entre -1 V y 1 V.")
         if not isfinite(self.ch2_vpp) or self.ch2_vpp <= 0:
             raise ValueError("La amplitud de CH2 debe ser mayor que 0 Vpp.")
         if not isfinite(self.ch2_offset_v) or abs(self.ch2_offset_v) + self.ch2_vpp / 2 > 10.0:
@@ -228,7 +228,7 @@ class BaseSetup:
 
     @classmethod
     def load(cls, path: Path) -> "BaseSetup":
-        """Saved configuration, or the STATE 4 defaults when there is none."""
+        """Saved configuration, or the defaults when there is none."""
         if not path.exists():
             return cls()
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -634,12 +634,9 @@ class DG4162Controller:
             check("CH1 forma de onda", ":SOUR1:FUNC?", "SIN", ":SOUR1:FUNC SIN")
             check("CH1 frecuencia (Hz)", ":SOUR1:FREQ?", base.ch1_frequency_hz,
                   f":SOUR1:FREQ {base.ch1_frequency_hz:.9g}")
-            check("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", 0.0, ":SOUR1:VOLT:OFFS 0")
-            check("CH1 modulación", ":SOUR1:MOD:TYP?", "AM", ":SOUR1:MOD:TYP AM")
-            check("CH1 fuente AM", ":SOUR1:MOD:AM:SOUR?", "EXT", ":SOUR1:MOD:AM:SOUR EXT")
-            check("CH1 profundidad AM (%)", ":SOUR1:MOD:AM:DEPT?", base.am_depth_percent,
-                  f":SOUR1:MOD:AM:DEPT {base.am_depth_percent:.6g}")
-            check("CH1 modulación activa", ":SOUR1:MOD?", "ON", ":SOUR1:MOD ON")
+            check("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", base.ch1_offset_v,
+                  f":SOUR1:VOLT:OFFS {base.ch1_offset_v:.6g}")
+            check("CH1 modulación", ":SOUR1:MOD?", "OFF", ":SOUR1:MOD OFF")
             check("CH1 burst", ":SOUR1:BURS?", "OFF", ":SOUR1:BURS OFF")
             check("CH2 carga", ":OUTP2:IMP?", "INF", ":OUTP2:IMP INF")
             check("CH2 modulación", ":SOUR2:MOD?", "OFF", ":SOUR2:MOD OFF")
@@ -661,7 +658,7 @@ class DG4162Controller:
             state = self.read_state()
             return BaseSetup(
                 ch1_frequency_hz=state.ch1_frequency_hz,
-                am_depth_percent=self._query_float(":SOUR1:MOD:AM:DEPT?"),
+                ch1_offset_v=state.ch1_offset_v,
                 ch2_vpp=state.ch2_vpp,
                 ch2_offset_v=state.ch2_offset_v,
                 burst_cycles=int(round(self._query_float(":SOUR2:BURS:NCYC?"))),

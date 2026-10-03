@@ -4,7 +4,7 @@
     py -3.11 diagnostics\\dg4162_check.py --write-test    # program CH2/CH1, OUTPUT1 stays OFF
     py -3.11 diagnostics\\dg4162_check.py --write-test --pulse-output1   # + OUTPUT1 ON 1 s
 
---write-test rewrites the STATE 4 values with CH2 delay = 2 ms, checks that a
+--write-test rewrites the current values with CH2 delay = 2 ms, checks that a
 CH2 waveform change keeps amplitude/offset, and turns OUTPUT2 on. It never
 saves a state to the instrument memory. Close Ultra Sigma first.
 """

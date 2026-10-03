@@ -13,14 +13,15 @@ py -3.11 -m pip install -r requirements-dg4162.txt
 
 No abra el generador desde Ultra Sigma mientras la GUI está abierta.
 
-## Configuración de referencia (STATE 4: `1040octoacus1000.RSF`)
+## Configuración base del generador (valores por defecto)
 
 | Canal | Configuración |
 |-------|---------------|
-| CH1 | Senoidal 948.07 kHz, 500 mVpp, AM 100 % con fuente EXT, carga 50 Ω, sin burst |
-| CH2 | Pulso 2 kHz, 1 Vpp, offset 0.452 V, High-Z, burst disparado por EXT (1 ciclo), retardo 6 ms |
+| CH1 | Senoidal 954.9 kHz (resonancia del transductor), 500 mVpp, offset −0.7 mV DC, sin modulación, carga 50 Ω, sin burst |
+| CH2 | Pulso 2 kHz (ciclo 50 %), 1 Vpp, offset 0.452 V, High-Z, sin modulación, burst disparado por EXT (1 ciclo, flanco +), retardo 6 ms |
 
-Valores leídos de la memoria del generador (`*RCL 3`). Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, la profundidad AM, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores del STATE 4* los restablece). Al cerrar la GUI se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada esta configuración.
+Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, el offset de CH1, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores por defecto* los restablece y
+*Tomar del generador* adopta lo que esté cargado en el equipo). Al cerrar la GUI se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada esta configuración.
 
 La GUI controla la amplitud de CH1 y, en CH2, la frecuencia, la forma de onda
 y el retardo del burst. El resto queda como esté en el panel.
@@ -66,7 +67,7 @@ amplitud y offset):
      pendiente. En una secuencia, si fallan los reintentos, la secuencia se
      detiene.
    - **Al cerrar la GUI:** se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada la
-     configuración base (STATE 4 / *Configuración del generador…*).
+     configuración base (*Configuración del generador…*).
    - **Reglas de seguridad de las salidas:**
      - Ningún parámetro cambia con OUTPUT1 encendido: toda escritura que no sea
        encender/apagar una salida comprueba OUTPUT1 justo antes y lo apaga
