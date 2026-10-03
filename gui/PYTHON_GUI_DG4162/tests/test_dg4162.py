@@ -59,6 +59,7 @@ class FakeDG4162:
         self.closed = False
         self.alive = True  # False = generator switched off (every I/O times out)
         self.output1_stuck = False  # True = ":OUTP1 OFF" has no effect (fault injection)
+        self.output1_ignored_offs = 0  # transient fault: ignore this many ":OUTP1 OFF"
         self.state: dict[str, object] = dict(BASE_REGISTERS)
 
     def write(self, command: str) -> None:
@@ -70,6 +71,9 @@ class FakeDG4162:
             return
         header, _, value = command.partition(" ")
         if header == ":OUTP1" and value == "OFF" and self.output1_stuck:
+            return
+        if header == ":OUTP1" and value == "OFF" and self.output1_ignored_offs > 0:
+            self.output1_ignored_offs -= 1
             return
         if header not in self.state:
             self.errors.append('-113,"Undefined header; keyword cannot be found"')
@@ -372,6 +376,26 @@ class ControllerTests(unittest.TestCase):
         self.assertFalse(controller.enforce_output1_lock())  # no lock: left alone
         self.assertEqual(instrument.state[":OUTP1"], "ON")
 
+    def test_output1_off_recovers_from_transient_failure(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        controller.set_output(1, True)
+        instrument.output1_ignored_offs = 1  # first OFF lost, e.g. right after an acquisition
+        instrument.writes.clear()
+        controller.set_output(1, False)
+        self.assertEqual(instrument.state[":OUTP1"], "OFF")
+        self.assertEqual(instrument.setting_writes, [":OUTP1 OFF", ":OUTP1 OFF"])
+
+    def test_close_reports_unconfirmed_output1_off_without_raising(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        controller.set_output(1, True)
+        instrument.output1_stuck = True
+        warnings = controller.close()
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("No se pudo confirmar OUTPUT1 apagado", warnings[0])
+        self.assertFalse(controller.connected)
+
     def test_output2_is_switched_back_on(self) -> None:
         controller, instrument = fake_controller()
         controller.connect()
@@ -509,7 +533,11 @@ class DG4162GuiTests(unittest.TestCase):
         app._link_changed(True)
 
     def tearDown(self) -> None:
-        if self.root.winfo_exists():
+        try:
+            alive = bool(self.root.winfo_exists())
+        except tk.TclError:  # already closed by the test
+            alive = False
+        if alive:
             self.app._on_close()
         self.tmp.cleanup()
 
@@ -638,6 +666,29 @@ class DG4162GuiTests(unittest.TestCase):
         app._handle_event(EngineEvent("state", {"state": EngineState.STOPPED.value}))
         self.assertFalse(self.controller.output1_locked)
         self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+
+    def test_failed_output1_off_shows_no_dialog_and_is_retried(self) -> None:
+        import threading
+
+        app = self.app
+        self.controller.set_output(1, True)
+        app._output1_on = True
+        self.instrument.output1_stuck = True
+        with patch("octoce.gui_dg4162.messagebox.showwarning") as warning,                 patch("octoce.gui_dg4162.messagebox.showerror") as error:
+            app._generator_off("prueba")
+            warning.assert_not_called()
+            error.assert_not_called()
+            self.assertTrue(app._output1_off_pending)
+            self.instrument.output1_stuck = False  # the instrument answers again
+            with patch("octoce.gui_dg4162.LINK_CHECK_PERIOD_S", 0.05):
+                app._link_thread = threading.Thread(target=app._watch_generator, daemon=True)
+                app._link_thread.start()
+                self.pump(lambda: not app._output1_off_pending)
+            self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+            self.instrument.state[":OUTP1"] = "ON"
+            self.instrument.output1_stuck = True
+            app._on_close()  # closing with a problem: console only, no dialog
+            warning.assert_not_called()
 
     def test_crosshair_loop_refused_if_output1_cannot_be_switched_off(self) -> None:
         app = self.app

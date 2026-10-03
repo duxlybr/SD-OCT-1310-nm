@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from dataclasses import asdict, dataclass, fields, replace
 from enum import Enum
 from math import isfinite
@@ -367,8 +368,13 @@ class DG4162Controller:
             warnings: list[str] = []
             try:
                 self.set_output(1, False)
-            except Exception as exc:
-                warnings.append(f"No se pudo apagar OUTPUT1: {exc}")
+            except Exception:
+                try:  # once more on a fresh session
+                    self._release()
+                    self.connect()
+                    self.set_output(1, False)
+                except Exception as exc:
+                    warnings.append(f"No se pudo confirmar OUTPUT1 apagado: {exc}")
             if base is not None and not warnings:
                 try:
                     self.ensure_base(base)
@@ -550,9 +556,17 @@ class DG4162Controller:
                         f"OUTPUT1 no se enciende: CH1 = {vpp * 1000:g} mVpp supera el límite de "
                         f"{self.output1_limit_vpp:g} Vpp."
                     )
-            self.write(f":OUTP{channel} {'ON' if enabled else 'OFF'}")
-            if self._query_bool(f":OUTP{channel}?") != enabled:
-                raise DG4162Error(f"OUTPUT{channel} no quedó {'ON' if enabled else 'OFF'}.")
+            command = f":OUTP{channel} {'ON' if enabled else 'OFF'}"
+            self.write(command)
+            # The readback can lag right after an acquisition: re-check for
+            # ~0.3 s and send the command once more before giving up.
+            for attempt in range(6):
+                if self._query_bool(f":OUTP{channel}?") == enabled:
+                    return
+                time.sleep(0.05)
+                if attempt == 2:
+                    self.write(command)
+            raise DG4162Error(f"OUTPUT{channel} no quedó {'ON' if enabled else 'OFF'}.")
 
     def set_ch1_vpp(self, vpp: float, *, limit_vpp: float) -> None:
         if not isfinite(vpp) or vpp <= 0 or vpp > limit_vpp + 1e-12:
