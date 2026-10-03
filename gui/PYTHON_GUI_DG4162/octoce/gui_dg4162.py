@@ -358,6 +358,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._pending_settings: GeneratorSettings | None = None
         self._applied_state: GeneratorState | None = None
         self._output1_on = False
+        self._output1_off_pending = False  # an OFF that failed; the link watcher retries it
         self._last_output: Path | None = None
         self._sequence_jobs: list[SequenceJob] = []
         self._sequence_active = False
@@ -630,6 +631,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 self.event_queue.put(EngineEvent("dg4162_link", {"connected": ok}))
             if ok and self._link_ok and not self._link_stop.is_set():
                 try:
+                    if self._output1_off_pending:
+                        self.generator.stop_excitation()
+                        self._output1_off_pending = False
+                        self.event_queue.put(EngineEvent("dg4162", {"message": "OUTPUT1 OFF (reintento automático)."}))
                     self.generator.enforce_output1_lock()  # crosshair: OUTPUT1 strictly off
                     self.generator.ensure_output2_on()  # OUTPUT2 must always stay on
                 except Exception:
@@ -957,11 +962,13 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             self.generator.output1_limit_vpp = Excitation.NON_CONTACT.limit_vpp
             self._append_log(f"DG4162: OUTPUT1 OFF ({reason}).")
         except Exception as exc:
+            # The front panel is locked while the GUI is connected, so there is
+            # nothing to ask the user: keep retrying from the link watcher.
+            self._output1_on = False
+            self._output1_off_pending = True
             self._sync_link()
-            self._append_log(f"DG4162: ERROR al apagar OUTPUT1: {exc}")
-            messagebox.showwarning(
-                "DG4162", f"No se pudo apagar OUTPUT1: {exc}\n\nApáguelo manualmente en el panel del generador.",
-            )
+            self.gen_status_var.set(f"OUTPUT1 sin confirmar apagado; reintentando automáticamente ({exc}).")
+            self._append_log(f"DG4162: no se confirmó OUTPUT1 OFF ({exc}); se reintenta automáticamente.")
 
     def _on_oct_start_failed(self) -> None:
         self.engine.before_acquire = None
@@ -1332,9 +1339,6 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         if warnings:
             for warning in warnings:
                 self._append_log(f"DG4162: {warning}")
-            messagebox.showwarning(
-                "DG4162", "\n".join(warnings) + "\n\nApague OUTPUT1 manualmente y compruebe que OUTPUT2 quede encendido.",
-            )
         elif connected:
             self._append_log("DG4162: OUTPUT1 OFF, OUTPUT2 ON y configuración base programada.")
         super()._before_root_destroy()
