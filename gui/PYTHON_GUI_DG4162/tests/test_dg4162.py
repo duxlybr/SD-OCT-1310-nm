@@ -31,7 +31,8 @@ STATE4: dict[str, object] = {
     ":SOUR1:MOD:TYP": "AM", ":SOUR1:MOD:AM:SOUR": "EXT", ":SOUR1:MOD:AM:DEPT": 100.0,
     ":SOUR1:BURS": "OFF",
     ":SOUR2:FUNC": "PULSE", ":SOUR2:FREQ": 2000.0, ":SOUR2:VOLT": 1.0,
-    ":SOUR2:VOLT:OFFS": 0.452, ":SOUR2:BURS": "ON", ":SOUR2:BURS:MODE": "TRIG",
+    ":SOUR2:VOLT:OFFS": 0.452, ":SOUR2:MOD": "OFF", ":SOUR2:PULS:DCYC": 50.0,
+    ":SOUR2:BURS": "ON", ":SOUR2:BURS:MODE": "TRIG",
     ":SOUR2:BURS:NCYC": 1.0, ":SOUR2:BURS:TRIG:SOUR": "EXT", ":SOUR2:BURS:TRIG:SLOP": "POS",
     ":SOUR2:BURS:TDEL": 0.006,
 }
@@ -218,6 +219,14 @@ class ControllerTests(unittest.TestCase):
         controller.apply(BaseSetup().default_settings())
         self.assertEqual(instrument.state, STATE4)
         self.assertEqual(controller.ensure_base(BaseSetup()), [])  # nothing left to correct
+
+    def test_read_base_of_state4_equals_defaults(self) -> None:
+        from octoce.dg4162 import BaseSetup
+
+        controller, _instrument = fake_controller()
+        controller.connect()
+        self.assertEqual(controller.read_base(), BaseSetup())
+        self.assertEqual(controller.ensure_base(BaseSetup()), [])  # a loaded STATE 4 is left untouched
 
     def test_infinite_load_is_not_taken_as_50_ohm(self) -> None:
         from octoce.dg4162 import BaseSetup
@@ -727,7 +736,10 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertAlmostEqual(self.instrument.state[":SOUR1:FREQ"], 1_000_000.0)
         self.assertAlmostEqual(self.instrument.state[":SOUR2:VOLT"], 2.0)
         self.assertEqual(app.ch2_delay_var.get(), "3")
+        self.instrument.state[":SOUR1:FREQ"] = 950_000.0  # e.g. another state recalled on the panel
         dialog = _BaseConfigDialog(app)
+        dialog.read_button.invoke()
+        self.assertEqual(dialog.vars["ch1_frequency_hz"].get(), "950")
         dialog.vars["ch2_offset_v"].set("9.9")  # |offset| + Vpp/2 > 10 V
         with patch("octoce.gui_dg4162.messagebox.showerror") as error:
             dialog.save()

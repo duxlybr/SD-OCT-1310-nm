@@ -606,6 +606,8 @@ class DG4162Controller:
             check("CH1 modulación activa", ":SOUR1:MOD?", "ON", ":SOUR1:MOD ON")
             check("CH1 burst", ":SOUR1:BURS?", "OFF", ":SOUR1:BURS OFF")
             check("CH2 carga", ":OUTP2:IMP?", "INF", ":OUTP2:IMP INF")
+            check("CH2 modulación", ":SOUR2:MOD?", "OFF", ":SOUR2:MOD OFF")
+            check("CH2 ciclo de trabajo del pulso (%)", ":SOUR2:PULS:DCYC?", 50.0, ":SOUR2:PULS:DCYC 50")
             check("CH2 amplitud (Vpp)", ":SOUR2:VOLT?", base.ch2_vpp, f":SOUR2:VOLT {base.ch2_vpp:.6g}")
             check("CH2 offset (V)", ":SOUR2:VOLT:OFFS?", base.ch2_offset_v,
                   f":SOUR2:VOLT:OFFS {base.ch2_offset_v:.6g}")
@@ -616,6 +618,22 @@ class DG4162Controller:
             check("CH2 flanco de disparo", ":SOUR2:BURS:TRIG:SLOP?", "POS", ":SOUR2:BURS:TRIG:SLOP POS")
             check("CH2 burst activo", ":SOUR2:BURS?", "ON", ":SOUR2:BURS ON")
         return corrections
+
+    def read_base(self) -> BaseSetup:
+        """Current instrument values as a BaseSetup (to adopt them as defaults)."""
+        with self._lock:
+            state = self.read_state()
+            return BaseSetup(
+                ch1_frequency_hz=state.ch1_frequency_hz,
+                am_depth_percent=self._query_float(":SOUR1:MOD:AM:DEPT?"),
+                ch2_vpp=state.ch2_vpp,
+                ch2_offset_v=state.ch2_offset_v,
+                burst_cycles=int(round(self._query_float(":SOUR2:BURS:NCYC?"))),
+                ch1_vpp=state.ch1_vpp,
+                ch2_waveform=waveform_scpi(state.ch2_function),
+                ch2_frequency_hz=state.ch2_frequency_hz,
+                ch2_delay_ms=state.ch2_delay_ms,
+            )
 
     def start_excitation(self) -> bool:
         """OUTPUT2 on (kept on) and OUTPUT1 on; only writes what is off.

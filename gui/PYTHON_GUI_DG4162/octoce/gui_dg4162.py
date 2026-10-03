@@ -278,9 +278,23 @@ class _BaseConfigDialog:
         actions = ttk.Frame(body, style="Card.TFrame")
         actions.grid(row=row + 1, column=0, columnspan=3, sticky="ew", pady=(12, 0))
         ttk.Button(actions, text="Valores del STATE 4", command=lambda: self._fill(BaseSetup())).pack(side="left")
+        self.read_button = ttk.Button(actions, text="Tomar del generador", command=self._from_generator,
+                                      state="normal" if app.generator.connected else "disabled")
+        self.read_button.pack(side="left", padx=(8, 0))
         ttk.Button(actions, text="Cancelar", command=self.window.destroy).pack(side="right")
         ttk.Button(actions, text="Guardar", style="Primary.TButton", command=self.save).pack(side="right", padx=(0, 8))
         self.window.grab_set()
+
+    def _from_generator(self) -> None:
+        """Adopt what is loaded on the instrument (e.g. a recalled state) as defaults."""
+        try:
+            base = self.app.generator.read_base()
+        except Exception as exc:
+            self.app._sync_link()
+            messagebox.showerror("Configuración del generador", str(exc), parent=self.window)
+            return
+        self._fill(base)
+        self.app._append_log("Valores leídos del generador en la configuración (pulse Guardar para adoptarlos).")
 
     def _fill(self, base: BaseSetup) -> None:
         for name, _label, _unit, scale in self.FIELDS:
