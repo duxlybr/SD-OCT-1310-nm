@@ -1273,10 +1273,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             for warning in warnings:
                 self._append_log(f"DG4162: {warning}")
             messagebox.showwarning(
-                "DG4162", "\n".join(warnings) + "\n\nApague OUTPUT1 y OUTPUT2 manualmente.",
+                "DG4162", "\n".join(warnings) + "\n\nApague OUTPUT1 manualmente y compruebe que OUTPUT2 quede encendido.",
             )
         elif connected:
-            self._append_log("DG4162: OUTPUT1/OUTPUT2 OFF y configuración base programada.")
+            self._append_log("DG4162: OUTPUT1 OFF, OUTPUT2 ON y configuración base programada.")
         super()._before_root_destroy()
 
 

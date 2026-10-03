@@ -197,7 +197,8 @@ class ControllerTests(unittest.TestCase):
         controller.apply(GeneratorSettings(0.3, 1500.0, "Gaussiana", 2.0))
         controller.start_excitation()
         self.assertEqual(controller.close(base=BaseSetup()), [])
-        self.assertEqual(instrument.state, STATE4)  # exactly 1040octoacus1000.RSF
+        self.assertEqual(instrument.state, {**STATE4, ":OUTP2": "ON"})  # 1040octoacus1000.RSF, OUTPUT2 kept on
+        self.assertFalse(controller.connected)
         self.assertTrue(instrument.closed)
         self.assertFalse(controller.connected)
 
