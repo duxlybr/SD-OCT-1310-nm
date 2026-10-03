@@ -28,7 +28,7 @@ COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("ch1_mVpp", "Amplitud de CH1 (portadora)", "mVpp; >1000 pide confirmación"),
     ("ch2_frecuencia_Hz", "Frecuencia de la moduladora (CH2)", "Hz"),
     ("ch2_forma_onda", "Forma de onda de la moduladora (CH2)", ", ".join(CH2_WAVEFORMS)),
-    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (STATE 4: 6)"),
+    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (por defecto 6)"),
     ("repeticiones", "Veces que se repite esta fila", "entero ≥ 1 (vacío = 1)"),
     ("espera_s", "Espera después de cada adquisición de la fila", "s (vacío = 0)"),
     ("nombre_archivo", "Vacío = nombre por defecto; si existe se añade _1, _2…", "texto sin extensión"),

@@ -221,11 +221,11 @@ class _SequenceWindow:
 
 
 class _BaseConfigDialog:
-    """Edit the generator base configuration (defaults from front-panel STATE 4)."""
+    """Edit the generator base configuration and the panel defaults."""
 
     FIELDS = (
         ("ch1_frequency_hz", "Frecuencia de resonancia del transductor (CH1)", "kHz", 1e3),
-        ("am_depth_percent", "Profundidad AM (CH1)", "%", 1.0),
+        ("ch1_offset_v", "Offset de CH1 (DC)", "mV", 1e-3),
         ("ch2_vpp", "Amplitud de la moduladora (CH2)", "Vpp", 1.0),
         ("ch2_offset_v", "Offset de la moduladora (CH2)", "V", 1.0),
         ("burst_cycles", "Ciclos por burst (CH2)", "", 1.0),
@@ -244,13 +244,13 @@ class _BaseConfigDialog:
         body = ttk.Frame(self.window, style="Card.TFrame", padding=16)
         body.pack(fill="both", expand=True)
         body.columnconfigure(1, weight=1)
-        ttk.Label(body, text="Configuración base (STATE 4)", style="CardTitle.TLabel").grid(
+        ttk.Label(body, text="Configuración base", style="CardTitle.TLabel").grid(
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 6))
         ttk.Label(
             body, style="Muted.TLabel", wraplength=470, justify="left",
             text="Se verifica y corrige al detectar el generador y antes de cada adquisición. Fijo: "
-                 "CH1 senoidal, offset 0 V, carga 50 Ω, AM desde EXT; CH2 High-Z, burst disparado "
-                 "por EXT (PFI13) en flanco ascendente.",
+                 "CH1 senoidal, carga 50 Ω, sin modulación ni burst; CH2 High-Z, sin modulación, "
+                 "pulso al 50 %, burst disparado por EXT (PFI13) en flanco ascendente.",
         ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
         self.vars: dict[str, tk.StringVar] = {}
         row = 2
@@ -277,7 +277,7 @@ class _BaseConfigDialog:
             row=row, column=0, columnspan=3, sticky="w", pady=(8, 0))
         actions = ttk.Frame(body, style="Card.TFrame")
         actions.grid(row=row + 1, column=0, columnspan=3, sticky="ew", pady=(12, 0))
-        ttk.Button(actions, text="Valores del STATE 4", command=lambda: self._fill(BaseSetup())).pack(side="left")
+        ttk.Button(actions, text="Valores por defecto", command=lambda: self._fill(BaseSetup())).pack(side="left")
         self.read_button = ttk.Button(actions, text="Tomar del generador", command=self._from_generator,
                                       state="normal" if app.generator.connected else "disabled")
         self.read_button.pack(side="left", padx=(8, 0))
@@ -343,7 +343,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             self.base_setup = BaseSetup.load(self.base_path)
         except (OSError, ValueError, TypeError) as exc:
             self.base_setup = BaseSetup()
-            self._base_error = f"{self.base_path.name} no válido ({exc}); se usan los valores del STATE 4."
+            self._base_error = f"{self.base_path.name} no válido ({exc}); se usan los valores por defecto."
         self._generator_run = False
         self._pending_settings: GeneratorSettings | None = None
         self._applied_state: GeneratorState | None = None
