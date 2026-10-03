@@ -352,6 +352,26 @@ class ControllerTests(unittest.TestCase):
         controller.start_excitation()
         self.assertEqual(instrument.state[":OUTP1"], "ON")
 
+    def test_output1_lock_refuses_and_enforces_off(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        events = []
+        controller.on_safety = events.append
+        controller.output1_locked = True
+        with self.assertRaisesRegex(DG4162Error, "OUTPUT1 bloqueado"):
+            controller.set_output(1, True)
+        with self.assertRaisesRegex(DG4162Error, "OUTPUT1 bloqueado"):
+            controller.start_excitation()
+        self.assertEqual(instrument.state[":OUTP1"], "OFF")
+        instrument.state[":OUTP1"] = "ON"  # switched on from the front panel
+        self.assertTrue(controller.enforce_output1_lock())
+        self.assertEqual(instrument.state[":OUTP1"], "OFF")
+        self.assertIn("crosshair", events[-1])
+        controller.output1_locked = False
+        instrument.state[":OUTP1"] = "ON"
+        self.assertFalse(controller.enforce_output1_lock())  # no lock: left alone
+        self.assertEqual(instrument.state[":OUTP1"], "ON")
+
     def test_output2_is_switched_back_on(self) -> None:
         controller, instrument = fake_controller()
         controller.connect()
@@ -597,6 +617,37 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertEqual(self.instrument.state[":OUTP1"], "ON")
         app._handle_event(EngineEvent("state", {"state": EngineState.STOPPED.value}))
         self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+
+    def test_crosshair_loop_forces_and_locks_output1_off(self) -> None:
+        import threading
+
+        app = self.app
+        self.instrument.state[":OUTP1"] = "ON"  # left on before starting the loop
+        with patch.object(app.engine, "start") as start:
+            app._start_crosshair_loop()
+        start.assert_called_once()
+        self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+        self.assertTrue(self.controller.output1_locked)
+        with self.assertRaises(DG4162Error):
+            self.controller.start_excitation()  # nothing can switch it on during the loop
+        self.instrument.state[":OUTP1"] = "ON"  # switched on from the panel during the loop
+        with patch("octoce.gui_dg4162.LINK_CHECK_PERIOD_S", 0.05):
+            app._link_thread = threading.Thread(target=app._watch_generator, daemon=True)
+            app._link_thread.start()
+            self.pump(lambda: self.instrument.state[":OUTP1"] == "OFF")
+        app._handle_event(EngineEvent("state", {"state": EngineState.STOPPED.value}))
+        self.assertFalse(self.controller.output1_locked)
+        self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+
+    def test_crosshair_loop_refused_if_output1_cannot_be_switched_off(self) -> None:
+        app = self.app
+        self.instrument.state[":OUTP1"] = "ON"
+        self.instrument.output1_stuck = True
+        with patch.object(app.engine, "start") as start,                 patch("octoce.gui_dg4162.messagebox.showerror") as error:
+            app._start_crosshair_loop()
+        start.assert_not_called()
+        error.assert_called_once()
+        self.assertFalse(self.controller.output1_locked)
 
     def test_camera_view_starts_square(self) -> None:
         app = self.app
