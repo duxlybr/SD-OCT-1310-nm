@@ -348,25 +348,30 @@ class DG4162Controller:
             return identity
 
     def close(self, *, base: BaseSetup | None = None) -> list[str]:
-        """Switch both outputs off, optionally leave ``base`` programmed, close.
+        """OUTPUT1 off, optionally leave ``base`` programmed, OUTPUT2 on, close.
 
-        Returns warnings (empty = OK).
+        OUTPUT2 stays on even after the GUI closes. Returns warnings (empty = OK).
         """
         with self._lock:
             if self._inst is None:
                 return []
             warnings: list[str] = []
-            for channel in (1, 2):
-                try:
-                    self.set_output(channel, False)
-                except Exception as exc:
-                    warnings.append(f"No se pudo apagar OUTPUT{channel}: {exc}")
+            try:
+                self.set_output(1, False)
+            except Exception as exc:
+                warnings.append(f"No se pudo apagar OUTPUT1: {exc}")
             if base is not None and not warnings:
                 try:
                     self.ensure_base(base)
                     self.apply(base.default_settings())
                 except Exception as exc:
                     warnings.append(f"No se pudo dejar la configuración base: {exc}")
+            if self._inst is not None:
+                try:
+                    if not self._query_bool(":OUTP2?"):
+                        self.set_output(2, True)
+                except Exception as exc:
+                    warnings.append(f"No se pudo dejar OUTPUT2 encendido: {exc}")
             self._release()
             return warnings
 

@@ -20,7 +20,7 @@ No abra el generador desde Ultra Sigma mientras la GUI está abierta.
 | CH1 | Senoidal 948.07 kHz, 500 mVpp, AM 100 % con fuente EXT, carga 50 Ω, sin burst |
 | CH2 | Pulso 2 kHz, 1 Vpp, offset 0.452 V, High-Z, burst disparado por EXT (1 ciclo), retardo 6 ms |
 
-Valores leídos de la memoria del generador (`*RCL 3`). Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, la profundidad AM, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores del STATE 4* los restablece). Al cerrar la GUI se apagan OUTPUT1/OUTPUT2 y queda programada esta configuración.
+Valores leídos de la memoria del generador (`*RCL 3`). Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, la profundidad AM, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores del STATE 4* los restablece). Al cerrar la GUI se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada esta configuración.
 
 La GUI controla la amplitud de CH1 y, en CH2, la frecuencia, la forma de onda
 y el retardo del burst. El resto queda como esté en el panel.
@@ -56,7 +56,7 @@ amplitud y offset):
      verifica los valores (~0,1 s) y enciende OUTPUT1 antes del armado del
      hardware NI. Justo antes del primer trigger, el motor verifica que OUTPUT1
      siga encendido. OUTPUT1 se apaga al terminar, al detener o ante un error.
-     OUTPUT2 queda encendido mientras la GUI está abierta.
+     OUTPUT2 queda siempre encendido, también tras cerrar la GUI.
    - La alineación continua MB verifica OUTPUT1 y lo enciende si está
      apagado; lo apaga al detenerla. El crosshair continuo no toca el
      generador.
@@ -65,13 +65,13 @@ amplitud y offset):
      admiten como máximo 3 reintentos. *Detener* cancela un reintento
      pendiente. En una secuencia, si fallan los reintentos, la secuencia se
      detiene.
-   - **Al cerrar la GUI:** se apagan OUTPUT1 y OUTPUT2 y queda programada la
+   - **Al cerrar la GUI:** se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada la
      configuración base (STATE 4 / *Configuración del generador…*).
    - **Reglas de seguridad de las salidas:**
      - Ningún parámetro cambia con OUTPUT1 encendido: toda escritura que no sea
        encender/apagar una salida comprueba OUTPUT1 justo antes y lo apaga
        (`DG4162Controller.write`). Si no se apaga, el cambio no se envía.
-     - OUTPUT2 permanece encendido: se enciende al conectar y el vigía de
+     - OUTPUT2 permanece encendido (también al cerrar la GUI): se enciende al conectar y el vigía de
        comunicación lo vuelve a encender en ≤ 2 s si se apaga (panel o
        cambio de parámetros).
      - OUTPUT1 nunca se enciende con CH1 por encima del límite (1 Vpp; 5 Vpp
