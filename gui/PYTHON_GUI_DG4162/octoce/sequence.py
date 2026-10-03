@@ -28,7 +28,8 @@ COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("ch1_mVpp", "Amplitud de CH1 (portadora)", "mVpp; >1000 pide confirmación"),
     ("ch2_frecuencia_Hz", "Frecuencia de la moduladora (CH2)", "Hz"),
     ("ch2_forma_onda", "Forma de onda de la moduladora (CH2)", ", ".join(CH2_WAVEFORMS)),
-    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (por defecto 6)"),
+    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (por defecto 2)"),
+    ("ch2_ciclos", "Ciclos por burst de CH2", "entero ≥ 1 (por defecto 1)"),
     ("repeticiones", "Veces que se repite esta fila", "entero ≥ 1 (vacío = 1)"),
     ("espera_s", "Espera después de cada adquisición de la fila", "s (vacío = 0)"),
     ("nombre_archivo", "Vacío = nombre por defecto; si existe se añade _1, _2…", "texto sin extensión"),
@@ -37,15 +38,15 @@ COLUMNS: tuple[tuple[str, str, str], ...] = (
 )
 COLUMN_KEYS = tuple(key for key, _desc, _allowed in COLUMNS)
 # Columns whose blank cells take the value currently shown in the GUI.
-GUI_DEFAULT_KEYS = COLUMN_KEYS[:15]
+GUI_DEFAULT_KEYS = COLUMN_KEYS[:16]
 
 EXAMPLE_ROWS: tuple[tuple[Any, ...], ...] = (
     ("OCE", "Lineal", "Horizontal", 100, 1, 400, 200, 5.0, 0.0, 0.0,
-     "Sin contacto", 300, 2000, "Pulso", 6, 3, 10, "", "", "Ejemplo: 3 repeticiones"),
+     "Sin contacto", 300, 1000, "Pulso", 2, 1, 3, 10, "", "", "Ejemplo: 3 repeticiones"),
     ("OCE", "Lineal", "Horizontal", 100, 1, 400, 200, 5.0, 0.0, 0.0,
-     "Sin contacto", 500, 1000, "Pulso", 6, 1, 10, "", "", "Otra frecuencia"),
+     "Sin contacto", 500, 2000, "Pulso", 2, 3, 1, 10, "", "", "Otra frecuencia y 3 ciclos"),
     ("OCT", "Raster", "Horizontal", 512, 64, 1, 50, 5.0, 5.0, 0.0,
-     "Sin contacto", 500, 2000, "Pulso", 6, 1, 0, "referencia_OCT", "", "Nombre propio"),
+     "Sin contacto", 500, 1000, "Pulso", 2, 1, 1, 0, "referencia_OCT", "", "Nombre propio"),
 )
 
 _PATTERNS = {
@@ -208,6 +209,7 @@ def build_jobs(
         ch2_hz = get("ch2_frecuencia_Hz", lambda v: _float(v, "ch2_frecuencia_Hz"))
         waveform = get("ch2_forma_onda", waveform_scpi)
         delay_ms = get("ch2_retardo_ms", lambda v: _float(v, "ch2_retardo_ms"))
+        cycles = get("ch2_ciclos", lambda v: _int(v, "ch2_ciclos", 1))
         repetitions = 1 if _blank(values.get("repeticiones")) else get(
             "repeticiones", lambda v: _int(v, "repeticiones", 1))
         wait_s = 0.0 if _blank(values.get("espera_s")) else get(
@@ -218,13 +220,14 @@ def build_jobs(
         folder = "" if _blank(values.get("carpeta")) else _text(values["carpeta"])
 
         generator = None
-        if None not in (excitation, ch1_mvpp, ch2_hz, waveform, delay_ms):
+        if None not in (excitation, ch1_mvpp, ch2_hz, waveform, delay_ms, cycles):
             generator = GeneratorSettings(
                 ch1_vpp=ch1_mvpp / 1000.0,
                 ch2_frequency_hz=ch2_hz,
                 ch2_waveform=waveform,
                 ch2_delay_ms=delay_ms,
                 excitation=excitation,
+                ch2_burst_cycles=cycles,
             )
             try:
                 generator.validate()
@@ -306,7 +309,7 @@ def write_template(path: str | Path) -> Path:
     info.append([])
     for line in (
         "Cada fila es una adquisición; 'repeticiones' la repite N veces con el mismo nombre (_1, _2…).",
-        "Celdas vacías en las columnas modo … ch2_retardo_ms toman el valor actual de la GUI.",
+        "Celdas vacías en las columnas modo … ch2_ciclos toman el valor actual de la GUI.",
         "La GUI valida todas las filas (incluido el límite de voltaje) antes de empezar.",
         "OUTPUT1 se enciende al iniciar cada adquisición y se apaga al terminar; OUTPUT2 queda encendido.",
         "La espera se cuenta desde el final de una adquisición hasta el inicio de la siguiente.",

@@ -27,19 +27,19 @@ from octoce.sequence import build_jobs, read_rows, write_template
 BASE_REGISTERS: dict[str, object] = {
     ":OUTP1": "OFF", ":OUTP2": "OFF", ":OUTP1:IMP": "50", ":OUTP2:IMP": "INFINITY",
     ":SOUR1:FUNC": "SIN", ":SOUR1:FREQ": 954900.0, ":SOUR1:VOLT": 0.5,
-    ":SOUR1:VOLT:UNIT": "VPP", ":SOUR1:VOLT:OFFS": -0.0007, ":SOUR1:MOD": "OFF",
+    ":SOUR1:VOLT:UNIT": "VPP", ":SOUR1:VOLT:OFFS": -0.0007, ":SOUR1:MOD": "ON",
     ":SOUR1:MOD:TYP": "AM", ":SOUR1:MOD:AM:SOUR": "EXT", ":SOUR1:MOD:AM:DEPT": 100.0,
     ":SOUR1:BURS": "OFF",
-    ":SOUR2:FUNC": "PULSE", ":SOUR2:FREQ": 2000.0, ":SOUR2:VOLT": 1.0,
+    ":SOUR2:FUNC": "PULSE", ":SOUR2:FREQ": 1000.0, ":SOUR2:VOLT": 1.0,
     ":SOUR2:VOLT:OFFS": 0.452, ":SOUR2:MOD": "OFF", ":SOUR2:PULS:DCYC": 50.0,
     ":SOUR2:BURS": "ON", ":SOUR2:BURS:MODE": "TRIG",
     ":SOUR2:BURS:NCYC": 1.0, ":SOUR2:BURS:TRIG:SOUR": "EXT", ":SOUR2:BURS:TRIG:SLOP": "POS",
-    ":SOUR2:BURS:TDEL": 0.006,
+    ":SOUR2:BURS:TDEL": 0.002,
 }
 # Power-on (factory) configuration observed on the instrument.
 FACTORY = {
     **BASE_REGISTERS, ":OUTP1:IMP": "INFINITY", ":SOUR1:FREQ": 1000.0, ":SOUR1:VOLT": 5.0,
-    ":SOUR1:VOLT:OFFS": 0.0,
+    ":SOUR1:VOLT:OFFS": 0.0, ":SOUR1:MOD": "OFF", ":SOUR1:MOD:AM:SOUR": "INT",
     ":SOUR2:FUNC": "SIN",
     ":SOUR2:FREQ": 1000.0, ":SOUR2:VOLT": 5.0, ":SOUR2:VOLT:OFFS": 0.0, ":SOUR2:BURS": "OFF",
     ":SOUR2:BURS:TRIG:SOUR": "INT", ":SOUR2:BURS:TDEL": 0.0,
@@ -150,21 +150,22 @@ class ControllerTests(unittest.TestCase):
         self.assertAlmostEqual(state.ch1_vpp, 0.5)
         self.assertEqual(state.ch1_am_source, "EXT")
         self.assertEqual(state.ch2_function, "PULS")
-        self.assertAlmostEqual(state.ch2_frequency_hz, 2000.0)
-        self.assertAlmostEqual(state.ch2_delay_ms, 6.0)
+        self.assertAlmostEqual(state.ch2_frequency_hz, 1000.0)
+        self.assertAlmostEqual(state.ch2_delay_ms, 2.0)
+        self.assertEqual(state.ch2_burst_cycles, 1)
         self.assertTrue(state.ch2_burst)
 
     def test_apply_programs_verifies_and_keeps_output1_off(self) -> None:
         controller, instrument = fake_controller()
         controller.connect()
-        state = controller.apply(GeneratorSettings(0.3, 1500.0, "Cuadrada", 2.0))
+        state = controller.apply(GeneratorSettings(0.3, 1500.0, "Cuadrada", 3.0))
         self.assertFalse(state.output1)
         self.assertAlmostEqual(state.ch1_vpp, 0.3)
         self.assertEqual(state.ch2_function, "SQU")
         self.assertAlmostEqual(state.ch2_frequency_hz, 1500.0)
-        self.assertAlmostEqual(state.ch2_delay_ms, 2.0)
+        self.assertAlmostEqual(state.ch2_delay_ms, 3.0)
         self.assertEqual(instrument.setting_writes[0], ":OUTP1 OFF")
-        self.assertIn(":SOUR2:BURS:TDEL 0.002", instrument.setting_writes)
+        self.assertIn(":SOUR2:BURS:TDEL 0.003", instrument.setting_writes)
 
     def test_excitation_toggles_output1_and_keeps_output2_on(self) -> None:
         controller, instrument = fake_controller()
@@ -218,21 +219,33 @@ class ControllerTests(unittest.TestCase):
         controller.connect()
         corrections = controller.ensure_base(BaseSetup())
         labels = " | ".join(corrections)
-        for expected in ("CH1 carga", "CH1 frecuencia", "CH1 offset",
+        for expected in ("CH1 carga", "CH1 frecuencia", "CH1 offset", "CH1 fuente AM", "CH1 AM activa",
                          "CH2 amplitud", "CH2 offset", "CH2 disparo burst", "CH2 burst activo"):
             self.assertIn(expected, labels)
         controller.apply(BaseSetup().default_settings())
         self.assertEqual(instrument.state, BASE_REGISTERS)
         self.assertEqual(controller.ensure_base(BaseSetup()), [])  # nothing left to correct
 
-    def test_ch1_modulation_is_switched_off(self) -> None:
+    def test_ch1_am_is_always_on_with_external_source(self) -> None:
         from octoce.dg4162 import BaseSetup
 
         controller, instrument = fake_controller()
-        instrument.state[":SOUR1:MOD"] = "ON"  # e.g. AM enabled on the front panel
+        instrument.state[":SOUR1:MOD"] = "OFF"  # e.g. modulation switched off on the panel
+        instrument.state[":SOUR1:MOD:AM:SOUR"] = "INT"
         controller.connect()
-        self.assertIn("CH1 modulación: ON → OFF", controller.ensure_base(BaseSetup()))
-        self.assertEqual(instrument.state[":SOUR1:MOD"], "OFF")
+        corrections = controller.ensure_base(BaseSetup())
+        self.assertIn("CH1 fuente AM: INT → EXT", corrections)
+        self.assertIn("CH1 AM activa: OFF → ON", corrections)
+        self.assertEqual((instrument.state[":SOUR1:MOD"], instrument.state[":SOUR1:MOD:AM:SOUR"]), ("ON", "EXT"))
+
+    def test_ch2_burst_cycles_are_set_per_acquisition(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        state = controller.apply(GeneratorSettings(0.5, 1000.0, "Pulso", 2.0, ch2_burst_cycles=5))
+        self.assertEqual(state.ch2_burst_cycles, 5)
+        self.assertAlmostEqual(instrument.state[":SOUR2:BURS:NCYC"], 5.0)
+        with self.assertRaises(ValueError):
+            GeneratorSettings(0.5, 1000.0, ch2_burst_cycles=0).validate()
 
     def test_read_base_of_default_configuration(self) -> None:
         from octoce.dg4162 import BaseSetup
@@ -254,10 +267,10 @@ class ControllerTests(unittest.TestCase):
         from octoce.dg4162 import BaseSetup
 
         base = BaseSetup()
-        self.assertEqual((base.ch1_frequency_hz, base.ch1_offset_v, base.ch2_vpp,
+        self.assertEqual((base.ch1_frequency_hz, base.ch1_offset_v, base.am_depth_percent, base.ch2_vpp,
                           base.ch2_offset_v, base.burst_cycles, base.ch1_vpp, base.ch2_waveform,
                           base.ch2_frequency_hz, base.ch2_delay_ms),
-                         (954900.0, -0.0007, 1.0, 0.452, 1, 0.5, "PULS", 2000.0, 6.0))
+                         (954900.0, -0.0007, 100.0, 1.0, 0.452, 1, 0.5, "PULS", 1000.0, 2.0))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "dg4162_base.json"
             self.assertEqual(BaseSetup.load(path), base)  # no file: defaults
@@ -266,14 +279,14 @@ class ControllerTests(unittest.TestCase):
             self.assertEqual(BaseSetup.load(path), custom)
         from dataclasses import replace
         for bad in (dict(ch2_vpp=2.0, ch2_offset_v=9.5), dict(ch1_vpp=1.5), dict(burst_cycles=0),
-                    dict(ch1_frequency_hz=0.0), dict(ch1_offset_v=2.0)):
+                    dict(ch1_frequency_hz=0.0), dict(ch1_offset_v=2.0), dict(am_depth_percent=150.0)):
             with self.assertRaises(ValueError):
                 replace(base, **bad).validate()
 
     def test_unchanged_values_are_not_rewritten(self) -> None:
         controller, instrument = fake_controller()
         controller.connect()
-        controller.apply(GeneratorSettings(0.5, 2000.0, "Pulso", 6.0))
+        controller.apply(GeneratorSettings(0.5, 1000.0, "Pulso", 2.0))
         self.assertEqual(instrument.setting_writes, [":OUTP1 OFF"])
 
     def test_waveform_list_starts_with_pulse_and_gaussian(self) -> None:
@@ -397,6 +410,7 @@ DEFAULTS = {
     "b_scans": "64", "m_reps": "1", "sync_samples": "50", "longitud_x_mm": "5",
     "longitud_y_mm": "5", "bframes_delay_us": "0", "excitacion": "Sin contacto",
     "ch1_mVpp": "500", "ch2_frecuencia_Hz": "2000", "ch2_forma_onda": "Pulso", "ch2_retardo_ms": "2",
+    "ch2_ciclos": "1",
 }
 
 
@@ -775,7 +789,8 @@ class DG4162GuiTests(unittest.TestCase):
             app._link_changed(True)
         self.assertTrue(any("configuración base corregida" in line for line in logs))
         state = self.instrument.state
-        self.assertEqual((state[":SOUR1:MOD"], state[":OUTP1:IMP"]), ("OFF", "50"))  # CH1: sine, no AM
+        self.assertEqual((state[":SOUR1:MOD"], state[":SOUR1:MOD:AM:SOUR"], state[":OUTP1:IMP"]),
+                         ("ON", "EXT", "50"))  # CH1: sine with external AM
         self.assertAlmostEqual(state[":SOUR1:FREQ"], 954900.0)
         self.assertAlmostEqual(state[":SOUR1:VOLT:OFFS"], -0.0007)
         self.assertEqual((state[":SOUR2:BURS"], state[":SOUR2:BURS:TRIG:SOUR"]), ("ON", "EXT"))
@@ -789,7 +804,7 @@ class DG4162GuiTests(unittest.TestCase):
         dialog = _BaseConfigDialog(app)
         self.assertEqual(dialog.vars["ch1_frequency_hz"].get(), "954.9")
         self.assertEqual(dialog.vars["ch1_offset_v"].get(), "-0.7")
-        self.assertEqual(dialog.vars["ch2_delay_ms"].get(), "6")
+        self.assertEqual(dialog.vars["ch2_delay_ms"].get(), "2")
         dialog.vars["ch1_frequency_hz"].set("1000")  # kHz
         dialog.vars["ch2_vpp"].set("2")
         dialog.vars["ch2_delay_ms"].set("3")

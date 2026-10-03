@@ -17,14 +17,15 @@ No abra el generador desde Ultra Sigma mientras la GUI está abierta.
 
 | Canal | Configuración |
 |-------|---------------|
-| CH1 | Senoidal 954.9 kHz (resonancia del transductor), 500 mVpp, offset −0.7 mV DC, sin modulación, carga 50 Ω, sin burst |
-| CH2 | Pulso 2 kHz (ciclo 50 %), 1 Vpp, offset 0.452 V, High-Z, sin modulación, burst disparado por EXT (1 ciclo, flanco +), retardo 6 ms |
+| CH1 | Senoidal 954.9 kHz (resonancia del transductor), 500 mVpp, offset −0.7 mV DC, **AM siempre activa con fuente EXT** (100 %), carga 50 Ω, sin burst |
+| CH2 | Pulso 1 kHz (ciclo 50 %), 1 Vpp, offset 0.452 V, High-Z, sin modulación, burst disparado por EXT (flanco +), 1 ciclo, retardo 2 ms |
 
-Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, el offset de CH1, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores por defecto* los restablece y
+Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, el offset y la profundidad AM de CH1, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores por defecto* los restablece y
 *Tomar del generador* adopta lo que esté cargado en el equipo). Al cerrar la GUI se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada esta configuración.
 
-La GUI controla la amplitud de CH1 y, en CH2, la frecuencia, la forma de onda
-y el retardo del burst. El resto queda como esté en el panel.
+En cada adquisición la GUI programa la amplitud de CH1 y, en CH2, la
+frecuencia, la forma de onda, el retardo y los **ciclos por burst** (campo del
+panel y columna `ch2_ciclos` del Excel).
 
 Formas de onda de CH2, todas verificadas en el equipo (conservan burst,
 amplitud y offset):

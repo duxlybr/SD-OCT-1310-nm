@@ -41,6 +41,13 @@ LINK_ON_COLOR, LINK_OFF_COLOR = "#1da56d", "#9aa5b1"
 RETRY_DELAY_MS = 1500
 
 
+def _parse_cycles(text: str) -> int:
+    value = _parse_float(text, "CH2 ciclos por burst")
+    if not value.is_integer():
+        raise ValueError("CH2 ciclos por burst debe ser un número entero.")
+    return int(value)
+
+
 def _parse_float(text: str, label: str) -> float:
     try:
         return float(str(text).strip().replace(",", "."))
@@ -55,7 +62,8 @@ class _SequenceWindow:
         ("n", "#", 40), ("fila", "Fila", 45), ("rep", "Rep", 50), ("modo", "Modo", 50),
         ("a", "A", 50), ("b", "B", 45), ("m", "M", 55), ("ss", "SS", 45),
         ("mvpp", "mVpp", 60), ("hz", "Hz CH2", 70), ("onda", "Onda", 70),
-        ("ms", "Ret. ms", 60), ("espera", "Espera s", 65), ("archivo", "Archivo", 330),
+        ("ms", "Ret. ms", 60), ("ciclos", "Ciclos", 55), ("espera", "Espera s", 65),
+        ("archivo", "Archivo", 330),
     )
 
     def __init__(self, app: "OCTOCEDG4162App") -> None:
@@ -191,7 +199,7 @@ class _SequenceWindow:
                 index + 1, job.row, f"{job.repetition}/{job.repetitions}", MODE_PREFIX[job.mode],
                 job.alines, job.bscans, job.m_repetitions, job.sync_points,
                 f"{g.ch1_vpp * 1000:g}", f"{g.ch2_frequency_hz:g}", waveform_label(g.ch2_waveform),
-                f"{g.ch2_delay_ms:g}", f"{job.wait_s:g}", str(path),
+                f"{g.ch2_delay_ms:g}", g.ch2_burst_cycles, f"{job.wait_s:g}", str(path),
             ))
         self.app._sequence_jobs = jobs
         confirm_rows = sorted({job.row for job in jobs if job.generator.ch1_vpp > WARNING_CH1_VPP})
@@ -226,12 +234,13 @@ class _BaseConfigDialog:
     FIELDS = (
         ("ch1_frequency_hz", "Frecuencia de resonancia del transductor (CH1)", "kHz", 1e3),
         ("ch1_offset_v", "Offset de CH1 (DC)", "mV", 1e-3),
+        ("am_depth_percent", "Profundidad AM de CH1 (fuente EXT)", "%", 1.0),
         ("ch2_vpp", "Amplitud de la moduladora (CH2)", "Vpp", 1.0),
         ("ch2_offset_v", "Offset de la moduladora (CH2)", "V", 1.0),
-        ("burst_cycles", "Ciclos por burst (CH2)", "", 1.0),
         ("ch1_vpp", "CH1 amplitud", "mVpp", 1e-3),
         ("ch2_frequency_hz", "CH2 frecuencia", "Hz", 1.0),
         ("ch2_delay_ms", "CH2 retardo burst", "ms", 1.0),
+        ("burst_cycles", "CH2 ciclos por burst", "", 1.0),
     )
 
     def __init__(self, app: "OCTOCEDG4162App") -> None:
@@ -249,7 +258,7 @@ class _BaseConfigDialog:
         ttk.Label(
             body, style="Muted.TLabel", wraplength=470, justify="left",
             text="Se verifica y corrige al detectar el generador y antes de cada adquisición. Fijo: "
-                 "CH1 senoidal, carga 50 Ω, sin modulación ni burst; CH2 High-Z, sin modulación, "
+                 "CH1 senoidal, carga 50 Ω, AM siempre activa con fuente EXT, sin burst; CH2 High-Z, sin modulación, "
                  "pulso al 50 %, burst disparado por EXT (PFI13) en flanco ascendente.",
         ).grid(row=1, column=0, columnspan=3, sticky="w", pady=(0, 8))
         self.vars: dict[str, tk.StringVar] = {}
@@ -412,6 +421,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.ch2_freq_var = tk.StringVar(value=f"{base.ch2_frequency_hz:g}")
         self.ch2_wave_var = tk.StringVar(value=waveform_label(base.ch2_waveform))
         self.ch2_delay_var = tk.StringVar(value=f"{base.ch2_delay_ms:g}")
+        self.ch2_cycles_var = tk.StringVar(value=str(int(base.burst_cycles)))
         self.gen_warning_var = tk.StringVar(value="")
         self.gen_status_var = tk.StringVar(value="DG4162 sin conectar.")
 
@@ -472,6 +482,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         field("CH2 frecuencia", self.ch2_freq_var, "Hz")
         field("CH2 forma de onda", self.ch2_wave_var, values=list(CH2_WAVEFORMS))
         field("CH2 retardo burst", self.ch2_delay_var, "ms")
+        field("CH2 ciclos por burst", self.ch2_cycles_var, "ciclos")
         ttk.Label(section, textvariable=self.gen_warning_var, style="Warning.TLabel", wraplength=330,
                   justify="left").grid(row=inner_row, column=0, columnspan=2, sticky="w")
         buttons = ttk.Frame(section, style="Card.TFrame")
@@ -574,6 +585,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             ch2_frequency_hz=_parse_float(self.ch2_freq_var.get(), "CH2 frecuencia"),
             ch2_waveform=waveform_scpi(self.ch2_wave_var.get()),
             ch2_delay_ms=_parse_float(self.ch2_delay_var.get(), "CH2 retardo"),
+            ch2_burst_cycles=_parse_cycles(self.ch2_cycles_var.get()),
             excitation=Excitation.parse(self.excitation_var.get()),
         )
 
@@ -700,6 +712,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.ch2_freq_var.set(f"{base.ch2_frequency_hz:g}")
         self.ch2_wave_var.set(waveform_label(base.ch2_waveform))
         self.ch2_delay_var.set(f"{base.ch2_delay_ms:g}")
+        self.ch2_cycles_var.set(str(int(base.burst_cycles)))
         self._append_log(f"Configuración del generador guardada en {self.base_path}.")
         if self.generator.connected:
             self._configure_generator("configuración guardada")
@@ -746,6 +759,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.ch2_freq_var.set(f"{state.ch2_frequency_hz:g}")
         self.ch2_wave_var.set(waveform_label(state.ch2_function))
         self.ch2_delay_var.set(f"{state.ch2_delay_ms:g}")
+        self.ch2_cycles_var.set(str(state.ch2_burst_cycles))
         self._append_log("Campos del generador copiados desde el DG4162.")
 
     def _apply_generator_now(self) -> None:
@@ -860,6 +874,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._append_log(
             f"DG4162: CH1 {settings.ch1_vpp * 1000:g} mVpp · CH2 {waveform_label(settings.ch2_waveform)} "
             f"{settings.ch2_frequency_hz:g} Hz · retardo {settings.ch2_delay_ms:g} ms · "
+            f"{settings.ch2_burst_cycles} ciclo(s) · "
             f"OUTPUT1 ON para {purpose}."
         )
 
@@ -1042,6 +1057,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             "ch2_frecuencia_Hz": self.ch2_freq_var.get(),
             "ch2_forma_onda": self.ch2_wave_var.get(),
             "ch2_retardo_ms": self.ch2_delay_var.get(),
+            "ch2_ciclos": self.ch2_cycles_var.get(),
         }
 
     def _job_scan(self, job: SequenceJob) -> tuple[ScanParameters, Any]:
@@ -1103,6 +1119,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.ch2_freq_var.set(f"{g.ch2_frequency_hz:g}")
         self.ch2_wave_var.set(waveform_label(g.ch2_waveform))
         self.ch2_delay_var.set(f"{g.ch2_delay_ms:g}")
+        self.ch2_cycles_var.set(str(g.ch2_burst_cycles))
 
     def _start_sequence(self) -> None:
         window = self._sequence_window

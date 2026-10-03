@@ -2,11 +2,11 @@
 
 OCE setup (defaults in :class:`BaseSetup`):
 
-* CH1: 954.9 kHz sine (transducer resonance), offset -0.7 mV DC, no
-  modulation, 50 Ω load. Its amplitude (Vpp) sets the excitation; OUTPUT1 is
-  only on during acquisitions.
-* CH2: modulating pulse (2 kHz, 1 Vpp, offset 0.452 V, High-Z) in burst mode,
-  1 cycle per external trigger (PFI13) with a trigger delay. OUTPUT2 stays on.
+* CH1: 954.9 kHz sine (transducer resonance), offset -0.7 mV DC, AM always
+  on from the EXT input (100 %), 50 Ω load. Its amplitude (Vpp) sets the
+  excitation; OUTPUT1 is only on during acquisitions.
+* CH2: modulating pulse (1 kHz, 1 Vpp, offset 0.452 V, High-Z) in burst mode,
+  N cycles per external trigger (PFI13) with a trigger delay. OUTPUT2 stays on.
 
 All SCPI traffic goes through :class:`DG4162Controller`, which checks
 ``:SYST:ERR?`` after each write and verifies the written values by reading them
@@ -127,6 +127,7 @@ class GeneratorSettings:
     ch2_waveform: str = "PULS"
     ch2_delay_ms: float = 2.0
     excitation: Excitation = Excitation.NON_CONTACT
+    ch2_burst_cycles: int = 1
 
     def validate(self) -> bool:
         """Raise on invalid values; return True when CH1 needs confirmation."""
@@ -135,6 +136,8 @@ class GeneratorSettings:
             raise ValueError("La frecuencia de CH2 debe ser mayor que 0 Hz.")
         if not isfinite(self.ch2_delay_ms) or self.ch2_delay_ms < 0:
             raise ValueError("El retardo de CH2 no puede ser negativo.")
+        if int(self.ch2_burst_cycles) != self.ch2_burst_cycles or not 1 <= self.ch2_burst_cycles <= 1_000_000:
+            raise ValueError("Los ciclos por burst de CH2 deben ser un entero entre 1 y 1 000 000.")
         waveform_scpi(self.ch2_waveform)
         return needs_confirmation
 
@@ -166,6 +169,7 @@ class GeneratorState:
     ch2_burst: bool
     ch2_burst_trigger: str
     ch2_delay_ms: float
+    ch2_burst_cycles: int
 
     def summary(self) -> str:
         return (
@@ -175,7 +179,8 @@ class GeneratorState:
             f"OUT1 {'ON' if self.output1 else 'OFF'}\n"
             f"CH2 {waveform_label(self.ch2_function)} {self.ch2_frequency_hz:g} Hz · "
             f"{self.ch2_vpp:g} Vpp · offset {self.ch2_offset_v:g} V · "
-            f"burst {'ON' if self.ch2_burst else 'OFF'} ({self.ch2_burst_trigger}) · "
+            f"burst {'ON' if self.ch2_burst else 'OFF'} ({self.ch2_burst_trigger}, "
+            f"{self.ch2_burst_cycles} ciclo{'s' if self.ch2_burst_cycles != 1 else ''}) · "
             f"retardo {self.ch2_delay_ms:g} ms · OUT2 {'ON' if self.output2 else 'OFF'}"
         )
 
@@ -187,9 +192,9 @@ class GeneratorState:
 class BaseSetup:
     """OCE base configuration of the generator.
 
-    Fixed parts: CH1 sine, 50 Ω load, no modulation, no burst; CH2 High-Z,
-    no modulation, pulse duty 50 %, burst triggered by EXT (PFI13) on the
-    rising edge. The values
+    Fixed parts: CH1 sine, 50 Ω load, AM on from the EXT input, no burst; CH2
+    High-Z, no modulation, pulse duty 50 %, burst triggered by EXT (PFI13) on
+    the rising edge. The values
     below are editable in the GUI and saved in ``gui/config/dg4162_base.json``.
     ``ch1_vpp`` and the ``ch2_*`` waveform/frequency/delay are the defaults of
     the acquisition panel and the state left when the GUI closes.
@@ -197,25 +202,26 @@ class BaseSetup:
 
     ch1_frequency_hz: float = 954_900.0  # transducer resonance (CH1 carrier)
     ch1_offset_v: float = -0.0007  # -0.7 mV DC
+    am_depth_percent: float = 100.0  # CH1 AM, always on with EXT source
     ch2_vpp: float = 1.0
     ch2_offset_v: float = 0.452
-    burst_cycles: int = 1
+    burst_cycles: int = 1  # panel default for the CH2 cycles per burst
     ch1_vpp: float = 0.5
     ch2_waveform: str = "PULS"
-    ch2_frequency_hz: float = 2000.0
-    ch2_delay_ms: float = 6.0
+    ch2_frequency_hz: float = 1000.0
+    ch2_delay_ms: float = 2.0
 
     def validate(self) -> None:
         if not isfinite(self.ch1_frequency_hz) or not 0 < self.ch1_frequency_hz <= 160e6:
             raise ValueError("La frecuencia de resonancia (CH1) debe estar entre 0 y 160 MHz.")
         if not isfinite(self.ch1_offset_v) or abs(self.ch1_offset_v) > 1.0:
             raise ValueError("El offset de CH1 debe estar entre -1 V y 1 V.")
+        if not isfinite(self.am_depth_percent) or not 0 <= self.am_depth_percent <= 120:
+            raise ValueError("La profundidad AM debe estar entre 0 y 120 %.")
         if not isfinite(self.ch2_vpp) or self.ch2_vpp <= 0:
             raise ValueError("La amplitud de CH2 debe ser mayor que 0 Vpp.")
         if not isfinite(self.ch2_offset_v) or abs(self.ch2_offset_v) + self.ch2_vpp / 2 > 10.0:
             raise ValueError("CH2: |offset| + amplitud/2 no puede superar 10 V (High-Z).")
-        if int(self.burst_cycles) != self.burst_cycles or not 1 <= self.burst_cycles <= 1_000_000:
-            raise ValueError("Los ciclos por burst deben ser un entero entre 1 y 1 000 000.")
         if check_ch1_vpp(self.ch1_vpp, Excitation.NON_CONTACT):
             raise ValueError("La amplitud por defecto de CH1 no puede superar 1 Vpp.")
         self.default_settings().validate()
@@ -224,6 +230,7 @@ class BaseSetup:
         return GeneratorSettings(
             ch1_vpp=self.ch1_vpp, ch2_frequency_hz=self.ch2_frequency_hz,
             ch2_waveform=self.ch2_waveform, ch2_delay_ms=self.ch2_delay_ms,
+            ch2_burst_cycles=int(self.burst_cycles),
         )
 
     @classmethod
@@ -513,6 +520,7 @@ class DG4162Controller:
                 ch2_burst=self._query_bool(":SOUR2:BURS?"),
                 ch2_burst_trigger=self._query(":SOUR2:BURS:TRIG:SOUR?"),
                 ch2_delay_ms=self._query_float(":SOUR2:BURS:TDEL?") * 1000.0,
+                ch2_burst_cycles=int(round(self._query_float(":SOUR2:BURS:NCYC?"))),
             )
 
     def _ch1_vpp(self) -> float:
@@ -586,6 +594,17 @@ class DG4162Controller:
             if not _approx(readback, delay_ms, rel=1e-3, abs_tol=1e-6):
                 raise DG4162Error(f"Retardo CH2 quedó en {readback:g} ms (solicitado {delay_ms:g}).")
 
+    def set_ch2_burst_cycles(self, cycles: int) -> None:
+        if int(cycles) != cycles or not 1 <= cycles <= 1_000_000:
+            raise ValueError("Los ciclos por burst de CH2 deben ser un entero entre 1 y 1 000 000.")
+        with self._lock:
+            if int(round(self._query_float(":SOUR2:BURS:NCYC?"))) == int(cycles):
+                return
+            self.write(f":SOUR2:BURS:NCYC {int(cycles)}")
+            readback = int(round(self._query_float(":SOUR2:BURS:NCYC?")))
+            if readback != int(cycles):
+                raise DG4162Error(f"Ciclos de CH2 quedaron en {readback} (solicitado {int(cycles)}).")
+
     def apply(self, settings: GeneratorSettings) -> GeneratorState:
         """Program CH1/CH2 with OUTPUT1 off and return the verified state."""
         settings.validate()
@@ -594,6 +613,7 @@ class DG4162Controller:
             self.set_ch2_waveform(settings.ch2_waveform)
             self.set_ch2_frequency(settings.ch2_frequency_hz)
             self.set_ch2_delay_ms(settings.ch2_delay_ms)
+            self.set_ch2_burst_cycles(settings.ch2_burst_cycles)
             self.set_ch1_vpp(settings.ch1_vpp, limit_vpp=settings.excitation.limit_vpp)
             return self.read_state()
 
@@ -636,7 +656,11 @@ class DG4162Controller:
                   f":SOUR1:FREQ {base.ch1_frequency_hz:.9g}")
             check("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", base.ch1_offset_v,
                   f":SOUR1:VOLT:OFFS {base.ch1_offset_v:.6g}")
-            check("CH1 modulación", ":SOUR1:MOD?", "OFF", ":SOUR1:MOD OFF")
+            check("CH1 tipo de modulación", ":SOUR1:MOD:TYP?", "AM", ":SOUR1:MOD:TYP AM")
+            check("CH1 fuente AM", ":SOUR1:MOD:AM:SOUR?", "EXT", ":SOUR1:MOD:AM:SOUR EXT")
+            check("CH1 profundidad AM (%)", ":SOUR1:MOD:AM:DEPT?", base.am_depth_percent,
+                  f":SOUR1:MOD:AM:DEPT {base.am_depth_percent:.6g}")
+            check("CH1 AM activa", ":SOUR1:MOD?", "ON", ":SOUR1:MOD ON")
             check("CH1 burst", ":SOUR1:BURS?", "OFF", ":SOUR1:BURS OFF")
             check("CH2 carga", ":OUTP2:IMP?", "INF", ":OUTP2:IMP INF")
             check("CH2 modulación", ":SOUR2:MOD?", "OFF", ":SOUR2:MOD OFF")
@@ -645,8 +669,6 @@ class DG4162Controller:
             check("CH2 offset (V)", ":SOUR2:VOLT:OFFS?", base.ch2_offset_v,
                   f":SOUR2:VOLT:OFFS {base.ch2_offset_v:.6g}")
             check("CH2 modo burst", ":SOUR2:BURS:MODE?", "TRIG", ":SOUR2:BURS:MODE TRIG")
-            check("CH2 ciclos por burst", ":SOUR2:BURS:NCYC?", base.burst_cycles,
-                  f":SOUR2:BURS:NCYC {int(base.burst_cycles)}")
             check("CH2 disparo burst", ":SOUR2:BURS:TRIG:SOUR?", "EXT", ":SOUR2:BURS:TRIG:SOUR EXT")
             check("CH2 flanco de disparo", ":SOUR2:BURS:TRIG:SLOP?", "POS", ":SOUR2:BURS:TRIG:SLOP POS")
             check("CH2 burst activo", ":SOUR2:BURS?", "ON", ":SOUR2:BURS ON")
@@ -659,9 +681,10 @@ class DG4162Controller:
             return BaseSetup(
                 ch1_frequency_hz=state.ch1_frequency_hz,
                 ch1_offset_v=state.ch1_offset_v,
+                am_depth_percent=self._query_float(":SOUR1:MOD:AM:DEPT?"),
                 ch2_vpp=state.ch2_vpp,
                 ch2_offset_v=state.ch2_offset_v,
-                burst_cycles=int(round(self._query_float(":SOUR2:BURS:NCYC?"))),
+                burst_cycles=state.ch2_burst_cycles,
                 ch1_vpp=state.ch1_vpp,
                 ch2_waveform=waveform_scpi(state.ch2_function),
                 ch2_frequency_hz=state.ch2_frequency_hz,
