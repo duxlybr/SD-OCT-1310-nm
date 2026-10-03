@@ -65,8 +65,19 @@ amplitud y offset):
      admiten como máximo 3 reintentos. *Detener* cancela un reintento
      pendiente. En una secuencia, si fallan los reintentos, la secuencia se
      detiene.
-   - **Al cerrar la GUI:** se apagan OUTPUT1 y OUTPUT2, y CH1/CH2 vuelven a los
-     valores leídos en la primera conexión (estado base).
+   - **Al cerrar la GUI:** se apagan OUTPUT1 y OUTPUT2 y queda programada la
+     configuración base (STATE 4 / *Configuración del generador…*).
+   - **Reglas de seguridad de las salidas:**
+     - Ningún parámetro cambia con OUTPUT1 encendido: toda escritura que no sea
+       encender/apagar una salida comprueba OUTPUT1 justo antes y lo apaga
+       (`DG4162Controller.write`). Si no se apaga, el cambio no se envía.
+     - OUTPUT2 permanece encendido: se enciende al conectar y el vigía de
+       comunicación lo vuelve a encender en ≤ 2 s si se apaga (panel o
+       cambio de parámetros).
+     - OUTPUT1 nunca se enciende con CH1 por encima del límite (1 Vpp; 5 Vpp
+       solo en modo con contacto confirmado). Protege, por ejemplo, tras
+       encender el generador, que arranca con CH1 a 5 Vpp.
+     - Cada vez que una regla actúa queda registrado en la consola.
    - Junto a cada `.bin` se guarda `<nombre>_dg4162.json` con los valores
      programados y el estado leído del equipo.
 4. **Límite de voltaje de CH1.**

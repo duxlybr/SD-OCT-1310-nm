@@ -378,6 +378,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._update_voltage_warning()
         if self._base_error:
             self._append_log(self._base_error)
+        self.generator.on_safety = lambda message: self.event_queue.put(
+            EngineEvent("dg4162", {"message": message})
+        )
         self._set_link(self.generator.connected)
         if auto_connect:
             self._link_thread = threading.Thread(
@@ -612,6 +615,11 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             ok = self.generator.probe()
             if ok != self._link_ok and not self._link_stop.is_set():
                 self.event_queue.put(EngineEvent("dg4162_link", {"connected": ok}))
+            if ok and self._link_ok and not self._link_stop.is_set():
+                try:
+                    self.generator.ensure_output2_on()  # OUTPUT2 must always stay on
+                except Exception:
+                    pass  # a lost link is reported by the next probe
             self._link_stop.wait(LINK_CHECK_PERIOD_S)
 
     def _set_link(self, connected: bool) -> None:
@@ -843,6 +851,8 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         state = self.generator.apply(settings)
         super()._before_oct_start(output)  # USB photo/video before the excitation starts
         self._output1_on = True  # from here on, any failure must turn OUTPUT1 off
+        # Validated (and, above 1 Vpp, confirmed) for this excitation mode.
+        self.generator.output1_limit_vpp = settings.excitation.limit_vpp
         self.generator.start_excitation()  # on during arming: ready before the first trigger
         self._applied_state = replace(state, output1=True, output2=True)
         self.gen_status_var.set(self._applied_state.summary())
@@ -889,6 +899,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         try:
             self.generator.stop_excitation()
             self._output1_on = False
+            self.generator.output1_limit_vpp = Excitation.NON_CONTACT.limit_vpp
             self._append_log(f"DG4162: OUTPUT1 OFF ({reason}).")
         except Exception as exc:
             self._sync_link()

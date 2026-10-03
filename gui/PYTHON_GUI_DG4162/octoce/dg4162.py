@@ -52,6 +52,8 @@ CH2_WAVEFORMS = {
 _WAVEFORM_LABELS = {scpi: label for label, scpi in CH2_WAVEFORMS.items()}
 
 _EXTRA_BLANK_LINE = re.compile(r"^:OUTP(?:UT)?\d(?::POL(?:ARITY)?)?\?$", re.IGNORECASE)
+# Switching an output on/off; every other write changes a parameter.
+_OUTPUT_SWITCH = re.compile(r"^:OUTP(?:UT)?[12]\s+(?:ON|OFF)$", re.IGNORECASE)
 
 
 class DG4162Error(RuntimeError):
@@ -267,6 +269,11 @@ class DG4162Controller:
         self._lock = threading.RLock()
         self._extra_blank_line = True
         self.identity = ""
+        # Called (from any thread) when a safety rule acts, e.g. OUTPUT1 forced off.
+        self.on_safety: Any | None = None
+        # OUTPUT1 is never switched on with CH1 above this amplitude. 1 Vpp is the
+        # non-contact limit; the GUI raises it to 5 Vpp only for confirmed contact use.
+        self.output1_limit_vpp = Excitation.NON_CONTACT.limit_vpp
 
     # -- connection ---------------------------------------------------------
     @property
@@ -447,10 +454,27 @@ class DG4162Controller:
             stale.append(f"{code}: {message}")
         return stale
 
+    def _notify_safety(self, message: str) -> None:
+        callback = self.on_safety
+        if callback is not None:
+            try:
+                callback(message)
+            except Exception:
+                pass
+
     def write(self, command: str) -> None:
-        """Send one SCPI command and fail if the instrument reports an error."""
+        """Send one SCPI command and fail if the instrument reports an error.
+
+        Safety rule: a parameter may only change with OUTPUT1 off. Every write
+        other than switching an output checks OUTPUT1 first and switches it off.
+        """
         with self._lock:
             inst = self._require()
+            if not _OUTPUT_SWITCH.match(command.strip()) and self._query_bool(":OUTP1?"):
+                self.write(":OUTP1 OFF")
+                if self._query_bool(":OUTP1?"):
+                    raise DG4162Error(f"OUTPUT1 no se apagó; no se envía {command}.")
+                self._notify_safety(f"OUTPUT1 estaba encendido antes de cambiar parámetros ({command}): apagado.")
             try:
                 inst.write(command)
             except Exception as exc:
@@ -502,6 +526,13 @@ class DG4162Controller:
         if channel not in (1, 2):
             raise ValueError("Canal inválido.")
         with self._lock:
+            if channel == 1 and enabled:
+                vpp = self._ch1_vpp()
+                if vpp > self.output1_limit_vpp + 1e-12:
+                    raise DG4162Error(
+                        f"OUTPUT1 no se enciende: CH1 = {vpp * 1000:g} mVpp supera el límite de "
+                        f"{self.output1_limit_vpp:g} Vpp."
+                    )
             self.write(f":OUTP{channel} {'ON' if enabled else 'OFF'}")
             if self._query_bool(f":OUTP{channel}?") != enabled:
                 raise DG4162Error(f"OUTPUT{channel} no quedó {'ON' if enabled else 'OFF'}.")
@@ -634,6 +665,15 @@ class DG4162Controller:
                 ch2_frequency_hz=state.ch2_frequency_hz,
                 ch2_delay_ms=state.ch2_delay_ms,
             )
+
+    def ensure_output2_on(self) -> bool:
+        """Safety rule: OUTPUT2 stays on. Returns True when it had to be switched on."""
+        with self._lock:
+            if self._query_bool(":OUTP2?"):
+                return False
+            self.set_output(2, True)
+        self._notify_safety("OUTPUT2 estaba apagado: encendido (debe permanecer encendido).")
+        return True
 
     def start_excitation(self) -> bool:
         """OUTPUT2 on (kept on) and OUTPUT1 on; only writes what is off.

@@ -57,6 +57,7 @@ class FakeDG4162:
         self.writes: list[str] = []
         self.closed = False
         self.alive = True  # False = generator switched off (every I/O times out)
+        self.output1_stuck = False  # True = ":OUTP1 OFF" has no effect (fault injection)
         self.state: dict[str, object] = dict(STATE4)
 
     def write(self, command: str) -> None:
@@ -67,6 +68,8 @@ class FakeDG4162:
             self._answer(command)
             return
         header, _, value = command.partition(" ")
+        if header == ":OUTP1" and value == "OFF" and self.output1_stuck:
+            return
         if header not in self.state:
             self.errors.append('-113,"Undefined header; keyword cannot be found"')
             return
@@ -287,6 +290,52 @@ class ControllerTests(unittest.TestCase):
         instrument.alive = True  # switched back on
         self.assertTrue(controller.probe())
         self.assertTrue(controller.connected)
+
+    def test_parameters_only_change_with_output1_off(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        events = []
+        controller.on_safety = events.append
+        controller.set_output(1, True)
+        instrument.writes.clear()
+        controller.set_ch2_frequency(1500.0)  # any parameter write, called directly
+        self.assertEqual(instrument.setting_writes, [":OUTP1 OFF", ":SOUR2:FREQ 1500"])
+        self.assertEqual(instrument.state[":OUTP1"], "OFF")
+        self.assertEqual(len(events), 1)
+        self.assertIn("OUTPUT1", events[0])
+        controller.set_output(1, True)  # switching outputs is not a parameter change
+        self.assertEqual(instrument.state[":OUTP1"], "ON")
+        self.assertEqual(len(events), 1)
+
+    def test_parameter_write_refused_if_output1_does_not_switch_off(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        controller.set_output(1, True)
+        instrument.output1_stuck = True
+        with self.assertRaisesRegex(DG4162Error, "OUTPUT1 no se apagó"):
+            controller.write(":SOUR1:VOLT 0.8")
+        self.assertAlmostEqual(instrument.state[":SOUR1:VOLT"], 0.5)  # not changed
+
+    def test_output1_refuses_amplitude_above_limit(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        instrument.state[":SOUR1:VOLT"] = 5.0  # power-on default of the instrument
+        with self.assertRaisesRegex(DG4162Error, "OUTPUT1 no se enciende"):
+            controller.start_excitation()
+        self.assertEqual(instrument.state[":OUTP1"], "OFF")
+        controller.output1_limit_vpp = 5.0  # contact mode, confirmed by the user
+        controller.start_excitation()
+        self.assertEqual(instrument.state[":OUTP1"], "ON")
+
+    def test_output2_is_switched_back_on(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        events = []
+        controller.on_safety = events.append
+        self.assertTrue(controller.ensure_output2_on())
+        self.assertEqual(instrument.state[":OUTP2"], "ON")
+        self.assertFalse(controller.ensure_output2_on())
+        self.assertEqual(len(events), 1)
 
     def test_voltage_policy(self) -> None:
         self.assertFalse(check_ch1_vpp(1.0, Excitation.NON_CONTACT))
@@ -745,6 +794,19 @@ class DG4162GuiTests(unittest.TestCase):
             dialog.save()
         error.assert_called_once()
         dialog.window.destroy()
+
+    def test_watcher_keeps_output2_on(self) -> None:
+        import threading
+
+        app = self.app
+        self.assertEqual(self.instrument.state[":OUTP2"], "ON")  # set on connection
+        self.instrument.state[":OUTP2"] = "OFF"  # switched off on the front panel
+        logs = []
+        with patch("octoce.gui_dg4162.LINK_CHECK_PERIOD_S", 0.05),                 patch.object(app, "_append_log", side_effect=logs.append):
+            app._link_thread = threading.Thread(target=app._watch_generator, daemon=True)
+            app._link_thread.start()
+            self.pump(lambda: self.instrument.state[":OUTP2"] == "ON" and any("OUTPUT2" in l for l in logs))
+        self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
 
     def test_watcher_reconnects_after_generator_power_cycle(self) -> None:
         import threading
