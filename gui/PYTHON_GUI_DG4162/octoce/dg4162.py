@@ -281,6 +281,8 @@ class DG4162Controller:
         # OUTPUT1 is never switched on with CH1 above this amplitude. 1 Vpp is the
         # non-contact limit; the GUI raises it to 5 Vpp only for confirmed contact use.
         self.output1_limit_vpp = Excitation.NON_CONTACT.limit_vpp
+        # While set (continuous crosshair), OUTPUT1 may never be switched on.
+        self.output1_locked = False
 
     # -- connection ---------------------------------------------------------
     @property
@@ -539,6 +541,8 @@ class DG4162Controller:
         if channel not in (1, 2):
             raise ValueError("Canal inválido.")
         with self._lock:
+            if channel == 1 and enabled and self.output1_locked:
+                raise DG4162Error("OUTPUT1 bloqueado: el crosshair continuo exige OUTPUT1 apagado.")
             if channel == 1 and enabled:
                 vpp = self._ch1_vpp()
                 if vpp > self.output1_limit_vpp + 1e-12:
@@ -690,6 +694,15 @@ class DG4162Controller:
                 ch2_frequency_hz=state.ch2_frequency_hz,
                 ch2_delay_ms=state.ch2_delay_ms,
             )
+
+    def enforce_output1_lock(self) -> bool:
+        """While OUTPUT1 is locked, switch it off if it is on. True when it acted."""
+        with self._lock:
+            if not self.output1_locked or not self._query_bool(":OUTP1?"):
+                return False
+            self.set_output(1, False)
+        self._notify_safety("OUTPUT1 se encendió durante el crosshair continuo: apagado.")
+        return True
 
     def ensure_output2_on(self) -> bool:
         """Safety rule: OUTPUT2 stays on. Returns True when it had to be switched on."""

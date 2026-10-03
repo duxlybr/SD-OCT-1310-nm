@@ -13,6 +13,7 @@ from typing import Any
 from .config import ConfigurationError, ScanParameters
 from .dg4162 import (
     CH2_WAVEFORMS,
+    DG4162Error,
     WARNING_CH1_VPP,
     BaseSetup,
     DG4162Controller,
@@ -629,6 +630,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 self.event_queue.put(EngineEvent("dg4162_link", {"connected": ok}))
             if ok and self._link_ok and not self._link_stop.is_set():
                 try:
+                    self.generator.enforce_output1_lock()  # crosshair: OUTPUT1 strictly off
                     self.generator.ensure_output2_on()  # OUTPUT2 must always stay on
                 except Exception:
                     pass  # a lost link is reported by the next probe
@@ -853,6 +855,44 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         if not self._alignment_active:
             self._run_kind = None
 
+    def _start_crosshair_loop(self) -> None:
+        """Continuous crosshair: OUTPUT1 is switched off and locked off for the whole loop."""
+        if self._sequence_active:
+            messagebox.showinfo("Secuencia en curso", "Detenga la secuencia antes del crosshair continuo.")
+            return
+        if self.engine.is_active:
+            super()._start_crosshair_loop()  # shows the "stop first" error
+            return
+        self._cancel_retry()
+        self.generator.output1_locked = True
+        if self.generator.connected:
+            try:
+                self.generator.stop_excitation()
+                if self.generator.output(1):
+                    raise DG4162Error("OUTPUT1 sigue encendido.")
+            except Exception as exc:
+                self.generator.output1_locked = False
+                self._sync_link()
+                messagebox.showerror(
+                    "Crosshair continuo",
+                    f"No se pudo confirmar OUTPUT1 apagado ({exc}). El crosshair continuo no se inicia.",
+                )
+                return
+            self._append_log("DG4162: OUTPUT1 apagado y bloqueado durante el crosshair continuo.")
+        else:
+            self._append_log(
+                "DG4162 sin comunicación: no se puede verificar OUTPUT1; el bloqueo se aplicará si el "
+                "generador se conecta durante el crosshair continuo."
+            )
+        self._output1_on = False
+        self._run_kind = "crosshair"
+        try:
+            super()._start_crosshair_loop()
+        finally:
+            if not self._crosshair_loop_active:
+                self._run_kind = None
+                self.generator.output1_locked = False
+
     def _before_oct_start(self, output: Path | None) -> None:
         settings = self._pending_settings if self._generator_run else None
         if settings is None:
@@ -946,6 +986,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._generator_off({"completed": "adquisición completa", "stopped": "detenida",
                              "error": "error"}.get(state, state))
         kind, self._run_kind = self._run_kind, None
+        if kind == "crosshair":
+            self.generator.output1_locked = False
+            self._append_log("DG4162: crosshair continuo terminado; OUTPUT1 desbloqueado (sigue apagado).")
         if state == EngineState.ERROR.value and kind == "acquisition" and not self._closing:
             if self._retry_failed_acquisition():
                 self._update_target()

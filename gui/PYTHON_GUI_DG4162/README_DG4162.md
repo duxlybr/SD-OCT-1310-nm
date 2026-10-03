@@ -60,8 +60,11 @@ amplitud y offset):
      siga encendido. OUTPUT1 se apaga al terminar, al detener o ante un error.
      OUTPUT2 queda siempre encendido, también tras cerrar la GUI.
    - La alineación continua MB verifica OUTPUT1 y lo enciende si está
-     apagado; lo apaga al detenerla. El crosshair continuo no toca el
-     generador.
+     apagado; lo apaga al detenerla.
+   - **Crosshair continuo: OUTPUT1 estrictamente apagado.** Al iniciarlo la GUI
+     apaga OUTPUT1 y lo verifica (si no puede, no inicia); durante el loop el
+     controlador rechaza cualquier intento de encenderlo y el vigía lo apaga en
+     ≤ 2 s si se enciende desde el panel. Se desbloquea al detenerlo.
    - **Error al adquirir:** se eliminan el `.bin` fallido, su `_dg4162.json` y
      la foto/video USB, y se repite la adquisición con el mismo nombre. Se
      admiten como máximo 3 reintentos. *Detener* cancela un reintento
