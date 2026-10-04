@@ -5,6 +5,8 @@ function videoPath = createFilteredMotionVideo(filterResult, phaseResult, ...
 % Video generation is deliberately separate from scientific filtering. The
 % depth phase is temporally filtered upstream; each rendered frame then removes
 % its temporal background and applies visualization-only spatial median denoising.
+% FilePrefix (default "") starts the video file name, e.g. the acquisition
+% name: <FilePrefix>_<videoOptions.filename>.
 
     parser = inputParser;
     addParameter(parser, 'BmodeDisplayLimitsDb', [], @valid_optional_limits);
@@ -13,6 +15,7 @@ function videoPath = createFilteredMotionVideo(filterResult, phaseResult, ...
     addParameter(parser, 'MedianWindow', [5 3], @valid_median_window);
     addParameter(parser, 'Alpha', 0.5, @valid_alpha);
     addParameter(parser, 'ShowProgress', true, @valid_logical_scalar);
+    addParameter(parser, 'FilePrefix', "", @(value) ischar(value) || (isstring(value) && isscalar(value)));
     parse(parser, varargin{:});
 
     validate_video_options(videoOptions);
@@ -76,6 +79,9 @@ function videoPath = createFilteredMotionVideo(filterResult, phaseResult, ...
         error('OCE:Video:InvalidFilename', ...
             'Filtered motion video filename must use the .mp4 extension.');
     end
+    if strlength(parser.Results.FilePrefix) > 0
+        filename = string(parser.Results.FilePrefix) + "_" + filename;
+    end
     videoPath = string(fullfile(outputDirectory, filename));
 
     verticalExaggeration = 2;
@@ -126,7 +132,7 @@ function videoPath = createFilteredMotionVideo(filterResult, phaseResult, ...
             ylabel(ax, '');
             yticklabels(ax, {});
         end
-        title(ax, sprintf('%.1f deg', panel.angle_deg), 'FontWeight', 'bold');
+        title(ax, panel.label, 'FontWeight', 'bold');
         axis(ax, 'tight');
         box(ax, 'on');
         daspect(ax, [1 1 / verticalExaggeration 1]);

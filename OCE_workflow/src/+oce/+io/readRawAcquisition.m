@@ -2,8 +2,10 @@ function measurement = readRawAcquisition(filename, filepath)
 %READRAWACQUISITION Read one OCT/OCE binary acquisition without geometry intent.
 % Binary-family storage is normalized to spectral_time_lateral. Samples keep
 % their native uint16 digitizer counts; spectral preparation converts them to
-% double exactly. Experimental acquisition mode and scan geometry are resolved
-% outside the I/O boundary.
+% double exactly. Lines the header marks as stored backwards
+% (bscan_storage_reversed) are put back in forward A-line order, so every
+% stored line runs along its bscan_angle_deg. Experimental acquisition mode
+% and scan geometry are resolved outside the I/O boundary.
 
     if nargin < 1 || isempty(filename)
         error('filename is required.');
@@ -68,11 +70,26 @@ function measurement = readRawAcquisition(filename, filepath)
              'read %d from %s.'], expectedCount, actualCount, fullPath);
     end
     rawData = normalize_layout(rawData, rawDescriptor, dimensions, fullPath);
+    rawData = normalize_line_direction(rawData, rawDescriptor, ...
+        samplesPerBmode);
     measurement = struct( ...
         'raw_descriptor', rawDescriptor, ...
         'rawdata', rawData);
 
     clear cleanup
+end
+
+function rawData = normalize_line_direction(rawData, rawDescriptor, ...
+        samplesPerBmode)
+    % MB storage keeps positions in acquisition order; only the position
+    % order of a backwards line is flipped, never its M time samples.
+    if ~isfield(rawDescriptor, 'bscan_storage_reversed')
+        return;
+    end
+    for bmodeIndex = find(rawDescriptor.bscan_storage_reversed)
+        columns = (bmodeIndex - 1) * samplesPerBmode + (1:samplesPerBmode);
+        rawData(:, :, columns) = rawData(:, :, flip(columns));
+    end
 end
 
 function rawData = normalize_layout(rawData, rawDescriptor, dimensions, fullPath)

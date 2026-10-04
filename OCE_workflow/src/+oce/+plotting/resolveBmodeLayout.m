@@ -28,7 +28,16 @@ function selection = resolveBmodeLayout(geometry, lateralSampleCount, mode)
             'BmodeMode must be "representative" or "all".');
     end
     mode = lower(string(mode));
+    % Geometry states each B-mode orientation and display label; historical
+    % geometries without them are equally spaced angular B-modes.
     anglesDeg = (0:bmodeCount - 1) * (180 / bmodeCount);
+    if isfield(geometry, 'bmode_axis_angles_deg')
+        anglesDeg = double(geometry.bmode_axis_angles_deg(:)');
+    end
+    labels = compose("%.1f deg", anglesDeg);
+    if isfield(geometry, 'bmode_labels')
+        labels = reshape(string(geometry.bmode_labels), 1, []);
+    end
     switch mode
         case "representative"
             selectedIndices = representative_indices(anglesDeg);
@@ -53,6 +62,7 @@ function selection = resolveBmodeLayout(geometry, lateralSampleCount, mode)
         'mode', mode, ...
         'indices', selectedIndices, ...
         'angles_deg', anglesDeg(selectedIndices), ...
+        'labels', labels(selectedIndices), ...
         'global_lateral_ranges', ranges, ...
         'samples_per_bmode', samplesPerBmode, ...
         'local_lateral_axis_mm', linspace(0, ...
@@ -65,6 +75,11 @@ end
 function indices = representative_indices(anglesDeg)
     bmodeCount = numel(anglesDeg);
     targetCount = min(2, bmodeCount);
+    if any(isnan(anglesDeg)) || (bmodeCount > 1 && all(anglesDeg == anglesDeg(1)))
+        % Parallel lines or polar turns: first and middle B-mode.
+        indices = unique([1, round((bmodeCount + 1) / 2)]);
+        return;
+    end
     targetsDeg = [0 90];
     indices = zeros(1, targetCount);
     for targetIndex = 1:targetCount

@@ -8,7 +8,7 @@ parameter files and generated results outside the repository.
 | Need | Human entrypoint | Programmatic owner |
 | --- | --- | --- |
 | Inspect one acquisition by stages | `workflows/run_acquisition_stepwise.m` | Explicit domain calls |
-| Process one raster acquisition to an en-face video | `workflows/run_raster_enface_stepwise.m` | Explicit domain calls |
+| Process one raster, rings or spiral acquisition to an en-face video | `workflows/run_raster_enface_stepwise.m` | Explicit domain calls |
 | Prepare interactively, then process a batch | `workflows/run_experiment_batch.m` | Preparation and batch owners |
 | Process one prepared acquisition | `workflows/process_single_acquisition.m` | `oce.pipeline.runSingleAcquisition` |
 | Process a prepared batch | `workflows/process_acquisition_batch.m` | `oce.pipeline.runBatchProcessing` |
@@ -51,6 +51,37 @@ reconstruction. Crop-selection preview FFTs remain separate from scientific reco
 For quasi-harmonic acquisitions, the filter policy uses physical `frequency_Hz`.
 For pulse acquisitions, select the useful passband on the representative spectrum;
 that manual passband is processing intent, not a new physical excitation frequency.
+
+## GUI (OCTOCE) MB acquisitions
+
+The stepwise workflows read the acquisition settings from the file headers written
+by the acquisition GUI (`gui/PYTHON_GUI_DG4162`):
+
+- **Scan pattern and geometry.** `scan_geometry = "automatic"` resolves the
+  geometry from the header scan pattern in `oce.acquisition.buildAcquisitionGeometry`:
+  meridians, linear lines, crosshair sweeps and one-line rasters are
+  `angular_bmodes` (straight B-scans through the scan center); rasters with
+  several lines are `raster`; rings and spirals are `polar`. An explicit geometry
+  must be compatible with the header pattern. BM-mode (OCT) files are rejected.
+- **Storage direction.** MB stores positions in acquisition order, so odd lines of
+  a bidirectional raster and odd lines of a linear scan (header
+  `linear_bidirectional`) run backwards; `oce.io.readRawAcquisition` puts every
+  line back in forward A-line order. M time samples are never reversed.
+  Crosshair B-scans are stored as consecutive X and Y lines.
+- **Scan directions.** `geometry.bmode_direction_deg` is the direction of
+  increasing A-line index of each B-mode (counterclockwise from +x). The right
+  dispersion window lies at that direction and the left one at the opposite
+  direction; `oce.dispersion.orderBidirectionalAngles` orders them over the full
+  circle. Historical headers keep the maintained ordering.
+- **A-line rate.** The header camera line rate replaces the OCT profile's nominal
+  `a_scan_rate` (`a_scan_rate_source = "acquisition_header"`).
+- **Excitation frequency.** With `frequency_Hz = []`,
+  `oce.acquisition.prepareSingleFileInputs` takes the CH2 burst frequency of the
+  generator header `<file>_dg4162.json` written next to the acquisition (the
+  instrument read-back `generator_state` when present). A numeric `frequency_Hz`
+  is still accepted for files without that header and is reported when it
+  differs. Batch processing keeps `frequency_Hz` from the Experimental Log and
+  warns when it differs from the generator header.
 
 Batch preparation may seed the next compatible subexperiment with accepted window
 intent. Automatic centers are still resolved per acquisition. Quasi-harmonic and
@@ -127,6 +158,11 @@ Every output of one acquisition goes to a folder named after the processed file,
 resolved by `oce.pipeline.resolveOutputDirectory`. The standalone stepwise
 workflows (`run_acquisition_stepwise.m`, `run_raster_enface_stepwise.m`) use the
 same owner, writing to `<.bin folder>/Results/<filename-without-.bin>/`.
+Saved figures and videos also start with the acquisition name: every saver and
+video writer accepts `FilePrefix`, and both the pipeline and the stepwise
+workflows pass the name returned by `resolveOutputDirectory`
+(e.g. `<name>_FilteredSpaceTime.png`, `<name>_Video_2D_Filtered.mp4`).
+`PhaseSpeed.mat` keeps its name because the summaries load it from that folder.
 
 `oce.io.saveScientificResult` writes the validated `oce_result` through a temporary
 file and verifies its round-trip. `loadScientificResult` is the strict read boundary;
@@ -162,19 +198,23 @@ The automatic runner exposes these presentation values through OutputOptions.
 - **Polar:** rendering follows scientific-result construction and uses its existing
   angular values. It does not recalculate dispersion or thickness.
 
-## Raster en-face motion
+## En-face motion (raster, rings, spiral)
 
-`run_raster_enface_stepwise.m` processes a `raster` acquisition through
+`run_raster_enface_stepwise.m` processes a `raster` or `polar` acquisition through
 reconstruction, per-B-scan borders, anterior-surface phase and
 `oce.filtering.filterSurfacePhase`. Depth-resolved phase is not needed for the
-en-face product and is skipped. Every raster position has its own excitation
+en-face product and is skipped. Every MB position has its own excitation
 trigger, so one time sample across positions forms one XY frame.
+`geometry.enface` maps lateral samples onto a Cartesian grid: raster positions
+are placed exactly (axes from the first acquired A-line/B-scan); ring and spiral
+positions are linearly interpolated over their Delaunay triangulation (axes
+centered on the scan center, grid points outside the scan invalid).
 `oce.plotting.prepareEnfaceMotionVisualization` arranges the filtered surface
 phase as `y_x_time` frames with FIR delay compensated visually, each position's
 temporal mean removed and an optional display-only spatial median.
 `plotEnfaceMotionSnapshots` previews selected frames and
 `oce.video.createEnfaceMotionVideo` writes the MP4. The automatic pipeline accepts
-raster up to `stop_after="filtering"`; dispersion windows reject raster geometry.
+these geometries up to `stop_after="filtering"`; dispersion windows reject them.
 
 The optional structural en-face (section 4A) uses
 `oce.acquisition.computeStructuralEnface`: each position averages the OCT
@@ -182,7 +222,7 @@ amplitude `|A|` of `N` M-repetitions starting at `FirstMRepetition` (incoherent
 A-scan averaging, insensitive to motion-induced phase), then takes the linear mean
 over `DepthRangeIndices` of the reconstructed depth crop. The map keeps linear
 amplitude and its `20*log10` value with the averaging provenance.
-`oce.plotting.saveStructuralEnface` writes `StructuralEnface.fig/.png`.
+`oce.plotting.saveStructuralEnface` writes `<name>_StructuralEnface.fig/.png`.
 For a static sample, repeated A-scans share the same speckle, so A-scan averaging
 reduces detector noise rather than speckle.
 

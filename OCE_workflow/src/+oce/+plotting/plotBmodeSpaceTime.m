@@ -112,7 +112,7 @@ function [fig, preview] = plotBmodeSpaceTime(values, timeAxisMs, ...
             yticklabels(ax, {});
         end
         axis(ax, 'tight');
-        panelTitles(index) = sprintf('%.1f deg', selection.angles_deg(index));
+        panelTitles(index) = selection.labels(index);
         text(ax, 0.02, 0.98, panelTitles(index), ...
             'Units', 'normalized', 'VerticalAlignment', 'top', ...
             'FontSize', 9, 'FontWeight', 'bold', ...
@@ -187,6 +187,7 @@ function selection = resolve_selection(geometry, lateralCount, mode, indices)
     selection.mode = "selected";
     selection.indices = indices;
     selection.angles_deg = complete.angles_deg(indices);
+    selection.labels = complete.labels(indices);
     selection.global_lateral_ranges = ...
         complete.global_lateral_ranges(indices, :);
     selection.row_count = ceil(numel(indices) / 4);

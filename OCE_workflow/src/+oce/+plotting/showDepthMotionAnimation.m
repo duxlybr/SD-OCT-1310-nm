@@ -68,7 +68,7 @@ function fig = showDepthMotionAnimation(phaseResult, reconstructionResult, ...
             data.local_lateral_axis_mm, data.depth_axis_mm, rgb);
         xlabel(ax, 'Lateral position (mm)');
         ylabel(ax, 'Depth (mm)');
-        title(ax, sprintf('Preliminary raw motion | %.1f deg', panel.angle_deg));
+        title(ax, sprintf('Preliminary raw motion | %s', panel.label));
     end
     oce.plotting.applyPreviewStyle(fig, axesHandles, ...
         'FigureSize', [1200 520]);
@@ -86,8 +86,8 @@ function fig = showDepthMotionAnimation(phaseResult, reconstructionResult, ...
                 bmodeLimits, phaseLimits, parser.Results.Alpha);
             imageHandles(panelIndex).CData = rgb;
             title(axesHandles(panelIndex), sprintf( ...
-                'Preliminary raw motion | %.1f deg | t = %.3f ms', ...
-                panel.angle_deg, data.time_axis_ms(timeIndex)));
+                'Preliminary raw motion | %s | t = %.3f ms', ...
+                panel.label, data.time_axis_ms(timeIndex)));
         end
         drawnow limitrate;
         pause(1 / parser.Results.PlaybackFrameRate);

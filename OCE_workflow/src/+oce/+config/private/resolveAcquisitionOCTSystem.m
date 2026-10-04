@@ -1,6 +1,8 @@
 function resolved = resolveAcquisitionOCTSystem( ...
-        configured, acquisitionRow, acquisitionParameters)
+        configured, acquisitionRow, acquisitionParameters, acquisitionHeader)
 %RESOLVEACQUISITIONOCTSYSTEM Resolve OCT profile from canonical acquisition metadata.
+% The normalized acquisition header supplies the measured A-line rate when
+% it records one.
 
     profile = required_row_text(acquisitionRow, 'oct_system_profile');
     profile = lower(strtrim(profile));
@@ -19,7 +21,8 @@ function resolved = resolveAcquisitionOCTSystem( ...
     end
 
     resolved = oce.config.resolveOCTSystemOptions( ...
-        configured, prepared_oct_profile(acquisitionParameters));
+        configured, prepared_oct_profile(acquisitionParameters), ...
+        acquisitionHeader);
     resolved.selection_source = "acquisition_row.oct_system_profile";
 end
 

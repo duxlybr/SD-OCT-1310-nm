@@ -36,6 +36,34 @@ function fixture = create_io_acquisition_fixture()
     fixture.octoceFilename = 'octoce_raw_v1.bin';
     fixture.octoceExpectedRaw = create_octoce_raw_v1_file( ...
         fullfile(fixture.rawDir, fixture.octoceFilename));
+    % One synthetic file per GUI MB scan pattern; expected raw data are in
+    % forward A-line order.
+    fixture.octocePatterns = struct();
+    fixture.octocePatterns.crosshair = create_octoce_pattern(fixture.rawDir, ...
+        'octoce_crosshair.bin', struct('pattern', 'crosshair', 'bscans', 1, ...
+        'x_length_mm', 2, 'y_length_mm', 2));
+    fixture.octocePatterns.linear = create_octoce_pattern(fixture.rawDir, ...
+        'octoce_linear.bin', struct('pattern', 'linear', 'bscans', 2, ...
+        'orientation', 'vertical', 'linear_bidirectional', true, ...
+        'x_length_mm', 1, 'y_length_mm', 3));
+    fixture.octocePatterns.raster = create_octoce_pattern(fixture.rawDir, ...
+        'octoce_raster_bidirectional.bin', struct('pattern', 'raster', ...
+        'bscans', 3, 'raster_bidirectional', true, ...
+        'x_length_mm', 2, 'y_length_mm', 1));
+    fixture.octocePatterns.rings = create_octoce_pattern(fixture.rawDir, ...
+        'octoce_rings.bin', struct('pattern', 'rings', 'bscans', 2, ...
+        'alines', 8, 'x_length_mm', 2, 'y_length_mm', 2));
+    fixture.octocePatterns.spiral = create_octoce_pattern(fixture.rawDir, ...
+        'octoce_spiral.bin', struct('pattern', 'spiral', 'bscans', 2, ...
+        'alines', 8, 'x_length_mm', 2, 'y_length_mm', 2));
+    fixture.octoceBmFilename = 'octoce_bm.bin';
+    create_octoce_raw_v1_file(fullfile(fixture.rawDir, ...
+        fixture.octoceBmFilename), struct('mode', 'BM'));
+    % Generator header written by the DG4162 GUI next to an acquisition.
+    fixture.generatorFrequencyHz = 1250;
+    write_generator_header(fullfile(fixture.rawDir, ...
+        'octoce_raw_v1_dg4162.json'), 'octoce_raw_v1.bin', ...
+        fixture.generatorFrequencyHz);
     fixture.truncatedRawFilename = 'truncated_oct2.bin';
     create_parser_faithful_oct2_file( ...
         fullfile(fixture.rawDir, fixture.truncatedRawFilename), -1);
@@ -286,11 +314,46 @@ function expectedRaw = create_compact_oct2_file( ...
         temporalCount, spatialCount * bmodeCount));
 end
 
-function expectedRaw = create_octoce_raw_v1_file(path)
+function pattern = create_octoce_pattern(folder, filename, scanOverrides)
+    pattern = struct('filename', filename, 'expected_raw', ...
+        create_octoce_raw_v1_file(fullfile(folder, filename), scanOverrides));
+end
+
+function write_generator_header(path, acquisitionFile, frequencyHz)
+    settings = struct('ch1_vpp', 0.5, 'ch2_frequency_hz', frequencyHz, ...
+        'ch2_waveform', 'Pulso', 'ch2_delay_ms', 2, ...
+        'excitation', 'Con contacto', 'ch2_burst_cycles', 3);
+    state = struct('identity', 'Rigol Technologies,DG4162', ...
+        'ch1_frequency_hz', 954900, 'ch1_vpp', 0.5, ...
+        'ch2_function', 'PULS', 'ch2_frequency_hz', frequencyHz, ...
+        'ch2_delay_ms', 2, 'ch2_burst_cycles', 3);
+    record = struct('acquisition_file', acquisitionFile, ...
+        'created_local', '2026-10-04T12:00:00', ...
+        'generator_settings', settings, 'generator_state', state, ...
+        'sequence', []);
+    fileID = fopen(path, 'w');
+    if fileID < 0
+        error('Could not create synthetic generator header: %s', path);
+    end
+    cleanup = onCleanup(@() fclose(fileID));
+    fwrite(fileID, jsonencode(record), 'char');
+    clear cleanup
+end
+
+function expectedRaw = create_octoce_raw_v1_file(path, scanOverrides)
+    if nargin < 2
+        scanOverrides = struct();
+    end
     spectralCount = 8;
     temporalCount = 4;
     samplesPerBmode = 3;
     bmodeCount = 2;
+    if isfield(scanOverrides, 'alines')
+        samplesPerBmode = scanOverrides.alines;
+    end
+    if isfield(scanOverrides, 'bscans')
+        bmodeCount = scanOverrides.bscans;
+    end
     payloadOffset = 65536;
 
     source = struct();
@@ -321,6 +384,26 @@ function expectedRaw = create_octoce_raw_v1_file(path)
         'raster_bidirectional', false, ...
         'x_length_mm', 2.5, ...
         'y_length_mm', 2.5);
+    names = fieldnames(scanOverrides);
+    for index = 1:numel(names)
+        source.scan.(names{index}) = scanOverrides.(names{index});
+    end
+    % Crosshair stores [B, sweep_xy, A, M, pixel]; BM stores [B, M, A, pixel].
+    lineCount = bmodeCount;
+    if string(source.scan.pattern) == "crosshair"
+        source.axis_order = {'bscan', 'sweep_xy', 'aline', ...
+            'm_repetition', 'pixel'};
+        source.planned_shape = [bmodeCount, 2, samplesPerBmode, ...
+            temporalCount, spectralCount];
+        lineCount = 2 * bmodeCount;
+    elseif string(source.scan.mode) == "BM"
+        source.axis_order = {'bscan', 'm_repetition', 'aline', 'pixel'};
+        source.planned_shape = [bmodeCount, temporalCount, ...
+            samplesPerBmode, spectralCount];
+    end
+    source.integrity.committed_alines = ...
+        temporalCount * samplesPerBmode * lineCount;
+    source.integrity.expected_alines = source.integrity.committed_alines;
     source.state = 'complete';
 
     jsonBytes = unicode2native(jsonencode(source), 'UTF-8');
@@ -330,8 +413,8 @@ function expectedRaw = create_octoce_raw_v1_file(path)
     end
 
     sourceRaw = reshape(uint16(1:(spectralCount * temporalCount * ...
-        samplesPerBmode * bmodeCount)), spectralCount, temporalCount, ...
-        samplesPerBmode, bmodeCount);
+        samplesPerBmode * lineCount)), spectralCount, temporalCount, ...
+        samplesPerBmode, lineCount);
 
     fileID = fopen(path, 'w', 'ieee-le');
     if fileID < 0
@@ -352,8 +435,22 @@ function expectedRaw = create_octoce_raw_v1_file(path)
     fwrite(fileID, sourceRaw(:), 'uint16');
     clear cleanup
 
+    % MB stores odd bidirectional raster and linear lines from their positive
+    % end; the reader returns every line in forward order.
+    oddLines = 2:2:lineCount;
+    reversedLines = [];
+    if isfield(source.scan, 'raster_bidirectional') && ...
+            source.scan.raster_bidirectional && ...
+            string(source.scan.pattern) == "raster"
+        reversedLines = oddLines;
+    elseif isfield(source.scan, 'linear_bidirectional') && ...
+            source.scan.linear_bidirectional && ...
+            string(source.scan.pattern) == "linear"
+        reversedLines = oddLines;
+    end
+    sourceRaw(:, :, :, reversedLines) = sourceRaw(:, :, end:-1:1, reversedLines);
     expectedRaw = double(reshape(sourceRaw, spectralCount, ...
-        temporalCount, samplesPerBmode * bmodeCount));
+        temporalCount, samplesPerBmode * lineCount));
 end
 
 function create_unknown_oct2_file(path)

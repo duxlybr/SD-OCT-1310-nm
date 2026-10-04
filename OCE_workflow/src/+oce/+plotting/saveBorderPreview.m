@@ -1,12 +1,22 @@
 function artifacts = saveBorderPreview(reconstructionResult, borderResult, ...
-        ~, displayLimitsDb, outputDir)
+        ~, displayLimitsDb, outputDir, varargin)
 %SAVEBORDERPREVIEW Save the common border and intensity-mask previews.
+% FilePrefix (default "") starts every file name, e.g. the acquisition
+% name: <FilePrefix>_<name>.
+
+    parser = inputParser;
+    addParameter(parser, 'FilePrefix', "", @(value) ischar(value) || (isstring(value) && isscalar(value)));
+    parse(parser, varargin{:});
+    stems = ["BorderPreview_pixels"; "BorderMaskPreview"];
+    if strlength(parser.Results.FilePrefix) > 0
+        stems = string(parser.Results.FilePrefix) + "_" + stems;
+    end
 
     artifacts = [ ...
-        string(fullfile(outputDir, 'BorderPreview_pixels.fig')); ...
-        string(fullfile(outputDir, 'BorderPreview_pixels.png')); ...
-        string(fullfile(outputDir, 'BorderMaskPreview.fig')); ...
-        string(fullfile(outputDir, 'BorderMaskPreview.png'))];
+        string(fullfile(outputDir, stems(1) + ".fig")); ...
+        string(fullfile(outputDir, stems(1) + ".png")); ...
+        string(fullfile(outputDir, stems(2) + ".fig")); ...
+        string(fullfile(outputDir, stems(2) + ".png"))];
     borderFigure = figure('Name', 'Border preview');
     borderAxes = axes(borderFigure);
     maskFigure = figure('Name', 'Intensity mask preview');

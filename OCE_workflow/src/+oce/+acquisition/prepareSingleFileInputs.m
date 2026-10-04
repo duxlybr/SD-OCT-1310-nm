@@ -2,7 +2,11 @@ function inputs = prepareSingleFileInputs(binFile, acquisitionParameters, ...
         acquisitionMetadata, processingConfig, varargin)
 %PREPARESINGLEFILEINPUTS Prepare one standalone .bin acquisition in memory.
 % The single-file path does not require experimental_log.xlsx. It completes a
-% canonical one-row acquisition contract from user metadata and prepared params.
+% canonical one-row acquisition contract from user metadata, prepared params
+% and the acquisition header. A struct acquisitionMetadata whose frequency_Hz
+% is [] or absent takes the CH2 excitation frequency of the generator header
+% (<file>_dg4162.json); pulse excitation uses NaN. An explicit frequency_Hz is
+% kept, with a warning when it differs from the generator header.
 
     if nargin < 4
         error('OCE:Acquisition:MissingSingleFileInput', ...
@@ -36,10 +40,12 @@ function inputs = prepareSingleFileInputs(binFile, acquisitionParameters, ...
 
     filename = [fileBase extension];
     oce.acquisition.validateAcquisitionParameters(acquisitionParameters);
+    acquisitionHeader = oce.io.readAcquisitionHeader(filename, dataDir);
+    acquisitionMetadata = resolve_header_frequency( ...
+        acquisitionMetadata, acquisitionHeader, filename);
     acquisitionRow = normalize_metadata(acquisitionMetadata, filename);
     acquisitionRow = complete_canonical_metadata( ...
         acquisitionRow, acquisitionParameters);
-    acquisitionHeader = oce.io.readAcquisitionHeader(filename, dataDir);
     if ~isstruct(processingConfig) || ~isscalar(processingConfig) || ...
             isempty(fieldnames(processingConfig))
         error('OCE:Acquisition:InvalidSingleFileConfig', ...
@@ -70,6 +76,43 @@ function inputs = prepareSingleFileInputs(binFile, acquisitionParameters, ...
         'paramsFile', '', ...
         'acquisitionParamsFile', '', ...
         'numAcquisitions', 1);
+end
+
+function metadata = resolve_header_frequency(metadata, header, filename)
+    if ~isstruct(metadata) || ~isscalar(metadata)
+        return;
+    end
+    excitation = struct('available', false, 'frequency_hz', NaN);
+    if isfield(header, 'excitation')
+        excitation = header.excitation;
+    end
+    isPulse = isfield(metadata, 'excitation_type') && ...
+        lower(strtrim(string(metadata.excitation_type))) == "pulse";
+    requested = [];
+    if isfield(metadata, 'frequency_Hz')
+        requested = metadata.frequency_Hz;
+    end
+    if isempty(requested)
+        if isPulse
+            metadata.frequency_Hz = NaN;
+        elseif excitation.available
+            metadata.frequency_Hz = excitation.frequency_hz;
+        else
+            error('OCE:Acquisition:MissingExcitationFrequency', ...
+                ['frequency_Hz = [] reads the excitation frequency from the ' ...
+                 'generator header, but no %s_dg4162.json was found next to ' ...
+                 '%s. Set frequency_Hz explicitly.'], ...
+                erase(filename, '.bin'), filename);
+        end
+        return;
+    end
+    if excitation.available && ~isPulse && isnumeric(requested) && ...
+            isscalar(requested) && isfinite(requested) && ...
+            requested ~= excitation.frequency_hz
+        warning('OCE:Acquisition:ExcitationFrequencyOverride', ...
+            ['frequency_Hz = %g Hz overrides the generator header ' ...
+             '(%g Hz) of %s.'], requested, excitation.frequency_hz, filename);
+    end
 end
 
 function row = normalize_metadata(metadata, filename)
