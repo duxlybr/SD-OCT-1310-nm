@@ -83,7 +83,7 @@ def pattern_outline(scan: ScanParameters) -> Outline:
         return [("point", (cx, cy))]
     if scan.pattern in OUTLINE_RENDERERS:
         return OUTLINE_RENDERERS[scan.pattern](scan)
-    if scan.pattern is ScanPattern.MERIDIANS:
+    if scan.pattern in (ScanPattern.MERIDIANS, ScanPattern.RINGS, ScanPattern.SPIRAL):
         return [("oval", (cx - x, cy - y, cx + x, cy + y))]
     if scan.pattern is ScanPattern.RASTER:
         return [("rectangle", (cx - x, cy - y, cx + x, cy + y))]

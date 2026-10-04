@@ -57,7 +57,8 @@ los galvos en movimiento, y confirme la imagen y el `.bin`.
 - GUI en Python/Tkinter con los controles solicitados: A-lines, B-scans,
   repeticiones M, puntos sync y longitudes X/Y.
 - Modos BM y MB con orden de datos explícito.
-- Patrones raster, crosshair, meridianos/polar y lineal horizontal/vertical.
+- Patrones raster, crosshair, meridianos/polar, lineal horizontal/vertical,
+  anillos concéntricos y espiral.
 - Conversión predeterminada `X = 0.40607082 V/mm` y `Y = 0.40631516 V/mm`, editable en
   la configuración de hardware y registrada en cada archivo.
 - AO0/AO1 precargados y temporizados por hardware.
@@ -271,6 +272,32 @@ utilizada en el laboratorio antes de adquirir datos definitivos.
   La comprobación física acotada `python -m diagnostics.diagnose_linear_bidirectional`
   completó ida/retorno horizontal y vertical, cuatro buffers consecutivos,
   cero pérdidas y cuatro pulsos PFI13.
+- **Anillos concéntricos** (análogo polar del raster): cada B-scan es una
+  vuelta completa.
+  - **B** = número de anillos, a radios `(b+1)/B · L/2`. El paso radial es
+    uniforme e igual a la distancia del centro al primer anillo; el anillo
+    exterior mide exactamente `L/2`.
+  - **A** = A-lines por vuelta, a ángulos iguales `2π·a/A`. Cada vuelta empieza
+    en +X y gira en sentido antihorario; el punto de cierre no se repite.
+  - **M** = repeticiones de cada anillo (BM) o de cada posición (MB).
+  - **SS** = puntos sync del salto entre vueltas (BM) o entre posiciones (MB).
+  - Longitud X/Y = diámetros. Si son distintos, los anillos son elipses.
+- **Espiral** (Arquímedes, a velocidad angular constante): un único recorrido
+  continuo del centro (primera A-line) al borde `L/2` (última A-line).
+  - **B** = número de vueltas; cada vuelta es un B-scan.
+  - **A** = A-lines por vuelta. El radio crece linealmente con el ángulo, con un
+    paso de ≈ `L/2 / B` por vuelta.
+  - **M** y **SS** se usan igual que en los anillos.
+  - La frecuencia de giro en BM es constante (`klps / A` vueltas/s) y se muestra
+    en el resumen del plan. A frecuencias altas el galvo atrasa la fase y reduce
+    el radio real; no hay compensación.
+- En anillos y espiral, el eje lateral del preview es el ángulo θ (el cursor lo
+  muestra en grados). El shape es el del raster (`[B, M, A]` en BM y
+  `[B, A, M]` en MB). El header incluye `scan.polar_geometry` con la fórmula
+  exacta de cada posición:
+  - anillos: `ρ = (b+1)/B`, `θ = 2π·a/A`;
+  - espiral: `k = b·A + a`, `ρ = k/(A·B−1)`, `θ = 2π·k/A`;
+  - en ambos casos, `x = cx + ρ·Lx/2·cos θ` y `y = cy + ρ·Ly/2·sin θ`.
 
 Las longitudes son extensiones pico a pico centradas en `(0, 0)`; centro y
 límites de tensión forman parte del modelo y pueden ampliarse como controles

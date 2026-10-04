@@ -21,6 +21,7 @@ from .config import (
     HardwareConfig,
     OCE_TRIGGER_DUTY_CYCLE,
     Orientation,
+    POLAR_PATTERNS,
     ScanParameters,
     ScanPattern,
     estimate_payload_bytes,
@@ -37,6 +38,8 @@ PATTERN_LABELS = {
     "Crosshair": ScanPattern.CROSSHAIR,
     "Meridianos (polar)": ScanPattern.MERIDIANS,
     "Lineal": ScanPattern.LINEAR,
+    "Anillos concéntricos": ScanPattern.RINGS,
+    "Espiral": ScanPattern.SPIRAL,
 }
 ORIENTATION_LABELS = {
     "Horizontal": Orientation.HORIZONTAL,
@@ -140,6 +143,28 @@ def _duration(seconds: float | None) -> str:
     hours, remainder = divmod(seconds, 3600)
     minutes, secs = divmod(remainder, 60)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _polar_note(scan: ScanParameters, hardware: HardwareConfig) -> str:
+    """How A/B map onto the rings or the spiral, for the plan summary."""
+    if scan.pattern not in POLAR_PATTERNS or scan.is_stationary:
+        return ""
+    radius = max(scan.x_length_mm, scan.y_length_mm) / 2.0
+    step_deg = 360.0 / scan.alines
+    if scan.pattern is ScanPattern.RINGS:
+        note = (
+            f"Anillos: {scan.bscans} anillo(s) cada {radius / scan.bscans:.3f} mm hasta r = {radius:.3f} mm, "
+            f"{scan.alines} A-lines por vuelta ({step_deg:.2f}°)"
+        )
+    else:
+        pitch = radius * scan.alines / max(1, scan.alines * scan.bscans - 1)
+        note = (
+            f"Espiral: {scan.bscans} vuelta(s) del centro a r = {radius:.3f} mm, paso {pitch:.3f} mm/vuelta, "
+            f"{scan.alines} A-lines por vuelta ({step_deg:.2f}°)"
+        )
+    if scan.mode is AcquisitionMode.BM:
+        note += f", giro {hardware.effective_line_rate_hz / scan.alines:.1f} vueltas/s"
+    return note + ". "
 
 
 class OCTOCEApp:
@@ -813,7 +838,7 @@ class OCTOCEApp:
             scan_note = (
                 "Lineal bidireccional: el sentido alterna entre barridos. "
                 if scan.pattern is ScanPattern.LINEAR and not scan.is_stationary else ""
-            )
+            ) + _polar_note(scan, hardware)
             if warnings:
                 self.validation_var.set(
                     "Plan válido · " + scan_note + "Advertencia: " + " · ".join(warnings)
@@ -898,6 +923,8 @@ class OCTOCEApp:
             sampled = line[::step]
             if not np.array_equal(sampled[-1], line[-1]):
                 sampled = np.vstack((sampled, line[-1]))
+            if scan.pattern is ScanPattern.RINGS:
+                sampled = np.vstack((sampled, line[0]))  # draw the ring closed
             points = [coordinate for xy in sampled for coordinate in project(float(xy[0]), float(xy[1]))]
             color = "#2477d4" if scan.pattern is not ScanPattern.CROSSHAIR or index == 0 else "#e39a32"
             if len(points) >= 4:
@@ -1840,6 +1867,8 @@ class OCTOCEApp:
             return "Y", scan.y_length_mm
         if scan.pattern is ScanPattern.MERIDIANS:
             return "S", max(scan.x_length_mm, scan.y_length_mm)
+        if scan.pattern in POLAR_PATTERNS:
+            return "θ", 360.0
         return "X", scan.x_length_mm
 
     def _cursor_labels(self, z_index: int, lateral_index: int) -> tuple[str, str]:
@@ -1862,9 +1891,14 @@ class OCTOCEApp:
             return z_label, lateral_label
         axis, length_mm = self._lateral_axis()
         total = max(2, self._active_scan.alines if self._active_scan is not None else self._preview_db.shape[1])
-        position_mm = ((aline_original / (total - 1)) - 0.5) * length_mm
         z_label = f"Z bin {z_original}"
-        lateral_label = f"{axis} {position_mm:+.3f} mm · A{aline_original + 1}"
+        if self._active_scan is not None and self._active_scan.pattern in POLAR_PATTERNS:
+            # A equal angles per turn, starting at +X and turning counterclockwise.
+            angle = 360.0 * aline_original / self._active_scan.alines
+            lateral_label = f"{axis} {angle:.1f}° · A{aline_original + 1}"
+        else:
+            position_mm = ((aline_original / (total - 1)) - 0.5) * length_mm
+            lateral_label = f"{axis} {position_mm:+.3f} mm · A{aline_original + 1}"
         self.z_cursor_text_var.set(z_label)
         self.lateral_cursor_text_var.set(lateral_label)
         return z_label, lateral_label

@@ -7,7 +7,7 @@ from typing import Iterator
 import numpy as np
 from numpy.typing import NDArray
 
-from .config import AcquisitionMode, HardwareConfig, Orientation, ScanParameters, ScanPattern
+from .config import POLAR_PATTERNS, AcquisitionMode, HardwareConfig, Orientation, ScanParameters, ScanPattern
 
 
 FloatArray = NDArray[np.float64]
@@ -80,6 +80,27 @@ class ScanPlanner:
                 (
                     cx + u * (p.x_length_mm / 2.0) * np.cos(theta),
                     cy + u * (p.y_length_mm / 2.0) * np.sin(theta),
+                )
+            )
+        elif p.pattern in POLAR_PATTERNS:
+            # One B-scan = one full turn sampled at A equal angles (the closing
+            # point is the next turn's start, so it is not repeated).
+            a = np.arange(p.alines, dtype=np.float64)
+            if p.pattern is ScanPattern.RINGS:
+                # Rings b = 0..B-1 at radius (b+1)/B: uniform radial spacing,
+                # including the gap to the centre; the outermost ring is L/2.
+                theta = 2.0 * np.pi * a / p.alines
+                rho = np.full_like(a, (bscan_index + 1) / p.bscans)
+            else:
+                # Archimedean spiral at constant angular speed: the radius
+                # grows linearly from the centre (first A-line) to L/2 (last).
+                k = bscan_index * p.alines + a
+                theta = 2.0 * np.pi * k / p.alines
+                rho = k / max(1, p.alines * p.bscans - 1)
+            line = np.column_stack(
+                (
+                    cx + rho * (p.x_length_mm / 2.0) * np.cos(theta),
+                    cy + rho * (p.y_length_mm / 2.0) * np.sin(theta),
                 )
             )
         else:  # pragma: no cover - exhaustive guard for future enum members
@@ -251,7 +272,10 @@ class ScanPlanner:
         p = self.scan
         if p.sync_points == 0 or max_segments < 1 or max_points < 3:
             return []
-        endpoints = ScanPlanner(replace(p, alines=2), self.hardware)
+        # Straight sweeps are interpolated from their endpoints; polar turns
+        # need the actual positions.
+        curved = p.pattern in POLAR_PATTERNS
+        endpoints = self if curved else ScanPlanner(replace(p, alines=2), self.hardware)
         cache: dict[int, list[tuple[str | None, FloatArray]]] = {}
 
         def position(sequence: int, end: bool) -> FloatArray:
@@ -271,6 +295,8 @@ class ScanPlanner:
                 line = line[::-1]
             if p.mode is AcquisitionMode.BM:
                 return line[-1 if end else 0]
+            if curved:
+                return line[a]
             t = a / (p.alines - 1) if p.alines > 1 else 0.0
             return line[0] + (line[-1] - line[0]) * t
 
