@@ -61,9 +61,13 @@ configuration to `OCTSystemOptions`; material optics to `SampleOpticalOptions`.
 File format and OCT-system physics are independent. Downstream science does not
 branch on binary family or OCT identity.
 
-Acquisition geometry owns B-mode organization and local lateral axes. For
-`raster`, it also owns the slow-axis (y) positions
-(`geometry.raster`); dispersion windows remain limited to `angular_bmodes`. Reconstruction
+Acquisition geometry owns B-mode organization, local lateral axes, B-mode scan
+directions (`bmode_direction_deg`) and the resolution of `automatic` geometry from
+the header scan pattern. For `raster` it also owns the slow-axis (y) positions
+(`geometry.raster`); for `polar` the ring/spiral positions (`geometry.polar`); for
+both, the en-face grid operator (`geometry.enface`). Dispersion windows remain
+limited to `angular_bmodes`. The raw reader owns returning MB lines stored
+backwards in forward order. Reconstruction
 owns generic storage, depth and time axes. See [metadata](../experimental_metadata.md)
 and [reconstruction](../reconstruction_result_contract.md) for their physical contracts.
 
@@ -79,7 +83,7 @@ uses that owner. Reductions consume assembled `experiment.data`, not reopened fi
 
 `oce.plotting` and `oce.plotting.summary` render existing products. `save*` owners
 reuse their corresponding `plot*` owners and persist. `oce.video` owns optional
-motion-video output (B-mode filtered motion and raster en-face motion); `oce.interaction` owns desktop tuning around scientific owners.
+motion-video output (B-mode filtered motion and raster/polar en-face motion); `oce.interaction` owns desktop tuning around scientific owners.
 None of these presentation paths recalculates scientific products.
 
 ## Specialized references

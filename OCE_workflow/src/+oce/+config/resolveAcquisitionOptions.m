@@ -104,7 +104,7 @@ function value = require_scan_geometry(value)
 end
 
 function value = validate_supported_geometry(value)
-    if ismember(value, ["angular_bmodes", "raster"])
+    if ismember(value, ["angular_bmodes", "raster", "polar"])
         return;
     end
     error('OCE:Acquisition:UnsupportedScanGeometry', ...

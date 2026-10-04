@@ -1,9 +1,9 @@
 function enface = computeStructuralEnface(reconstructionResult, geometry, varargin)
-%COMPUTESTRUCTURALENFACE Depth-averaged structural en-face map of a raster.
+%COMPUTESTRUCTURALENFACE Depth-averaged structural en-face map of an area scan.
 % enface = computeStructuralEnface(reconstructionResult, geometry, Name, Value)
 %
 % Inputs are the reconstruction (complex volume, layout lateral_depth_time)
-% and the raster acquisition geometry. Name-value options:
+% and a raster or polar acquisition geometry. Name-value options:
 %   AScanAverageCount - N M-repetitions averaged per A-scan (default: all
 %                       retained repetitions from FirstMRepetition).
 %   FirstMRepetition  - absolute acquisition M-repetition index of the first
@@ -12,8 +12,10 @@ function enface = computeStructuralEnface(reconstructionResult, geometry, vararg
 %                       (default: the complete reconstructed depth crop).
 % Each position first averages the OCT amplitude |A| of N repetitions
 % (incoherent A-scan averaging, insensitive to motion-induced phase), then
-% takes the linear mean over depth. Output layout is y_x with Cartesian x/y
-% axes in mm; log_values is 20*log10 of the linear map. No side effects.
+% takes the linear mean over depth. Positions are then mapped onto the
+% geometry.enface grid (exact for raster, linear interpolation for polar
+% scans, NaN outside the scanned area). Output layout is y_x with Cartesian
+% x/y axes in mm; log_values is 20*log10 of the linear map. No side effects.
 
     parser = inputParser;
     addParameter(parser, 'AScanAverageCount', [], @valid_optional_integer);
@@ -61,9 +63,10 @@ function enface = computeStructuralEnface(reconstructionResult, geometry, vararg
         depthAveraged(position) = mean(mean(abs(aScans), 2));
     end
 
-    % Raster storage: A-lines along x within each B-scan, B-scans along y.
-    values = reshape(depthAveraged, geometry.samples_per_bmode, ...
-        geometry.bmode_count).';
+    enfaceGrid = geometry.enface;
+    values = reshape(full(enfaceGrid.operator * depthAveraged), ...
+        size(enfaceGrid.coverage));
+    values(~enfaceGrid.coverage) = NaN;
     depthAxisMm = double(reconstructionResult.axes.depth.values(:));
     enface = struct( ...
         'values', values, ...
@@ -72,8 +75,9 @@ function enface = computeStructuralEnface(reconstructionResult, geometry, vararg
         'units', "arbitrary_amplitude", ...
         'log_units', "dB_relative", ...
         'layout', "y_x", ...
-        'x_axis_mm', double(geometry.bmode_lateral_axis_mm(:)'), ...
-        'y_axis_mm', double(geometry.raster.slow_axis_mm(:)'), ...
+        'x_axis_mm', double(enfaceGrid.x_axis_mm(:)'), ...
+        'y_axis_mm', double(enfaceGrid.y_axis_mm(:)'), ...
+        'grid_method', string(enfaceGrid.method), ...
         'a_scan_average', struct( ...
             'count', averageCount, ...
             'first_m_repetition', double(firstRepetition), ...
@@ -98,18 +102,14 @@ function complexValues = validate_inputs(reconstructionResult, geometry)
         error('OCE:Acquisition:InvalidReconstructionResult', ...
             'The complex volume layout must be lateral_depth_time.');
     end
-    if ~isstruct(geometry) || ~isfield(geometry, 'raster') || ...
-            ~isfield(geometry, 'samples_per_bmode') || ...
-            ~isfield(geometry, 'bmode_count') || ...
-            ~isfield(geometry, 'bmode_lateral_axis_mm')
+    if ~isstruct(geometry) || ~isfield(geometry, 'enface')
         error('OCE:Acquisition:InvalidEnfaceGeometry', ...
-            'A structural en-face map requires raster acquisition geometry.');
+            'A structural en-face map requires a raster or polar geometry.');
     end
     complexValues = reconstructionResult.complex_volume.values;
-    if size(complexValues, 1) ~= ...
-            geometry.samples_per_bmode * geometry.bmode_count
+    if size(complexValues, 1) ~= size(geometry.enface.operator, 2)
         error('OCE:Acquisition:InvalidEnfaceGeometry', ...
-            'Lateral positions must equal samples_per_bmode * bmode_count.');
+            'Lateral positions must equal the en-face lateral sample count.');
     end
 end
 

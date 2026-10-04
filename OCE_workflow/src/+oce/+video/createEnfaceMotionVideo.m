@@ -4,12 +4,14 @@ function videoPath = createEnfaceMotionVideo(filterResult, ...
 % videoPath = createEnfaceMotionVideo(filterResult, reconstructionResult,
 %     geometry, videoOptions, outputDirectory, Name, Value)
 %
-% Renders the filtered surface phase of a raster acquisition as XY frames over
-% time. videoOptions uses the maintained VideoOptions fields time_start_idx,
-% max_frames, frame_rate and filename (.mp4). Name-value options: CLimMode,
-% CLim, MedianWindow (display-only spatial median), Interpolation ("bilinear"
-% or "nearest" pixel rendering) and ShowProgress. Writes one file and creates
-% outputDirectory when needed; scientific products are not modified.
+% Renders the filtered surface phase of a raster or polar acquisition as XY
+% frames over time. videoOptions uses the maintained VideoOptions fields
+% time_start_idx, max_frames, frame_rate and filename (.mp4). Name-value
+% options: CLimMode, CLim, MedianWindow (display-only spatial median),
+% Interpolation ("bilinear" or "nearest" pixel rendering), ShowProgress and
+% FilePrefix (file name <FilePrefix>_<filename>, e.g. the acquisition name).
+% Writes one file and creates outputDirectory when needed; scientific
+% products are not modified.
 
     parser = inputParser;
     addParameter(parser, 'CLimMode', "robust");
@@ -19,6 +21,7 @@ function videoPath = createEnfaceMotionVideo(filterResult, ...
         @(value) ismember(lower(string(value)), ["bilinear", "nearest"]));
     addParameter(parser, 'ShowProgress', true, ...
         @(value) islogical(value) && isscalar(value));
+    addParameter(parser, 'FilePrefix', "", @(value) ischar(value) || (isstring(value) && isscalar(value)));
     parse(parser, varargin{:});
 
     validate_video_options(videoOptions);
@@ -41,6 +44,9 @@ function videoPath = createEnfaceMotionVideo(filterResult, ...
     if lower(string(extension)) ~= ".mp4"
         error('OCE:Video:InvalidFilename', ...
             'En-face motion video filename must use the .mp4 extension.');
+    end
+    if strlength(parser.Results.FilePrefix) > 0
+        filename = string(parser.Results.FilePrefix) + "_" + filename;
     end
     if ~isfolder(outputDirectory)
         mkdir(outputDirectory);

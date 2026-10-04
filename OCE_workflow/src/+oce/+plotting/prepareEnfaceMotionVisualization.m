@@ -1,17 +1,20 @@
 function data = prepareEnfaceMotionVisualization(filterResult, ...
         reconstructionResult, geometry, varargin)
-%PREPAREENFACEMOTIONVISUALIZATION Arrange raster surface motion as XY frames.
+%PREPAREENFACEMOTIONVISUALIZATION Arrange area-scan surface motion as XY frames.
 % data = prepareEnfaceMotionVisualization(filterResult, reconstructionResult,
 %     geometry, 'MedianWindow', [3 3])
 %
 % Inputs are the filtered surface phase (lateral-by-time), the reconstruction
-% crop/time sampling and the raster acquisition geometry. Every raster
+% crop/time sampling and a raster or polar acquisition geometry. Every MB
 % position is synchronized to its own excitation trigger, so one time sample
 % across all positions forms one en-face frame. Display processing only:
-% FIR delay is compensated visually, each pixel's temporal mean is removed and
-% an optional spatial median is applied per frame. Scientific arrays are not
-% modified. Output frames use layout y_x_time with Cartesian x/y axes in mm,
-% positions measured from the first acquired A-line/B-scan.
+% FIR delay is compensated visually, each position's temporal mean is removed,
+% positions are mapped onto the geometry.enface grid and an optional spatial
+% median is applied per frame. Scientific arrays are not modified. Output
+% frames use layout y_x_time with Cartesian x/y axes in mm: raster positions
+% are placed exactly, measured from the first acquired A-line/B-scan; polar
+% positions are linearly interpolated around the scan center, and grid points
+% outside the scanned area are invalid.
 
     parser = inputParser;
     addParameter(parser, 'MedianWindow', [3 3], @valid_median_window);
@@ -20,11 +23,10 @@ function data = prepareEnfaceMotionVisualization(filterResult, ...
 
     validate_inputs(filterResult, reconstructionResult, geometry);
     values = double(filterResult.surface.values);
-    samplesPerBmode = double(geometry.samples_per_bmode);
-    bmodeCount = double(geometry.bmode_count);
-    if size(values, 1) ~= samplesPerBmode * bmodeCount
+    enface = geometry.enface;
+    if size(values, 1) ~= size(enface.operator, 2)
         error('OCE:Plotting:InvalidEnfaceGeometry', ...
-            'Surface rows must equal samples_per_bmode * bmode_count.');
+            'Surface rows must equal the en-face lateral sample count.');
     end
 
     visualDelay = double(filterResult.design.delay_samples) * ...
@@ -44,14 +46,15 @@ function data = prepareEnfaceMotionVisualization(filterResult, ...
     values(invalid, :) = 0;
     values = values - mean(values, 2);
 
-    % Storage order is fast-axis position within each B-scan, then B-scan.
-    fastSlowTime = reshape(values, samplesPerBmode, bmodeCount, []);
-    invalidFastSlow = reshape(invalid, samplesPerBmode, bmodeCount);
-    % Raster B-scans run along x and step along y: frames are [y, x, time].
-    frames = permute(fastSlowTime, [2 1 3]);
-    invalidYX = invalidFastSlow.';
-    xAxisMm = double(geometry.bmode_lateral_axis_mm(:)');
-    yAxisMm = double(geometry.raster.slow_axis_mm(:)');
+    % The en-face operator maps lateral samples onto [y, x] grid pixels; a
+    % pixel that uses an invalid sample, or lies outside the scan, is invalid.
+    gridSize = size(enface.coverage);
+    frames = reshape(full(enface.operator * values), ...
+        gridSize(1), gridSize(2), []);
+    invalidYX = reshape(full(enface.operator * double(invalid)) > 0, ...
+        gridSize) | ~enface.coverage;
+    xAxisMm = double(enface.x_axis_mm(:)');
+    yAxisMm = double(enface.y_axis_mm(:)');
 
     for timeIndex = 1:size(frames, 3)
         frames(:, :, timeIndex) = oce.plotting.postprocessMotionOverlayFrame( ...
@@ -109,12 +112,9 @@ function validate_inputs(filterResult, reconstructionResult, geometry)
         error('OCE:Plotting:InvalidEnfaceMotion', ...
             'reconstruction_result crop and time sampling are required.');
     end
-    if ~isstruct(geometry) || ~isfield(geometry, 'raster') || ...
-            ~isfield(geometry, 'samples_per_bmode') || ...
-            ~isfield(geometry, 'bmode_count') || ...
-            ~isfield(geometry, 'bmode_lateral_axis_mm')
+    if ~isstruct(geometry) || ~isfield(geometry, 'enface')
         error('OCE:Plotting:InvalidEnfaceGeometry', ...
-            'En-face motion requires raster acquisition geometry.');
+            'En-face motion requires a raster or polar acquisition geometry.');
     end
 end
 

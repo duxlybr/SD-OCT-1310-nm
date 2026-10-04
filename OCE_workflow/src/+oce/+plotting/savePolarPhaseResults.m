@@ -1,5 +1,7 @@
 function [artifacts, polarResults] = savePolarPhaseResults(oceResult, outputDirectory, varargin)
 %SAVEPOLARPHASERESULTS Render and persist phase-speed/thickness polar plots.
+% FilePrefix (default "") starts every file name, e.g. the acquisition
+% name: <FilePrefix>_<name>.
 
     if ~isfolder(outputDirectory)
         error('OCE:Plotting:InvalidOutputDirectory', ...
@@ -14,7 +16,12 @@ function [artifacts, polarResults] = savePolarPhaseResults(oceResult, outputDire
     addParameter(p, 'CentralFrequencyHz', [], ...
         @(x) isempty(x) || (isnumeric(x) && isscalar(x) && isfinite(x)));
     addParameter(p, 'ComparePhaseGradient', true, @islogical);
+    addParameter(p, 'FilePrefix', "", @(value) ischar(value) || (isstring(value) && isscalar(value)));
     parse(p, varargin{:});
+    stems = ["PolarThickness"; "PolarPhaseSpeed"];
+    if strlength(p.Results.FilePrefix) > 0
+        stems = string(p.Results.FilePrefix) + "_" + stems;
+    end
 
     templateFile = string(p.Results.TemplateFile);
     if strlength(templateFile) > 0 && ~isfile(templateFile)
@@ -32,10 +39,10 @@ function [artifacts, polarResults] = savePolarPhaseResults(oceResult, outputDire
         'ComparePhaseGradient', p.Results.ComparePhaseGradient);
 
     artifacts = [ ...
-        string(fullfile(outputDirectory, 'PolarThickness.fig')); ...
-        string(fullfile(outputDirectory, 'PolarThickness.png')); ...
-        string(fullfile(outputDirectory, 'PolarPhaseSpeed.fig')); ...
-        string(fullfile(outputDirectory, 'PolarPhaseSpeed.png'))];
+        string(fullfile(outputDirectory, stems(1) + ".fig")); ...
+        string(fullfile(outputDirectory, stems(1) + ".png")); ...
+        string(fullfile(outputDirectory, stems(2) + ".fig")); ...
+        string(fullfile(outputDirectory, stems(2) + ".png"))];
 
     saveas(figures(1), artifacts(1));
     saveas(figures(1), artifacts(2));
