@@ -42,6 +42,8 @@ class CameraROITests(unittest.TestCase):
         scan = ScanParameters(x_length_mm=6, y_length_mm=4, center_x_mm=1, center_y_mm=2)
         self.assertEqual(pattern_outline(scan), [("rectangle", (-2, 0, 4, 4))])
         self.assertEqual(pattern_outline(replace(scan, pattern=ScanPattern.MERIDIANS)), [("oval", (-2, 0, 4, 4))])
+        for pattern in (ScanPattern.RINGS, ScanPattern.SPIRAL):
+            self.assertEqual(pattern_outline(replace(scan, pattern=pattern)), [("oval", (-2, 0, 4, 4))])
         self.assertEqual(pattern_outline(replace(scan, pattern=ScanPattern.CROSSHAIR)),
                          [("line", (-2, 2, 4, 2)), ("line", (1, 0, 1, 4))])
         self.assertEqual(pattern_outline(replace(scan, pattern=ScanPattern.LINEAR, orientation=Orientation.VERTICAL)), [("line", (1, 0, 1, 4))])

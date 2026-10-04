@@ -225,6 +225,46 @@ class ScanPlannerTests(unittest.TestCase):
         np.testing.assert_allclose(lines[0][:, 1], 0.0, atol=1e-12)
         np.testing.assert_allclose(lines[2][:, 0], 0.0, atol=1e-12)
 
+    def test_rings_are_concentric_turns_with_uniform_radial_spacing(self) -> None:
+        scan = ScanParameters(alines=8, bscans=4, m_repetitions=2, sync_points=3,
+                              x_length_mm=4.0, y_length_mm=4.0, center_x_mm=0.5,
+                              pattern=ScanPattern.RINGS)
+        segments = list(ScanPlanner(scan, self.hardware).iter_segments())
+        self.assertEqual(len(segments), 8)  # B rings x M repetitions
+        self.assertEqual(scan.logical_shape_without_pixels, (4, 2, 8))
+        for segment in segments:
+            xy = segment.active_xy_mm - (0.5, 0.0)
+            radius = np.hypot(xy[:, 0], xy[:, 1])
+            np.testing.assert_allclose(radius, 2.0 * (segment.bscan_index + 1) / 4)
+            angles = np.unwrap(np.arctan2(xy[:, 1], xy[:, 0]))
+            np.testing.assert_allclose(np.diff(angles), 2 * np.pi / 8)  # A equal steps, CCW
+            np.testing.assert_allclose(angles[0], 0.0, atol=1e-12)  # every turn starts at +X
+
+    def test_spiral_is_one_continuous_archimedean_path_from_centre_to_edge(self) -> None:
+        scan = ScanParameters(alines=16, bscans=3, x_length_mm=6.0, y_length_mm=4.0,
+                              mode=AcquisitionMode.MB, pattern=ScanPattern.SPIRAL)
+        planner = ScanPlanner(scan, self.hardware)
+        points = np.vstack([planner._line(b) for b in range(scan.bscans)])
+        normalized = points / (3.0, 2.0)  # ellipse semi-axes Lx/2, Ly/2
+        radius = np.hypot(normalized[:, 0], normalized[:, 1])
+        np.testing.assert_allclose(radius, np.arange(48) / 47, atol=1e-12)
+        angles = np.unwrap(np.arctan2(normalized[1:, 1], normalized[1:, 0]))
+        np.testing.assert_allclose(np.diff(angles), 2 * np.pi / 16)
+        segments = list(planner.iter_segments())
+        self.assertEqual(len(segments), 48)  # MB: one segment per position
+        np.testing.assert_allclose(segments[-1].active_xy_mm[0], (3.0 * np.cos(2 * np.pi * 47 / 16),
+                                                                  2.0 * np.sin(2 * np.pi * 47 / 16)))
+
+    def test_polar_patterns_need_both_lengths_and_describe_geometry(self) -> None:
+        for pattern in (ScanPattern.RINGS, ScanPattern.SPIRAL):
+            with self.subTest(pattern=pattern):
+                with self.assertRaises(ConfigurationError):
+                    ScanParameters(x_length_mm=4.0, y_length_mm=0.0, pattern=pattern).validate()
+                header = ScanParameters(pattern=pattern).to_dict()
+                self.assertEqual(header["pattern"], pattern.value)
+                self.assertIn("theta", header["polar_geometry"])
+        self.assertNotIn("polar_geometry", ScanParameters().to_dict())
+
     def test_conversion_uses_confirmed_precise_calibration(self) -> None:
         scan = ScanParameters(
             alines=3,

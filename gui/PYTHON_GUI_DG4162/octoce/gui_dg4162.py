@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import tkinter as tk
 from dataclasses import replace
 from datetime import datetime
@@ -28,7 +29,7 @@ from .gui import MODE_LABELS, ORIENTATION_LABELS, PATTERN_LABELS, _CollapsibleSe
 from .gui_usb import OCTOCEUSBApp
 from .naming import MODE_PREFIX, clean_stem, default_stem, unique_path
 from .paths import ACQUISITIONS_DIR, CONFIG_DIR
-from .sequence import SequenceJob, build_jobs, read_rows, write_template
+from .sequence import DurationModel, SequenceJob, build_jobs, read_rows, sequence_remaining_s, write_template
 from .usb_camera import USBCameraStream
 
 _MODE_LABEL = {mode: label for label, mode in MODE_LABELS.items()}
@@ -61,10 +62,11 @@ class _SequenceWindow:
 
     COLUMNS = (
         ("n", "#", 40), ("fila", "Fila", 45), ("rep", "Rep", 50), ("modo", "Modo", 50),
+        ("patron", "Patrón", 80),
         ("a", "A", 50), ("b", "B", 45), ("m", "M", 55), ("ss", "SS", 45),
         ("mvpp", "mVpp", 60), ("hz", "Hz CH2", 70), ("onda", "Onda", 70),
         ("ms", "Ret. ms", 60), ("ciclos", "Ciclos", 55), ("espera", "Espera s", 65),
-        ("archivo", "Archivo", 330),
+        ("est", "Estimado", 70), ("real", "Real", 70), ("archivo", "Archivo", 300),
     )
 
     def __init__(self, app: "OCTOCEDG4162App") -> None:
@@ -72,7 +74,7 @@ class _SequenceWindow:
         self.window = tk.Toplevel(app.root)
         self.window.title("Secuencia de adquisiciones · Excel")
         self.window.transient(app.root)
-        self.window.geometry("1180x620")
+        self.window.geometry("1320x640")
         self.window.minsize(900, 480)
         self.window.protocol("WM_DELETE_WINDOW", self.window.withdraw)
         self.window.configure(bg="#eef2f7")
@@ -128,12 +130,16 @@ class _SequenceWindow:
         ttk.Progressbar(bottom, variable=self.progress_var, maximum=100.0).grid(row=0, column=0, sticky="ew")
         self.status_var = tk.StringVar(value="Sin secuencia en curso.")
         ttk.Label(bottom, textvariable=self.status_var, style="Sequence.TLabel").grid(row=1, column=0, sticky="w", pady=(4, 0))
+        # Elapsed real time and the running estimate (refined after every acquisition).
+        self.time_var = tk.StringVar(value="")
+        ttk.Label(bottom, textvariable=self.time_var, style="SequenceBold.TLabel").grid(
+            row=2, column=0, sticky="w", pady=(2, 0))
         self.start_button = ttk.Button(bottom, text="Iniciar secuencia", style="Primary.TButton",
                                        command=app._start_sequence, state="disabled")
-        self.start_button.grid(row=0, column=1, rowspan=2, padx=(12, 0))
+        self.start_button.grid(row=0, column=1, rowspan=3, padx=(12, 0))
         self.stop_button = ttk.Button(bottom, text="Detener secuencia", style="Danger.TButton",
                                       command=app._stop_sequence, state="disabled")
-        self.stop_button.grid(row=0, column=2, rowspan=2, padx=(8, 0))
+        self.stop_button.grid(row=0, column=2, rowspan=3, padx=(8, 0))
 
     def show(self) -> None:
         self.window.deiconify()
@@ -175,9 +181,11 @@ class _SequenceWindow:
         if self.app._sequence_active:
             return
         self.app._sequence_jobs = []
+        self.app._sequence_minimums = []
         self.tree.delete(*self.tree.get_children())
         self.start_button.configure(state="disabled")
         self.progress_var.set(0.0)
+        self.time_var.set("")
         try:
             rows = read_rows(self.path_var.get().strip())
             jobs, errors = build_jobs(
@@ -190,24 +198,33 @@ class _SequenceWindow:
             self.summary_var.set(f"Secuencia NO válida · {len(errors)} problema(s). Corrija el Excel y recargue.")
             return
         planned: set[Path] = set()
-        total_s = 0.0
+        minimums = [self.app._job_duration_s(job) for job in jobs]
+        model = self.app._duration_model()
         for index, job in enumerate(jobs):
             path = self.app._job_output_path(job, planned)
             planned.add(path)
-            total_s += self.app._job_duration_s(job) + (job.wait_s if index < len(jobs) - 1 else 0.0)
             g = job.generator
             self.tree.insert("", "end", iid=str(index), values=(
                 index + 1, job.row, f"{job.repetition}/{job.repetitions}", MODE_PREFIX[job.mode],
+                _PATTERN_LABEL[job.pattern].split(" ")[0],
                 job.alines, job.bscans, job.m_repetitions, job.sync_points,
                 f"{g.ch1_vpp * 1000:g}", f"{g.ch2_frequency_hz:g}", waveform_label(g.ch2_waveform),
-                f"{g.ch2_delay_ms:g}", g.ch2_burst_cycles, f"{job.wait_s:g}", str(path),
+                f"{g.ch2_delay_ms:g}", g.ch2_burst_cycles, f"{job.wait_s:g}",
+                _duration(model.predict(minimums[index])), "", str(path),
             ))
         self.app._sequence_jobs = jobs
+        self.app._sequence_minimums = minimums
+        waits = [job.wait_s for job in jobs]
+        total_s = sequence_remaining_s(minimums, waits, 0, model)
         confirm_rows = sorted({job.row for job in jobs if job.generator.ch1_vpp > WARNING_CH1_VPP})
         note = f" · CH1 > 1 Vpp en filas {', '.join(map(str, confirm_rows))}" if confirm_rows else ""
         self.summary_var.set(
             f"Secuencia válida: {len(jobs)} adquisiciones de {len({j.row for j in jobs})} filas · "
-            f"duración mínima estimada {_duration(total_s)}{note}"
+            f"tiempo estimado {_duration(total_s)} (mínimo sin preparación "
+            f"{_duration(sum(minimums) + sum(waits[:-1]))}){note}"
+        )
+        self.time_var.set(
+            f"Tiempo estimado {_duration(total_s)} · se recalcula con la duración real de cada adquisición."
         )
         self.start_button.configure(state="normal")
 
@@ -216,6 +233,14 @@ class _SequenceWindow:
         self.errors.delete("1.0", "end")
         self.errors.insert("end", "\n".join(errors) if errors else "Sin errores.")
         self.errors.configure(state="disabled")
+
+    def set_times(self, estimates: list[float], actuals: dict[int, float]) -> None:
+        """Refresh the per-acquisition 'Estimado' / 'Real' columns."""
+        for index, estimate in enumerate(estimates):
+            iid = str(index)
+            if self.tree.exists(iid):
+                self.tree.set(iid, "est", _duration(estimate))
+                self.tree.set(iid, "real", _duration(actuals[index]) if index in actuals else "")
 
     def mark(self, index: int, tag: str) -> None:
         iid = str(index)
@@ -367,6 +392,16 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._sequence_after: str | None = None
         self._sequence_window: _SequenceWindow | None = None
         self._current_job: SequenceJob | None = None
+        # Sequence timing: (minimum, real) s of every completed sequence
+        # acquisition this session; it refines the estimate of the next ones.
+        self._timing_samples: list[tuple[float, float]] = []
+        self._sequence_minimums: list[float] = []
+        self._sequence_actuals: dict[int, float] = {}
+        self._sequence_t0: float | None = None
+        self._job_t0: float | None = None
+        self._wait_until: float | None = None
+        self._sequence_initial_s = 0.0
+        self._sequence_clock: str | None = None
         self._link_ok = False
         self._link_stop = threading.Event()
         self._link_thread: threading.Thread | None = None
@@ -1142,6 +1177,36 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             + scan.oce_trigger_segments * hardware.oce_post_hold_points(scan)
         ) / hardware.effective_line_rate_hz
 
+    def _duration_model(self) -> DurationModel:
+        return DurationModel.fit(self._timing_samples)
+
+    def _sequence_remaining_s(self, model: DurationModel) -> float:
+        waits = [job.wait_s for job in self._sequence_jobs]
+        now = time.monotonic()
+        if self._job_t0 is not None:
+            return sequence_remaining_s(self._sequence_minimums, waits, self._sequence_index, model,
+                                        job_elapsed_s=now - self._job_t0)
+        wait_left = 0.0 if self._wait_until is None else self._wait_until - now
+        return sequence_remaining_s(self._sequence_minimums, waits, self._sequence_index, model,
+                                    wait_left_s=wait_left)
+
+    def _tick_sequence_clock(self) -> None:
+        """Once per second: elapsed real time, time left and the end-time estimate."""
+        self._sequence_clock = None
+        window = self._sequence_window
+        if not self._sequence_active or self._sequence_t0 is None:
+            return
+        if window is not None and window.window.winfo_exists():
+            elapsed = time.monotonic() - self._sequence_t0
+            remaining = self._sequence_remaining_s(self._duration_model())
+            end = datetime.fromtimestamp(time.time() + remaining)
+            window.time_var.set(
+                f"Transcurrido {_duration(elapsed)} · restante ≈ {_duration(remaining)} · "
+                f"total estimado ≈ {_duration(elapsed + remaining)} · fin ≈ {end:%H:%M:%S} "
+                f"(estimado al inicio {_duration(self._sequence_initial_s)})"
+            )
+        self._sequence_clock = self.root.after(1000, self._tick_sequence_clock)
+
     def _job_output_path(self, job: SequenceJob, taken: set[Path]) -> Path:
         folder = Path(job.folder) if job.folder else self._folder()
         generator = self.gen_enabled_var.get()
@@ -1209,12 +1274,23 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             return
         self._sequence_active = True
         self._sequence_index = 0
+        self._sequence_actuals = {}
+        self._job_t0 = self._wait_until = None
+        model = self._duration_model()
+        self._sequence_initial_s = sequence_remaining_s(
+            self._sequence_minimums, [job.wait_s for job in jobs], 0, model)
+        window.set_times([model.predict(m) for m in self._sequence_minimums], {})
+        self._sequence_t0 = time.monotonic()
         for index in range(len(jobs)):
             window.mark(index, "")
         window.set_running(True)
         self.sequence_button.configure(text="Secuencia en curso…")
-        self._append_log(f"Secuencia iniciada: {len(jobs)} adquisiciones.")
+        self._append_log(
+            f"Secuencia iniciada: {len(jobs)} adquisiciones, tiempo estimado {_duration(self._sequence_initial_s)}."
+        )
         self._run_sequence_job()
+        if self._sequence_active:
+            self._tick_sequence_clock()
 
     def _run_sequence_job(self) -> None:
         self._sequence_after = None
@@ -1223,6 +1299,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         index = self._sequence_index
         job = jobs[index]
         self._current_job = job
+        self._wait_until = None
+        if not self._retrying or self._job_t0 is None:
+            self._job_t0 = time.monotonic()
         self._apply_job_to_gui(job)
         if window is not None:
             window.mark(index, "current")
@@ -1250,12 +1329,21 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             label = "detenida" if state == EngineState.STOPPED.value else "con error"
             self._finish_sequence(f"Secuencia abortada: adquisición {index + 1}/{len(jobs)} {label}.")
             return
+        if self._job_t0 is not None:
+            actual = time.monotonic() - self._job_t0
+            self._sequence_actuals[index] = actual
+            if index < len(self._sequence_minimums):
+                self._timing_samples.append((self._sequence_minimums[index], actual))
+        self._job_t0 = None
         if window is not None:
             window.mark(index, "done")
+            model = self._duration_model()
+            window.set_times([model.predict(m) for m in self._sequence_minimums], self._sequence_actuals)
         self._sequence_index += 1
         if self._sequence_index >= len(jobs):
             self._finish_sequence(f"Secuencia completa: {len(jobs)} adquisiciones.")
             return
+        self._wait_until = time.monotonic() + max(0.0, jobs[index].wait_s)
         self._sequence_wait(jobs[index].wait_s)
 
     def _sequence_wait(self, remaining_s: float) -> None:
@@ -1296,8 +1384,19 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             except tk.TclError:
                 pass
             self._sequence_after = None
+        if self._sequence_clock is not None:
+            try:
+                self.root.after_cancel(self._sequence_clock)
+            except tk.TclError:
+                pass
+            self._sequence_clock = None
+        elapsed = None if self._sequence_t0 is None else time.monotonic() - self._sequence_t0
+        self._sequence_t0 = self._job_t0 = self._wait_until = None
         self._sequence_active = False
         self._current_job = None
+        if elapsed is not None:
+            message += (f" Tiempo real {_duration(elapsed)} "
+                        f"(estimado al inicio {_duration(self._sequence_initial_s)}).")
         self._append_log(message)
         self._update_target()
         if hasattr(self, "sequence_button"):
@@ -1307,6 +1406,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             if message.startswith("Secuencia completa"):
                 window.progress_var.set(100.0)
             window.status_var.set(message)
+            if elapsed is not None:
+                window.time_var.set(
+                    f"Tiempo real {_duration(elapsed)} · estimado al inicio {_duration(self._sequence_initial_s)}"
+                )
             window.set_running(False)
 
     # -- shutdown ---------------------------------------------------------------

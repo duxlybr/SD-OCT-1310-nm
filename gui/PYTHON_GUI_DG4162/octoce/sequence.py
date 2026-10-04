@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from .config import AcquisitionMode, Orientation, ScanPattern
 from .dg4162 import CH2_WAVEFORMS, Excitation, GeneratorSettings, waveform_scpi
@@ -15,7 +15,7 @@ SHEET_NAME = "Secuencia"
 # (column key, description, allowed values / unit, example rows)
 COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("modo", "OCE = MB-mode (B→A→M) · OCT = BM-mode (B→M→A)", "OCE, OCT (también MB, BM)"),
-    ("patron", "Patrón de barrido", "Raster, Crosshair, Meridianos, Lineal"),
+    ("patron", "Patrón de barrido", "Raster, Crosshair, Meridianos, Lineal, Anillos, Espiral"),
     ("orientacion", "Solo para patrón Lineal", "Horizontal, Vertical"),
     ("a_lines", "Cantidad de A-lines", "entero ≥ 1"),
     ("b_scans", "Cantidad de B-scans", "entero ≥ 1"),
@@ -57,6 +57,12 @@ _PATTERNS = {
     "polar": ScanPattern.MERIDIANS,
     "lineal": ScanPattern.LINEAR,
     "linear": ScanPattern.LINEAR,
+    "anillos": ScanPattern.RINGS,
+    "anillos concéntricos": ScanPattern.RINGS,
+    "anillos concentricos": ScanPattern.RINGS,
+    "rings": ScanPattern.RINGS,
+    "espiral": ScanPattern.SPIRAL,
+    "spiral": ScanPattern.SPIRAL,
 }
 _MODES = {
     "oce": AcquisitionMode.MB, "mb": AcquisitionMode.MB, "mb_mode": AcquisitionMode.MB,
@@ -86,6 +92,70 @@ class SequenceJob:
     wait_s: float
     name: str
     folder: str
+
+
+# Preparation per acquisition (generator programming, NI arming, file header
+# and closing) assumed until real acquisitions of this session are measured.
+DEFAULT_OVERHEAD_S = 3.0
+
+
+@dataclass(frozen=True, slots=True)
+class DurationModel:
+    """Real duration ≈ scale × minimum duration + overhead per acquisition."""
+
+    scale: float = 1.0
+    overhead_s: float = DEFAULT_OVERHEAD_S
+
+    def predict(self, minimum_s: float) -> float:
+        return self.scale * minimum_s + self.overhead_s
+
+    @classmethod
+    def fit(cls, samples: Sequence[tuple[float, float]], recent: int = 20) -> "DurationModel":
+        """Fit (minimum, real) seconds of completed acquisitions; newest ``recent`` only.
+
+        With acquisitions of clearly different length both terms are fitted by
+        least squares; otherwise the extra time is all overhead (scale 1).
+        """
+        samples = list(samples)[-recent:]
+        if not samples:
+            return cls()
+        xs = [float(x) for x, _y in samples]
+        ys = [float(y) for _x, y in samples]
+        mean_x, mean_y = sum(xs) / len(xs), sum(ys) / len(ys)
+        spread = max(xs) - min(xs)
+        if len(xs) >= 2 and spread >= max(1.0, 0.2 * mean_x):
+            sxx = sum((x - mean_x) ** 2 for x in xs)
+            sxy = sum((x - mean_x) * (y - mean_y) for x, y in zip(xs, ys))
+            scale = min(5.0, max(1.0, sxy / sxx))
+        else:
+            scale = 1.0
+        return cls(scale, max(0.0, mean_y - scale * mean_x))
+
+
+def sequence_remaining_s(
+    minimums: Sequence[float],
+    waits: Sequence[float],
+    index: int,
+    model: DurationModel,
+    *,
+    job_elapsed_s: float | None = None,
+    wait_left_s: float = 0.0,
+) -> float:
+    """Estimated time left; jobs before ``index`` are done.
+
+    ``job_elapsed_s`` is set while job ``index`` runs; otherwise the series is
+    waiting ``wait_left_s`` before starting it. ``waits[j]`` follows job j.
+    """
+    if index >= len(minimums):
+        return 0.0
+    current = model.predict(minimums[index])
+    if job_elapsed_s is not None:
+        total = max(0.0, current - job_elapsed_s)
+    else:
+        total = current + max(0.0, wait_left_s)
+    for j in range(index + 1, len(minimums)):
+        total += waits[j - 1] + model.predict(minimums[j])
+    return total
 
 
 def _blank(value: Any) -> bool:
@@ -294,7 +364,7 @@ def write_template(path: str | Path) -> Path:
         validation.add(f"{letter}2:{letter}1000")
 
     dropdown("modo", ["OCE", "OCT"])
-    dropdown("patron", ["Raster", "Crosshair", "Meridianos", "Lineal"])
+    dropdown("patron", ["Raster", "Crosshair", "Meridianos", "Lineal", "Anillos", "Espiral"])
     dropdown("orientacion", ["Horizontal", "Vertical"])
     dropdown("excitacion", [Excitation.NON_CONTACT.value, Excitation.CONTACT.value])
     dropdown("ch2_forma_onda", list(CH2_WAVEFORMS))

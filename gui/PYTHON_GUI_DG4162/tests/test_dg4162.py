@@ -20,7 +20,7 @@ from octoce.dg4162 import (
     check_ch1_vpp,
 )
 from octoce.naming import clean_stem, default_stem, unique_path
-from octoce.sequence import build_jobs, read_rows, write_template
+from octoce.sequence import DurationModel, build_jobs, read_rows, sequence_remaining_s, write_template
 
 
 # Instrument registers for the default base configuration (BaseSetup()).
@@ -473,6 +473,30 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual(first.generator.ch2_waveform, "PULS")
         self.assertEqual(first.wait_s, 10.0)
         self.assertEqual(jobs[-1].name, "referencia_OCT")
+
+    def test_polar_pattern_names(self) -> None:
+        rows = [(2, {"patron": name}) for name in ("Anillos", "anillos concéntricos", "Espiral", "spiral")]
+        jobs, errors = build_jobs(rows, DEFAULTS)
+        self.assertEqual(errors, [])
+        self.assertEqual([job.pattern for job in jobs], [ScanPattern.RINGS] * 2 + [ScanPattern.SPIRAL] * 2)
+
+    def test_duration_model_learns_overhead_then_scale(self) -> None:
+        self.assertEqual(DurationModel.fit([]).predict(10.0), 13.0)  # default 3 s preparation
+        one = DurationModel.fit([(10.0, 14.0)])
+        self.assertEqual((one.scale, one.overhead_s), (1.0, 4.0))
+        two = DurationModel.fit([(10.0, 14.0), (30.0, 36.0)])  # real = 1.1 x min + 3
+        self.assertAlmostEqual(two.scale, 1.1)
+        self.assertAlmostEqual(two.overhead_s, 3.0)
+        self.assertGreaterEqual(DurationModel.fit([(10.0, 5.0), (20.0, 6.0)]).scale, 1.0)
+
+    def test_sequence_remaining_time(self) -> None:
+        model = DurationModel(1.0, 2.0)
+        minimums, waits = [10.0, 20.0, 30.0], [5.0, 7.0, 9.0]  # the last wait is never used
+        self.assertEqual(sequence_remaining_s(minimums, waits, 0, model), 12 + 5 + 22 + 7 + 32)
+        self.assertEqual(sequence_remaining_s(minimums, waits, 1, model, job_elapsed_s=4.0), 18 + 7 + 32)
+        self.assertEqual(sequence_remaining_s(minimums, waits, 1, model, job_elapsed_s=99.0), 7 + 32)
+        self.assertEqual(sequence_remaining_s(minimums, waits, 2, model, wait_left_s=3.0), 3 + 32)
+        self.assertEqual(sequence_remaining_s(minimums, waits, 3, model), 0.0)
 
     def test_blank_cells_use_gui_values_and_all_errors_are_reported(self) -> None:
         rows = [
@@ -989,6 +1013,8 @@ class DG4162GuiTests(unittest.TestCase):
         window.path_var.set(str(path))
         window.load()
         self.assertEqual(len(app._sequence_jobs), 3)
+        self.assertIn("tiempo estimado", window.summary_var.get())
+        self.assertTrue(all(window.tree.set(iid, "est") for iid in window.tree.get_children()))
         with patch("octoce.gui_dg4162.messagebox.askyesno", return_value=True), \
                 patch("octoce.gui.messagebox.showerror") as error:
             app._start_sequence()
@@ -1003,6 +1029,10 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
         self.assertEqual(self.instrument.state[":SOUR2:FUNC"], "SIN")
         self.assertIn("completa", window.status_var.get())
+        self.assertIn("Tiempo real", window.time_var.get())
+        self.assertTrue(all(window.tree.set(iid, "real") for iid in window.tree.get_children()))
+        self.assertEqual(len(app._timing_samples), 3)  # refines the next estimates
+        self.assertIsNone(app._sequence_clock)
 
 
 

@@ -60,6 +60,30 @@ class GuiSmokeTests(unittest.TestCase):
             root.update_idletasks()
             root.destroy()
 
+    def test_polar_patterns_plan_and_draw(self) -> None:
+        root = tk.Tk()
+        try:
+            app = OCTOCEApp(root)
+            app.alines_var.set("64")
+            app.bscans_var.set("4")
+            for label, word in (("Anillos concéntricos", "Anillos: 4 anillo(s)"), ("Espiral", "Espiral: 4 vuelta(s)")):
+                with self.subTest(pattern=label):
+                    app.pattern_var.set(label)
+                    app._refresh_plan()
+                    self.assertIn(word, app.validation_var.get())
+                    self.assertEqual(str(app.start_button.cget("state")), "normal")
+                    app.visualization_tabs.select(app.trajectory_canvas.master)
+                    root.update_idletasks()
+                    app._draw_trajectory()
+                    self.assertTrue(app.trajectory_canvas.find_all())
+            app._active_scan = ScanParameters(alines=8, bscans=2, pattern=ScanPattern.RINGS)
+            app._preview_db = np.zeros((4, 8))
+            app._preview_aline_indexes = np.arange(8)
+            self.assertIn("θ 90.0°", app._cursor_labels(0, 2)[1])
+        finally:
+            root.update_idletasks()
+            root.destroy()
+
     def test_main_and_hardware_dialog_fit_with_scroll(self) -> None:
         root = tk.Tk()
         try:

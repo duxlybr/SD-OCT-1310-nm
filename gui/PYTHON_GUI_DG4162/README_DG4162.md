@@ -102,6 +102,19 @@ amplitud y offset):
      y muestra los nombres de archivo previstos.
    - **Iniciar secuencia** confirma una sola vez y muestra el progreso.
      **Detener secuencia** aborta la adquisición en curso.
+   - **Tiempos.**
+     - Al cargar el Excel se muestra el tiempo estimado total y el de cada
+       adquisición (columna *Estimado*).
+     - Durante la secuencia se ven, cada segundo, el tiempo real transcurrido,
+       el restante, el total estimado y la hora prevista de fin. La columna
+       *Real* registra cuánto tardó cada adquisición, incluidos los reintentos.
+     - El estimado parte de la duración mínima de cada adquisición más ≈ 3 s de
+       preparación. Tras cada adquisición se reajusta con las duraciones reales
+       de la sesión: `real ≈ escala · mínimo + preparación`, sobre las últimas
+       20 adquisiciones.
+     - Las esperas `espera_s` se cuentan exactas.
+     - Al terminar se registran el tiempo real y el estimado inicial.
+   - El patrón admite también `Anillos` y `Espiral` (ver `README.md`, *Patrones*).
 
 ## Diagnóstico
 

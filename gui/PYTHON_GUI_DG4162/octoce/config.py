@@ -26,6 +26,13 @@ class ScanPattern(str, Enum):
     CROSSHAIR = "crosshair"
     MERIDIANS = "meridians"
     LINEAR = "linear"
+    # Polar patterns: one B-scan is one full turn of A positions.
+    RINGS = "rings"  # concentric rings: the polar analogue of a raster
+    SPIRAL = "spiral"  # Archimedean spiral, one turn per B-scan
+
+
+# Closed-curve patterns whose lateral axis is the polar angle.
+POLAR_PATTERNS = (ScanPattern.RINGS, ScanPattern.SPIRAL)
 
 
 class Orientation(str, Enum):
@@ -76,9 +83,11 @@ class ScanParameters:
                 errors.append(f"{label} debe ser un número finito.")
         if self.x_length_mm < 0 or self.y_length_mm < 0:
             errors.append("Las longitudes no pueden ser negativas.")
-        if not stationary and self.pattern in (ScanPattern.RASTER, ScanPattern.MERIDIANS):
+        if not stationary and self.pattern in (ScanPattern.RASTER, ScanPattern.MERIDIANS, *POLAR_PATTERNS):
             if self.x_length_mm <= 0 or self.y_length_mm <= 0:
-                errors.append("Raster y meridianos requieren longitudes X e Y mayores que cero.")
+                errors.append(
+                    "Raster, meridianos, anillos y espiral requieren longitudes X e Y mayores que cero."
+                )
         elif not stationary and self.pattern is ScanPattern.LINEAR:
             selected = self.x_length_mm if self.orientation is Orientation.HORIZONTAL else self.y_length_mm
             if selected <= 0:
@@ -149,7 +158,17 @@ class ScanParameters:
         # Explicit marker lets older unidirectional linear .bin files retain
         # their original interpretation in external readers.
         result["linear_bidirectional"] = self.pattern is ScanPattern.LINEAR
+        if self.pattern in POLAR_PATTERNS:
+            result["polar_geometry"] = polar_geometry(self.pattern)
         return result
+
+
+def polar_geometry(pattern: ScanPattern) -> str:
+    """Position of A-line a (0..A-1) of B-scan b (0..B-1), stored in file headers."""
+    common = "x = cx + rho*Lx/2*cos(theta), y = cy + rho*Ly/2*sin(theta)"
+    if pattern is ScanPattern.RINGS:
+        return f"{common}; rho = (b+1)/B, theta = 2*pi*a/A (counterclockwise)"
+    return f"{common}; k = b*A + a, rho = k/(A*B-1), theta = 2*pi*k/A (counterclockwise, outward)"
 
 
 @dataclass(frozen=True, slots=True)
