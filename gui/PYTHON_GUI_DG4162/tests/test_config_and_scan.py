@@ -225,20 +225,40 @@ class ScanPlannerTests(unittest.TestCase):
         np.testing.assert_allclose(lines[0][:, 1], 0.0, atol=1e-12)
         np.testing.assert_allclose(lines[2][:, 0], 0.0, atol=1e-12)
 
-    def test_rings_are_concentric_turns_with_uniform_radial_spacing(self) -> None:
+    def test_rings_have_alines_proportional_to_radius(self) -> None:
         scan = ScanParameters(alines=8, bscans=4, m_repetitions=2, sync_points=3,
                               x_length_mm=4.0, y_length_mm=4.0, center_x_mm=0.5,
                               pattern=ScanPattern.RINGS)
         segments = list(ScanPlanner(scan, self.hardware).iter_segments())
-        self.assertEqual(len(segments), 8)  # B rings x M repetitions
-        self.assertEqual(scan.logical_shape_without_pixels, (4, 2, 8))
-        for segment in segments:
-            xy = segment.active_xy_mm - (0.5, 0.0)
+        # Ring b = b+1 arcs of A A-lines, each arc one camera frame in BM.
+        self.assertEqual(len(segments), 2 * (1 + 2 + 3 + 4))
+        self.assertEqual(scan.expected_alines, 8 * 2 * 10)
+        self.assertEqual(scan.logical_shape_without_pixels, (20, 8))
+        self.assertTrue(all(s.active_count == 8 and s.oce_trigger_count == 1 for s in segments))
+        self.assertEqual([s.label for s in segments[:5]],
+                         ["B1/M1/arco1", "B1/M2/arco1", "B2/M1/arco1", "B2/M1/arco2", "B2/M2/arco1"])
+        for b in range(4):
+            ring = [s for s in segments if s.bscan_index == b and s.repetition_index == 1]
+            self.assertEqual([s.sweep_index for s in ring], list(range(b + 1)))
+            xy = np.vstack([s.active_xy_mm for s in ring]) - (0.5, 0.0)
             radius = np.hypot(xy[:, 0], xy[:, 1])
-            np.testing.assert_allclose(radius, 2.0 * (segment.bscan_index + 1) / 4)
+            np.testing.assert_allclose(radius, 2.0 * (b + 1) / 4)
+            self.assertEqual(xy.shape[0], 8 * (b + 1))
             angles = np.unwrap(np.arctan2(xy[:, 1], xy[:, 0]))
-            np.testing.assert_allclose(np.diff(angles), 2 * np.pi / 8)  # A equal steps, CCW
-            np.testing.assert_allclose(angles[0], 0.0, atol=1e-12)  # every turn starts at +X
+            np.testing.assert_allclose(angles[0], 0.0, atol=1e-12)  # every ring starts at +X
+            # Equal angular steps over the full ring -> the same arc spacing on every ring.
+            np.testing.assert_allclose(np.diff(angles) * radius[0], 2 * np.pi * 0.5 / 8)
+
+    def test_mb_rings_store_flat_positions(self) -> None:
+        scan = ScanParameters(alines=4, bscans=3, m_repetitions=5, sync_points=2,
+                              x_length_mm=2.0, y_length_mm=2.0, mode=AcquisitionMode.MB,
+                              pattern=ScanPattern.RINGS)
+        segments = list(ScanPlanner(scan, self.hardware).iter_segments())
+        self.assertEqual(len(segments), 4 * 6)
+        self.assertEqual(scan.axis_order, ("position", "m_repetition", "pixel"))
+        self.assertEqual(scan.logical_shape_without_pixels, (24, 5))
+        self.assertEqual(scan.oce_trigger_segments, 24)
+        self.assertEqual([scan.alines_in_bscan(b) for b in range(3)], [4, 8, 12])
 
     def test_spiral_is_one_continuous_archimedean_path_from_centre_to_edge(self) -> None:
         scan = ScanParameters(alines=16, bscans=3, x_length_mm=6.0, y_length_mm=4.0,

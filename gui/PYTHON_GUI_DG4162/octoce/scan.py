@@ -83,13 +83,15 @@ class ScanPlanner:
                 )
             )
         elif p.pattern in POLAR_PATTERNS:
-            # One B-scan = one full turn sampled at A equal angles (the closing
+            # One B-scan = one full turn sampled at equal angles (the closing
             # point is the next turn's start, so it is not repeated).
-            a = np.arange(p.alines, dtype=np.float64)
+            count = p.alines_in_bscan(bscan_index)
+            a = np.arange(count, dtype=np.float64)
             if p.pattern is ScanPattern.RINGS:
                 # Rings b = 0..B-1 at radius (b+1)/B: uniform radial spacing,
                 # including the gap to the centre; the outermost ring is L/2.
-                theta = 2.0 * np.pi * a / p.alines
+                # (b+1)·A points per ring keep the arc spacing constant.
+                theta = 2.0 * np.pi * a / count
                 rho = np.full_like(a, (bscan_index + 1) / p.bscans)
             else:
                 # Archimedean spiral at constant angular speed: the radius
@@ -112,6 +114,13 @@ class ScanPlanner:
 
     def _sweeps(self, bscan_index: int) -> list[tuple[str | None, FloatArray]]:
         p = self.scan
+        if p.pattern is ScanPattern.RINGS:
+            # One sweep (camera frame in BM) per arc of A consecutive points.
+            ring = self._line(bscan_index)
+            return [
+                (f"arco{j + 1}", ring[j * p.alines : (j + 1) * p.alines])
+                for j in range(p.sweeps_in_bscan(bscan_index))
+            ]
         if p.pattern is not ScanPattern.CROSSHAIR:
             return [(None, self._line(bscan_index))]
         u = np.linspace(-1.0, 1.0, p.alines, dtype=np.float64)
@@ -173,7 +182,9 @@ class ScanPlanner:
                         label = f"B{b + 1}/M{m + 1}"
                         if sweep_label is not None:
                             label += f"/{sweep_label}"
-                        oce_trigger_count = 1 if sweep_index == 0 else 0
+                        oce_trigger_count = (
+                            1 if sweep_index == 0 or p.pattern is not ScanPattern.CROSSHAIR else 0
+                        )
                         xy_mm = self._append_oce_hold(
                             xy_mm, active[-1], oce_trigger_count
                         )
@@ -191,7 +202,8 @@ class ScanPlanner:
                             logical_reverse=reverse,
                             sweep_index=sweep_index if sweep_label is not None else None,
                             # Crosshair X+Y is one logical B-scan: PFI13 fires
-                            # on X only, once for each M repetition.
+                            # on X only, once for each M repetition. Ring arcs
+                            # are separate frames, each with its own pulse.
                             oce_trigger_count=oce_trigger_count,
                             bframes_delay_us=p.bframes_delay_us,
                         )
@@ -278,13 +290,20 @@ class ScanPlanner:
         endpoints = self if curved else ScanPlanner(replace(p, alines=2), self.hardware)
         cache: dict[int, list[tuple[str | None, FloatArray]]] = {}
 
+        per_sweep = p.m_repetitions if p.mode is AcquisitionMode.BM else p.alines
+        if p.pattern is ScanPattern.RINGS:  # ring b holds b+1 sweeps
+            starts = per_sweep * np.arange(p.bscans + 1) * (np.arange(p.bscans + 1) + 1) // 2
+
         def position(sequence: int, end: bool) -> FloatArray:
-            sweeps = p.sweeps_per_bscan
+            if p.pattern is ScanPattern.RINGS:
+                b = int(np.searchsorted(starts, sequence, side="right")) - 1
+                local = sequence - int(starts[b])
+            else:
+                b, local = divmod(sequence, per_sweep * p.sweeps_per_bscan)
+            sweeps = p.sweeps_in_bscan(b)
             if p.mode is AcquisitionMode.BM:
-                b, local = divmod(sequence, p.m_repetitions * sweeps)
                 m, sweep = divmod(local, sweeps)
             else:
-                b, local = divmod(sequence, p.alines * sweeps)
                 sweep, a = divmod(local, p.alines)
             if b not in cache:
                 cache[b] = endpoints._sweeps(b)
