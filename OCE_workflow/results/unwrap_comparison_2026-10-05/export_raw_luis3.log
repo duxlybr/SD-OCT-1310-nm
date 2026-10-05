@@ -1,0 +1,15 @@
+                phase_product: "raw_wrapped"
+                  source_file: "C:\Users\proyecto.pi1081\Desktop\OCE_fish\Data Gelatina con Glicerina\OCE_150A_4B_400M_150SS_300mVpp_1000Hz_luis3.bin"
+                  depth_count: 700
+        native_position_count: 75
+                   time_count: 400
+             raw_time_start_s: 0
+               raw_time_end_s: 0.0080
+                 line_rate_hz: 50000
+     valid_native_voxel_count: 38687
+               surface_method: "max_in_search"
+      surface_candidate_count: 75
+    max_abs_wrapped_phase_rad: 3.1416
+               interpretation: "Raw angle(IQ), native sampling, exploratory surface; no mechanical or anatomical ground truth"
+
+RAW_LUIS3_EXPORT_PASS

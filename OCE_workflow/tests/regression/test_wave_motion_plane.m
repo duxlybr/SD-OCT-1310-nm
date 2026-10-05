@@ -54,6 +54,32 @@ function test_wave_motion_plane(~)
     manual = oce.acquisition.loadWaveMotionPlane(filename, options);
     assert(all(abs(manual.offsets.surface_z_m - 70*(5.92e-6/1.4)) < 1e-12, 'all'));
     assert(isequal(size(manual.preview.intensity_db), [171 6]));
+    rawOptions = options;
+    rawOptions.phase_product = "raw_wrapped";
+    rawCut = oce.acquisition.loadWaveMotionPlane(filename,rawOptions);
+    assert(isequal(size(rawCut.wrapped_phase),[171,6,41]));
+    assert(~isfield(rawCut,'motion') && rawCut.t_s(1) == 0);
+    assert(abs(rawCut.row_m(1)-9*(5.92e-6/1.4)) < 1e-12);
+    assert(rawCut.metadata.axial_aggregation == "none_before_unwrap");
+    rawOptions.max_phase_step_rad = .0001;
+    rawBound = oce.acquisition.loadWaveMotionPlane(filename,rawOptions);
+    assert(isequaln(rawCut.wrapped_phase,rawBound.wrapped_phase) && ...
+        isequal(rawCut.valid_mask,rawBound.valid_mask), ...
+        'A Loupas increment bound must not reject raw absolute optical phase.');
+    rawOptions.plane_type = "enface";
+    rawOptions.intensity_floor_db = -250;
+    rawEnface = oce.acquisition.loadWaveMotionPlane(filename,rawOptions);
+    assert(isequal(size(rawEnface.wrapped_phase),[171,18,41]) && ~isfield(rawEnface.metadata,'enface_qc'), ...
+        'Raw enface phase stays on native depth/position coordinates until unwrap.');
+    largeWave = reshape(4*cos(2*pi*(0:40)/41),1,1,41);
+    explicitUnwrap = explicit_unwrap_result(repmat(largeWave,[171,18,1])+10);
+    realPlane = oce.acquisition.finalizeUnwrappedWavePlane(rawEnface,explicitUnwrap);
+    selected = repmat(realPlane.valid_mask,1,1,41);
+    expected = repmat(largeWave,[3,6,1]);
+    assert(any(selected,'all') && max(abs(double(realPlane.motion(selected))-expected(selected))) < 1e-6, ...
+        'Post-unwrap pooling must preserve real phase excursions beyond pi.');
+    assert(~realPlane.metadata.phase_difference_performed && ...
+        ~realPlane.metadata.enface_qc.increment_and_circular_gates_applied);
     assert_product_conversion(filename);
     assert_polar_support();
     for pattern = ["rings","spiral"]
@@ -75,6 +101,13 @@ function test_wave_motion_plane(~)
         assert(max(abs(diff(cut.x_m)-mean(diff(cut.x_m)))) < 1e-10);
         assert(~cut.metadata.bmode_qc.closed_seam);
         if pattern == "spiral", assert(cut.metadata.bmode_qc.resampled); end
+        polarOptions.phase_product = "raw_wrapped";
+        nativeCut = oce.acquisition.loadWaveMotionPlane(polarFilename,polarOptions);
+        assert(~nativeCut.metadata.bmode_qc.resampled && ~isfield(nativeCut,'motion'));
+        placed = oce.acquisition.finalizeUnwrappedWavePlane(nativeCut, ...
+            explicit_unwrap_result(unwrap(double(nativeCut.wrapped_phase),[],3)));
+        assert(max(abs(diff(placed.x_m)-mean(diff(placed.x_m)))) < 1e-10);
+        if pattern == "spiral", assert(placed.metadata.bmode_qc.resampled); end
     end
 end
 
@@ -108,6 +141,29 @@ function assert_product_conversion(filename)
     assert(any(selected,'all'));
     assert(max(abs(double(cut.motion(selected))-expected(selected))) < 1e-6);
     assert(all(isnan(cut.motion(~selected))));
+    rawOptions = options; rawOptions.phase_product = "raw_wrapped";
+    rawCut = oce.acquisition.buildWaveMotionPlane(state,[],borders,rawOptions);
+    assert(isequal(size(rawCut.wrapped_phase),[171,6,27]));
+    expectedRaw = permute(single(angle(reconstruction.complex_volume.values(7:12,:,:))),[2,1,3]);
+    assert(isequal(rawCut.wrapped_phase,expectedRaw), ...
+        'STEPWISE raw phase must equal angle(IQ), bypassing existing phase smoothing/increments.');
+    assert(abs(rawCut.t_s(1)-4/50000) < eps && rawCut.metadata.phase_convention == "angle_IQ");
+    assert(abs(rawCut.row_m(1)-9*(5.92e-6/1.4)) < 1e-12);
+    unwrappedCut = oce.acquisition.finalizeUnwrappedWavePlane(rawCut, ...
+        explicit_unwrap_result(unwrap(double(rawCut.wrapped_phase),[],3)));
+    assert(isequal(rawCut.valid_mask,unwrappedCut.valid_mask));
+    assert(max(abs(mean(unwrappedCut.motion,3)),[],'all','omitnan') < 1e-6);
+    unsafe = explicit_unwrap_result(double(rawCut.wrapped_phase)); unsafe.dimensions = [3,2];
+    assert_rejected_unwrap(rawCut,unsafe);
+    unsafe = explicit_unwrap_result(double(rawCut.wrapped_phase)); unsafe.quantity = "wrapped_phase";
+    assert_rejected_unwrap(rawCut,unsafe);
+    unsafe = explicit_unwrap_result(double(rawCut.wrapped_phase)); unsafe.method = "tie_dct";
+    unsafe.iterations_requested = 8; unsafe.iterations_executed = 3;
+    assert_rejected_unwrap(rawCut,unsafe);
+    rawMissing = borders; rawMissing.indices.posterior(8) = NaN;
+    rejectedRaw = oce.acquisition.buildWaveMotionPlane(state,[],rawMissing,rawOptions);
+    assert(~any(rejectedRaw.valid_mask(:,2)), ...
+        'Both detected borders remain fundamental support in raw phase mode.');
     missing = borders; missing.indices.posterior(8) = NaN;
     rejected = oce.acquisition.buildWaveMotionPlane(state,phase,missing,options);
     assert(~any(rejected.valid_mask(:,2)),'Missing posterior must remain invalid in two-boundary mode.');
@@ -145,6 +201,21 @@ function assert_product_conversion(filename)
         if pattern == "spiral", assert(polarCut.metadata.bmode_qc.resampled); end
         options.plane_type = "enface";
     end
+end
+
+function result = explicit_unwrap_result(values)
+    result = struct('values',values,'quantity',"unwrapped_phase",'units',"rad", ...
+        'method',"sequential",'dimensions',3,'iterations_requested',8,'iterations_executed',0);
+end
+
+function assert_rejected_unwrap(raw,result)
+    caught = false;
+    try
+        oce.acquisition.finalizeUnwrappedWavePlane(raw,result);
+    catch exception
+        caught = strcmp(exception.identifier,'OCE:Acquisition:InvalidUnwrappedWavePhase');
+    end
+    assert(caught,'Native finalization must reject unsafe dimensions or an undeclared unwrap product.');
 end
 
 function assert_polar_support()

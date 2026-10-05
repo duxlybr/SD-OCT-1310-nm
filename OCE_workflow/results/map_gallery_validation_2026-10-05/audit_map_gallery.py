@@ -27,6 +27,7 @@ def main():
                   "bscan_modal_or_elastodynamic" if path.name.startswith("simulation_bscan_") else
                   "eight_independent_scalar_SH" if path.name.startswith("fish_") else
                   "paired_exact_FDTD_XZ" if path.name.startswith("comparison_exact_fdtd_") else
+                  "raw_unwrap_PD2D" if path.name.startswith(("comparison_unwrap_pd2d_", "unwrap_interactive_")) else
                   "unclassified")
         assert family != "unclassified", f"Unrecognized gallery provenance: {path.name}"
         records.append(dict(filename=path.name, family=family, width_px=width,

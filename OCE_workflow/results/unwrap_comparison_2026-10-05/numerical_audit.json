@@ -1,0 +1,11 @@
+{
+  "main_evaluations": 84,
+  "filtered_evaluations": 18,
+  "fish_methods": 3,
+  "experimental_methods": 3,
+  "stage_ablations": 45,
+  "fixed_tie_corrections": 8,
+  "null_accepted_pixels": 0,
+  "all_estimator_methods": "phase_derivative_2d",
+  "no_prefilter_before_raw_unwrap": true
+}

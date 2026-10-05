@@ -6,22 +6,23 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
 % Numerical algorithms belong to dispersion/elastography, not to this UI.
     if nargin < 1, source = []; end
     if nargin < 2, initialOptions = struct(); end
-    data = []; speedResult = []; youngResult = []; busy = false;
-    needsReload=false; loadedSource='';
+    data = []; rawData = []; speedResult = []; youngResult = []; busy = false;
+    needsReload=false; loadedSource=''; rawUnwrapKey=[];
     window = uifigure('Name','OCE | Velocidad y modulo de Young', ...
         'Position',[50 40 1450 870]);
     main = uigridlayout(window,[2 2]);
     main.ColumnWidth = {355,'1x'}; main.RowHeight = {'1x',120};
     panel = uipanel(main,'Title','Parametros y supuestos');
     panel.Layout.Row = 1; panel.Layout.Column = 1;
-    controls = uigridlayout(panel,[45 2]); controls.Scrollable = 'on';
-    controls.ColumnWidth = {'1x',125}; controls.RowHeight = repmat({27},1,45);
+    controls = uigridlayout(panel,[56 2]); controls.Scrollable = 'on';
+    controls.ColumnWidth = {'1x',125}; controls.RowHeight = repmat({27},1,56);
     controls.Padding = [8 8 8 8]; controls.RowSpacing = 5;
     fields = struct(); row = 0;
     label('Archivo BIN / MAT');
     pathField = uieditfield(controls,'text','Value',''); span(pathField);
     choose = uibutton(controls,'Text','Seleccionar archivo','ButtonPushedFcn',@chooseFile); span(choose);
     dropdown('plane_type','Plano',{'auto','enface','bmode'},'auto');
+    dropdown('phase_product','Entrada de fase',{'phase_increment','raw_wrapped'},'phase_increment');
     number('bmode_index','B-mode independiente',1,[1 Inf]);
     number('depth_offset_mm','Profundidad bajo superficie mm',0,[0 Inf]);
     number('depth_band_mm','Espesor del plano mm',0.04,[0.001 Inf]);
@@ -46,7 +47,13 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
         'ButtonPushedFcn',@previewSurface); span(previewButton);
     signalButton = uibutton(controls,'Text','Senal temporal / espectro: elegir punto', ...
         'ButtonPushedFcn',@previewSignal); span(signalButton);
-    dropdown('method','Estimador',{'phase_gradient','directional_phase','reverberant'},'directional_phase');
+    dropdown('method','Estimador',{'phase_derivative_2d','phase_gradient','directional_phase','reverberant'},'directional_phase');
+    dropdown('unwrap_method','Unwrap crudo y modal',{'sequential','least_squares_dct','tie_dct'},'sequential');
+    dropdown('raw_unwrap_domain','Unwrap optico: dominio',{'temporal','temporal_depth'},'temporal');
+    number('unwrap_iterations','Iteraciones fijas TIE DCT',8,[1 10000]);
+    dropdown('pd_geometry','Derivada: geometria',{'auto','lateral','in_plane'},'auto');
+    number('pd_polynomial_order','Orden polinomio derivada',2,[1 2]);
+    checkbox('directional_filter_enabled','Filtrar direccion antes de PD',false);
     number('frequency_hz','Frecuencia mecanica Hz',1000,[1 Inf]);
     number('time_start_ms','Tiempo inicio ms',0,[0 Inf]);
     number('time_end_ms','Tiempo final ms (0 = todo)',0,[0 Inf]);
@@ -82,11 +89,16 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
         if isfield(fields,initialName), fields.(initialName).Value = initialOptions.(initialName); end
     end
     if isstruct(source)
-        data = source; pathField.Value = '<plano en memoria>'; loadedSource=pathField.Value; prepareData();
+        if isfield(source,'wrapped_phase')
+            rawData=source; fields.phase_product.Value='raw_wrapped'; data=finalizeRaw();
+        else
+            data=source;
+        end
+        pathField.Value = '<plano en memoria>'; loadedSource=pathField.Value; prepareData();
     elseif ~isempty(source)
         pathField.Value = char(source);
     end
-    acquisitionNames={'plane_type','bmode_index','depth_offset_mm','depth_band_mm', ...
+    acquisitionNames={'plane_type','phase_product','bmode_index','depth_offset_mm','depth_band_mm', ...
         'depth_start_index','depth_end_index','surface_search_start_index', ...
         'surface_search_end_index','surface_method','surface_index','surface_peak_threshold_db', ...
         'max_phase_step_rad','refractive_index', ...
@@ -120,6 +132,24 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
         row=row+1; h=uilabel(controls,'Text',text); h.Layout.Row=row; h.Layout.Column=1;
         fields.(name)=uidropdown(controls,'Items',items,'Value',value);
         fields.(name).Layout.Row=row; fields.(name).Layout.Column=2;
+    end
+    function checkbox(name,text,value)
+        row=row+1; h=uilabel(controls,'Text',text); h.Layout.Row=row; h.Layout.Column=1;
+        fields.(name)=uicheckbox(controls,'Text','','Value',value);
+        fields.(name).Layout.Row=row; fields.(name).Layout.Column=2;
+    end
+    function plane=finalizeRaw()
+        key={fields.unwrap_method.Value,fields.unwrap_iterations.Value,fields.raw_unwrap_domain.Value};
+        if isequal(key,rawUnwrapKey) && ~isempty(data),plane=data;return;end
+        dimensions=3;
+        if string(fields.raw_unwrap_domain.Value)=="temporal_depth",dimensions=[3 1];end
+        rawMask=repmat(rawData.valid_mask,1,1,size(rawData.wrapped_phase,3)) & ...
+            isfinite(rawData.wrapped_phase);
+        unwrapped=oce.motion.unwrapPhase(rawData.wrapped_phase, ...
+            struct('method',string(fields.unwrap_method.Value), ...
+            'iterations',fields.unwrap_iterations.Value,'dimensions',dimensions,'valid_mask',rawMask));
+        plane=oce.acquisition.finalizeUnwrappedWavePlane(rawData,unwrapped);
+        rawUnwrapKey=key;
     end
     function chooseFile(~,~)
         [file,folder]=uigetfile({'*.bin;*.mat','Adquisicion BIN / plano MAT'},'Plano OCE');
@@ -161,7 +191,12 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
                 if isfield(initialOptions,'OCTSystemOptions'), opts.OCTSystemOptions=initialOptions.OCTSystemOptions; end
                 candidate=oce.acquisition.loadWaveMotionPlane(p,opts);
             end
-            data=candidate; loadedSource=p; needsReload=false; speedResult=[]; youngResult=[]; prepareData();
+            if isfield(candidate,'wrapped_phase')
+                rawData=candidate; rawUnwrapKey=[]; data=finalizeRaw();
+            else
+                rawData=[]; rawUnwrapKey=[]; data=candidate;
+            end
+            loadedSource=p; needsReload=false; speedResult=[]; youngResult=[]; prepareData();
             window.UserData=struct('data',data,'speed_result',[],'young_result',[]);
             cla(axSpeed); cla(axYoung); cla(axQuality);
             imageMap(axAmplitude,data.structural_db,'OCT / soporte del plano','dB');
@@ -204,6 +239,7 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
         setBusy(true,'Estimando numero de onda y verificando soporte...');
         cleanup=onCleanup(@()setBusy(false));
         try
+            if ~isempty(rawData), data=finalizeRaw(); end
             opts=getValues(); opts.speed_range_m_s=[opts.speed_min opts.speed_max];
             opts.time_start_s=opts.time_start_ms/1000;
             opts.time_end_s=opts.time_end_ms/1000;
@@ -217,9 +253,14 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
             window.UserData=struct('data',data,'speed_result',speedResult, ...
                 'young_result',youngResult,'controls',opts,'modulus_options',modulusOptions, ...
                 'source',loadedSource,'created_utc',char(datetime('now','TimeZone','UTC')));
+            if ~isempty(rawData), window.UserData.raw_data=rawData; end
             speedTitle='Velocidad de fase (visualizacion)';
             if string(data.plane_type)=="bmode"
                 speedTitle='Velocidad de fase lateral en B-scan';
+                if string(candidate.options.method)=="phase_derivative_2d" && ...
+                        string(candidate.options.pd_geometry)=="in_plane"
+                    speedTitle='Velocidad de fase en plano XZ (bulk)';
+                end
             end
             imageMap(axSpeed,speedResult.display_speed_m_s,speedTitle,'m/s');
             imageMap(axYoung,youngResult.young_pa/1000,'Young segun modelo','kPa');
@@ -236,6 +277,11 @@ function window = tuneWaveSpeedMaps(source, initialOptions)
                 qc=speedResult.diagnostics.qc_stage_counts;
                 lines{end+1}=sprintf('Soporte entrada %d | armonico %d | amplitud %d | ventanas con soporte %d | aceptados %d', ...
                     qc.input_valid,qc.temporal_valid,qc.amplitude_valid,qc.window_support_valid,qc.accepted);
+            end
+            if ~isempty(rawData) || string(opts.method)=="phase_derivative_2d"
+                lines{end+1}=sprintf('Unwrap %s | TIE iteraciones fijas %d | derivada %s', ...
+                    opts.unwrap_method,opts.unwrap_iterations,opts.pd_geometry);
+                if ~isempty(rawData),lines{end+1}=['Dominio optico: ' opts.raw_unwrap_domain];end
             end
             if ~any(good,'all') && isfield(speedResult.diagnostics,'no_valid_reason')
                 lines{end+1}=char(speedResult.diagnostics.no_valid_reason);

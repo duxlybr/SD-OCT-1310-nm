@@ -15,10 +15,19 @@ function data = buildWaveMotionPlane(state, phaseResult, borderResult, options)
 % 'verified', min_interpolation_resultant=.5, max_triangle_edge_mm=[],
 % max_phase_step_rad=pi. Registration status is declared provenance, not a
 % registration algorithm. Polar remapping uses the existing geometry operator.
+% phase_product='raw_wrapped' explicitly bypasses phaseResult and extracts
+% angle of the existing complex reconstruction with native depth/time axes.
+% phaseResult may be [] in that mode. No smoothing, increment calculation,
+% depth pooling or geometry interpolation occurs before an explicit unwrap.
 
     if nargin < 4, options = struct(); end
     options = resolve_options(options);
-    validate_inputs(state,phaseResult,borderResult);
+    rawMode = options.phase_product == "raw_wrapped";
+    validate_inputs(state,phaseResult,borderResult,rawMode);
+    if rawMode
+        data = build_raw_product(state,borderResult,options);
+        return;
+    end
     reconstruction = state.reconstruction;
     geometry = state.geometry;
     phase = phaseResult.depth_resolved;
@@ -160,7 +169,7 @@ function data = buildWaveMotionPlane(state, phaseResult, borderResult, options)
     end
 end
 
-function validate_inputs(state,phaseResult,borderResult)
+function validate_inputs(state,phaseResult,borderResult,rawMode)
     if ~isstruct(state) || ~isscalar(state) || ~all(isfield(state,{'reconstruction','geometry'}))
         error('OCE:Acquisition:InvalidWavePlaneState','The existing acquisition_state is required.');
     end
@@ -170,17 +179,19 @@ function validate_inputs(state,phaseResult,borderResult)
             geometry.lateral_sample_count ~= size(state.reconstruction.complex_volume.values,1)
         error('OCE:Acquisition:InvalidWavePlaneGeometry','Acquisition geometry must match the reconstruction.');
     end
-    if ~isstruct(phaseResult) || ~isscalar(phaseResult) || ~isfield(phaseResult,'depth_resolved') || ...
-            ~all(isfield(phaseResult.depth_resolved,{'values','quantity','units','layout','estimator','difference_axis'}))
-        error('OCE:Acquisition:MissingDepthWavePhase', ...
-            'phase_result.depth_resolved is required; surface-only products cannot supply deeper layers or B-scans.');
-    end
-    phase = phaseResult.depth_resolved;
-    if phase.layout ~= "lateral_depth_time" || phase.units ~= "rad" || phase.difference_axis ~= "time" || ...
-            ~isnumeric(phase.values) || ~isreal(phase.values) || size(phase.values,1) ~= geometry.lateral_sample_count || ...
-            ~ismember(phase.quantity,["phase_increment","wrapped_phase"]) || ...
-            ~ismember(phase.estimator,["loupas","unwrap_then_difference","direct_phase"])
-        error('OCE:Acquisition:InvalidWavePhaseProduct','Depth phase must be the existing radian lateral_depth_time product.');
+    if ~rawMode
+        if ~isstruct(phaseResult) || ~isscalar(phaseResult) || ~isfield(phaseResult,'depth_resolved') || ...
+                ~all(isfield(phaseResult.depth_resolved,{'values','quantity','units','layout','estimator','difference_axis'}))
+            error('OCE:Acquisition:MissingDepthWavePhase', ...
+                'phase_result.depth_resolved is required; surface-only products cannot supply deeper layers or B-scans.');
+        end
+        phase = phaseResult.depth_resolved;
+        if phase.layout ~= "lateral_depth_time" || phase.units ~= "rad" || phase.difference_axis ~= "time" || ...
+                ~isnumeric(phase.values) || ~isreal(phase.values) || size(phase.values,1) ~= geometry.lateral_sample_count || ...
+                ~ismember(phase.quantity,["phase_increment","wrapped_phase"]) || ...
+                ~ismember(phase.estimator,["loupas","unwrap_then_difference","direct_phase"])
+            error('OCE:Acquisition:InvalidWavePhaseProduct','Depth phase must be the existing radian lateral_depth_time product.');
+        end
     end
     nd = size(state.reconstruction.amplitude.values,1);
     if ~isstruct(borderResult) || ~isscalar(borderResult) || ...
@@ -193,6 +204,87 @@ function validate_inputs(state,phaseResult,borderResult)
             numel(borderResult.indices.posterior) ~= geometry.lateral_sample_count
         error('OCE:Acquisition:InvalidWaveBorderProduct','The detectAndMask product must match reconstruction depth/lateral coordinates.');
     end
+end
+
+function data = build_raw_product(state,borders,options)
+    reconstruction = state.reconstruction;
+    geometry = state.geometry;
+    nl = geometry.lateral_sample_count;
+    nd = size(reconstruction.amplitude.values,1);
+    nt = size(reconstruction.complex_volume.values,3);
+    dz = reconstruction.geometry.depth_sample_interval_mm;
+    dt = reconstruction.geometry.time_sample_interval_s;
+    crop = reconstruction.crop;
+    depth = reconstruction.axes.depth.values(:)' + (crop.depth.start_index_inclusive-1)*dz;
+    time = ((crop.time.start_index_inclusive-1)+(0:nt-1))*dt;
+    surface = interp1(1:nd,depth,double(borders.indices.anterior(:)'),'linear',NaN);
+    if borders.surface_mode == "anterior_posterior"
+        bottom = interp1(1:nd,depth,double(borders.indices.posterior(:)'),'linear',NaN);
+        surfaceValid = isfinite(surface) & isfinite(bottom) & bottom > surface;
+    else
+        bottom = repmat(depth(end),1,nl);
+        surfaceValid = isfinite(surface);
+    end
+    inside = surfaceValid & depth' >= surface & depth' <= bottom & borders.intensityMask;
+    coherence = zeros(nd,nl);
+    for j = 1:nl
+        iq = reshape(reconstruction.complex_volume.values(j,:,:),nd,nt);
+        coherence(:,j) = waveTemporalCoherence(iq,1);
+    end
+    structural = 20*log10(max(reconstruction.amplitude.values,realmin));
+    reference = structural(inside & isfinite(structural));
+    if isempty(reference), referenceDb = NaN; else, referenceDb = max(reference); end
+    structural = structural-referenceDb;
+    phase = permute(single(angle(reconstruction.complex_volume.values)),[2,1,3]);
+    valid = inside & isfinite(structural) & structural >= options.intensity_floor_db & ...
+        coherence >= options.coherence_threshold & all(isfinite(phase),3);
+    planeType = options.plane_type;
+    if planeType == "auto"
+        if ismember(geometry.scan_geometry,["raster","polar"]), planeType = "enface";
+        else, planeType = "bmode"; end
+    end
+    if planeType == "enface" && ~isfield(geometry,'enface')
+        error('OCE:Acquisition:InvalidWavePlaneGeometry','Enface requires an acquired raster or polar geometry.');
+    end
+    if options.bmode_index > geometry.bmode_count || options.preview_bmode > geometry.bmode_count
+        error('OCE:Acquisition:InvalidWavePlaneBmode','Requested B-mode exceeds acquired geometry.');
+    end
+    lateral = 1:options.lateral_stride:geometry.samples_per_bmode;
+    if planeType == "bmode", bmodes = options.bmode_index;
+    else, bmodes = 1:options.raster_line_stride:geometry.bmode_count; end
+    [a,b] = ndgrid(lateral,bmodes);
+    indices = a(:)+(b(:)-1)*geometry.samples_per_bmode;
+    options.plane_type = planeType;
+    metadata = build_metadata(state,struct('estimator',"angle_complex_volume"),borders, ...
+        options,bmodes,lateral,"native_acquired_positions_before_unwrap",struct());
+    metadata.source_kind = "stepwise_raw_phase";
+    metadata.motion_quantity = "wrapped_optical_phase";
+    metadata.phase_convention = "angle_IQ";
+    metadata.time_origin = "acquisition_crop_original_sample";
+    metadata.processing_order = "complex_reconstruction -> raw_wrapped_phase -> unwrap_pending";
+    metadata.axial_aggregation = "none_before_unwrap";
+    metadata.structural_reference_db = referenceDb;
+    metadata.depth_crop_fft_indices = [crop.depth.start_index_inclusive crop.depth.end_index_inclusive];
+    metadata.reconstruction_provenance = reconstruction.provenance;
+    previewBmode = options.preview_bmode;
+    if planeType == "bmode", previewBmode = options.bmode_index; end
+    previewIndices = (previewBmode-1)*geometry.samples_per_bmode+lateral;
+    [previewX,~] = bmode_axis(geometry,previewBmode,lateral);
+    previewDb = reconstruction.log_amplitude.values(:,previewIndices);
+    previewDb = previewDb-max(previewDb,[],'all');
+    [nativeX,~] = bmode_axis(geometry,bmodes(1),lateral);
+    data = struct('wrapped_phase',phase(:,indices,:),'layout',"depth_native_position_time", ...
+        'x_m',nativeX(:),'row_m',depth*1e-3,'t_s',time,'valid_mask',valid(:,indices), ...
+        'structural_db',structural(:,indices),'coherence',coherence(:,indices), ...
+        'plane_type',planeType,'metadata',metadata, ...
+        'native',struct('geometry',geometry,'global_lateral_indices',indices(:)', ...
+            'lateral_indices',lateral,'bmode_indices',bmodes,'surface_z_m',surface(indices)*1e-3, ...
+            'posterior_z_m',bottom(indices)*1e-3, ...
+            'depth_below_surface_m',(depth'-surface(indices))*1e-3, ...
+            'axial_weight',10.^(structural(:,indices)/10).*coherence(:,indices)), ...
+        'preview',struct('intensity_db',previewDb,'depth_m',depth*1e-3,'x_m',previewX(:), ...
+            'surface_m',surface(previewIndices)*1e-3,'posterior_m',bottom(previewIndices)*1e-3, ...
+            'bmode_index',previewBmode));
 end
 
 function [axis,meaning] = bmode_axis(geometry,bmode,lateral)
@@ -246,7 +338,8 @@ function options = resolve_options(value)
     options = struct('plane_type',"auto",'bmode_index',1,'depth_offset_mm',0,'depth_band_mm',.04, ...
         'intensity_floor_db',-35,'coherence_threshold',.15,'lateral_stride',1,'raster_line_stride',1, ...
         'preview_bmode',1,'phase_registration_status',"unverified", ...
-        'min_interpolation_resultant',.5,'max_triangle_edge_mm',[],'max_phase_step_rad',pi);
+        'min_interpolation_resultant',.5,'max_triangle_edge_mm',[],'max_phase_step_rad',pi, ...
+        'phase_product',"phase_increment");
     if ~isstruct(value) || ~isscalar(value) || ...
             (~isempty(fieldnames(value)) && any(~isfield(options,fieldnames(value))))
         error('OCE:Acquisition:InvalidWavePlaneOptions','Unknown or invalid product-to-plane options.');
@@ -255,6 +348,10 @@ function options = resolve_options(value)
     for j = 1:numel(names), options.(names{j}) = value.(names{j}); end
     options.plane_type = lower(string(options.plane_type));
     options.phase_registration_status = lower(string(options.phase_registration_status));
+    options.phase_product = lower(string(options.phase_product));
+    if ~isscalar(options.phase_product) || ~ismember(options.phase_product,["phase_increment","raw_wrapped"])
+        error('OCE:Acquisition:InvalidWavePlaneOptions','phase_product must be phase_increment or raw_wrapped.');
+    end
     if ~isscalar(options.plane_type) || ~ismember(options.plane_type,["auto","bmode","enface"]) || ...
             ~isscalar(options.phase_registration_status) || ...
             ~ismember(options.phase_registration_status,["unverified","assumed_repeatable","verified"])

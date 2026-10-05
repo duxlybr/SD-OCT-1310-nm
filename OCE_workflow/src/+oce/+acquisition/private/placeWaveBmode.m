@@ -64,6 +64,10 @@ function [plane, qc] = placeWaveBmode(plane, geometry, bmode, lateral)
     qc.maximum_native_gap_m = maxGap;
     qc.contributors_valid = ~bad';
     qc.interpolation = "linear_real_phase_increment_on_independent_arc";
+    if isfield(plane,'metadata') && isfield(plane.metadata,'motion_quantity') && ...
+            plane.metadata.motion_quantity == "unwrapped_optical_phase"
+        qc.interpolation = "linear_real_unwrapped_phase_after_native_mean_removal_on_independent_arc";
+    end
 
     function result = map_vector(value)
         result = map_matrix(value(:)');

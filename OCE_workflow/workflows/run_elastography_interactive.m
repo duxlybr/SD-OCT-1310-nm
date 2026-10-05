@@ -14,17 +14,19 @@ run(startup_file);
 
 %% 1. INPUT MODE AND MATERIAL ASSUMPTIONS
 % "bin": file selector / streaming BIN, or a MAT containing data.
-% "stepwise": reuse acquisition_state + phase_result + border_result from
-% run_acquisition_stepwise; no BIN reread, FFT or phase calculation here.
+% "stepwise": reuse acquisition_state + border_result from
+% run_acquisition_stepwise; raw angle(IQ), without previous phase increments.
 input_mode = "bin";  % "bin" | "stepwise"
 source_file = [];
 % Legacy Luis3: frequency_hz=1000. Legacy raster: frequency_hz=2000.
 % New metadata overrides this initial frequency when it is available.
-initial_options = struct('frequency_hz', 1000, 'young_model', "none");
+initial_options = struct('frequency_hz',1000,'young_model',"none", ...
+    'phase_product',"raw_wrapped",'method',"phase_derivative_2d", ...
+    'unwrap_method',"tie_dct",'unwrap_iterations',8,'raw_unwrap_domain',"temporal");
 % Young starts disabled; choose the physical wave model explicitly in the UI.
 
 % Used only in stepwise mode; rerun section 2 to change plane/depth/B-mode.
-plane_options = struct('plane_type', "auto", 'bmode_index', 1, ...
+plane_options = struct('phase_product',"raw_wrapped",'plane_type', "auto", 'bmode_index', 1, ...
     'depth_offset_mm', 0, 'depth_band_mm', .04, ...
     'phase_registration_status', "unverified");
 
@@ -33,11 +35,10 @@ switch input_mode
     case "bin"
         wave_source = source_file;
     case "stepwise"
-        assert(exist('acquisition_state','var')==1 && exist('phase_result','var')==1 && ...
-            exist('border_result','var')==1, ...
-            'Run reconstruction, border detection and depth phase in the stepwise workflow first.');
+        assert(exist('acquisition_state','var')==1 && exist('border_result','var')==1, ...
+            'Run reconstruction and border detection in the stepwise workflow first.');
         wave_source = oce.acquisition.buildWaveMotionPlane( ...
-            acquisition_state, phase_result, border_result, plane_options);
+            acquisition_state, [], border_result, plane_options);
     otherwise
         error('OCE:Workflow:InvalidWaveInput','input_mode must be bin or stepwise.');
 end

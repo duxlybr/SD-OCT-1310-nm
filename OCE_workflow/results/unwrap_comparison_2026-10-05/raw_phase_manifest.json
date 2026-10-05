@@ -1,0 +1,464 @@
+[
+  {
+    "label": "rayleigh_12kPa_original_mesh010mm",
+    "model": "rayleigh",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      11,
+      61,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 353866554,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.685883622542249
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 187243032,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6834947547441748
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      12,
+      102,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 3324207414,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6858922041384088
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1752562912,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6856400205035844
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_500Hz",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      12,
+      165,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 484341101,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6858925147715589
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 3017795596,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6848990938839519
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h120mm_1000Hz",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      13,
+      66,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 4085741405,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6806954811459274
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 751167021,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6857416210569955
+    }
+  },
+  {
+    "label": "rayleigh_12kPa_nu045_1500Hz",
+    "model": "rayleigh",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1902152569,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.680695481145926
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 33485277,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6857781784818093
+    }
+  },
+  {
+    "label": "rayleigh_12kPa_point_source_1000Hz",
+    "model": "rayleigh",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 2607048381,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.680695481145928
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 2138518099,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6848379811929388
+    }
+  },
+  {
+    "label": "rayleigh_12kPa_stiff_inclusion",
+    "model": "rayleigh",
+    "pd_geometry": "lateral",
+    "reference_scope": "homogeneous analytic baseline, not exact heterogeneous wavefield",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 2742573301,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.680695481145928
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1758560032,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6848848272349088
+    }
+  },
+  {
+    "label": "rayleigh_24kPa_1000Hz",
+    "model": "rayleigh",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1962091985,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6806954811459272
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1989230485,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6841750289623356
+    }
+  },
+  {
+    "label": "rayleigh_6kPa_1000Hz",
+    "model": "rayleigh",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 670308717,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6806954811459272
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 2708477513,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6841751123858353
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz_random_static_carrier",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      12,
+      102,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "random independent per pixel",
+      "random_seed": 3674302509,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6858922041384088
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "random independent per pixel",
+      "random_seed": 3264054437,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6856400205035844
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz_phase_noise020rad",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      12,
+      102,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.2,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1242227679,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6858922041384088
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.2,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 2928503788,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6856400205035844
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz_temporal_alias",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      12,
+      102,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 2.5e-06,
+      "static_carrier": "smooth",
+      "random_seed": 218301040,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 5.268413137932528
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 2.5e-06,
+      "static_carrier": "smooth",
+      "random_seed": 2733420638,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 5.267625064073702
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz_temporal_shuffle_null",
+    "model": "lamb_a0_free",
+    "pd_geometry": "lateral",
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "shape": [
+      12,
+      102,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 3254355386,
+      "temporal_shuffle": true,
+      "maximum_true_temporal_step_rad": 1.6858922041384088
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 373770162,
+      "temporal_shuffle": true,
+      "maximum_true_temporal_step_rad": 1.6856400205035844
+    }
+  },
+  {
+    "label": "bulk_shear_oblique_30deg",
+    "model": "bulk_shear",
+    "pd_geometry": "in_plane",
+    "reference_scope": "analytic oblique bulk wave; second column is an independent phase-noise realization, not FDTD",
+    "shape": [
+      41,
+      81,
+      160
+    ],
+    "exact": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 1756545308,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6858923869974276
+    },
+    "fdtd": {
+      "measurement_model": "wrapped optical phase: static carrier + 4pi*n*u/lambda + Gaussian phase noise",
+      "wavelength_m": 1.31e-06,
+      "refractive_index": 1.4,
+      "phase_noise_sigma_rad": 0.03,
+      "peak_displacement_m": 8e-07,
+      "static_carrier": "smooth",
+      "random_seed": 2341390410,
+      "temporal_shuffle": false,
+      "maximum_true_temporal_step_rad": 1.6858923869974276
+    }
+  }
+]

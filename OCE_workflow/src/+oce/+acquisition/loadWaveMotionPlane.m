@@ -22,9 +22,15 @@ function data = loadWaveMotionPlane(binFile, options)
 % surface_index=[] is the raw FFT depth index for manual_index.
 % OCTSystemOptions optionally supplies the existing OCTSystemOptions
 % contract, for an independently reviewed optical calibration.
+% phase_product='phase_increment' (default) preserves the existing path.
+% 'raw_wrapped' instead returns angle(IQ) as wrapped_phase in native
+% [depth,position,time] coordinates. No Loupas estimate, depth pooling,
+% temporal filter/difference or spatial interpolation precedes unwrapping.
+% Pass its explicit unwrap result to finalizeUnwrappedWavePlane afterwards.
 
     if nargin < 2, options = struct(); end
     options = resolve_options(options);
+    rawMode = options.phase_product == "raw_wrapped";
     if ~(ischar(binFile) || (isstring(binFile) && isscalar(binFile)))
         error('OCE:Acquisition:InvalidWavePlaneFile', 'binFile must be one path.');
     end
@@ -68,6 +74,7 @@ function data = loadWaveMotionPlane(binFile, options)
     if isempty(depthEnd), depthEnd = floor(header.samples_in_Aline / 2); end
     depthStart = options.depth_start_index;
     window = options.loupas_axial_window;
+    if rawMode, window = 1; end
     if depthEnd > floor(header.samples_in_Aline / 2) || ...
             depthEnd - depthStart + 1 < window
         error('OCE:Acquisition:InvalidWavePlaneCrop', ...
@@ -104,13 +111,16 @@ function data = loadWaveMotionPlane(binFile, options)
     nz = depthEnd - depthStart - window + 2;
     nx = numel(lateral);
     nt = header.Alines_in_Bframe - 1;
+    if rawMode, nt = header.Alines_in_Bframe; end
     if planeType == "bmode", nr = nz; end
-    motion = zeros(nr, nx, nt, 'single');
-    structural = nan(nr, nx);
-    coherence = nan(nr, nx);
+    if rawMode, nr = nz; planeColumns = nx*numel(bmodes);
+    else, planeColumns = nx; end
+    motion = zeros(nr, planeColumns, nt, 'single');
+    structural = nan(nr, planeColumns);
+    coherence = nan(nr, planeColumns);
     surface = nan(numel(bmodes), nx);
-    inside = false(nr, nx);
-    depthBelow = nan(nr, nx);
+    inside = false(nr, planeColumns);
+    depthBelow = nan(nr, planeColumns);
     previewAmplitude = nan(depthEnd - depthStart + 1, nx);
     depthAxis = [];
     for line = 1:numel(bmodes)
@@ -155,7 +165,8 @@ function data = loadWaveMotionPlane(binFile, options)
                 if line == 1, previewAmplitude(:, column) = amplitude(:, j); end
                 iq = reshape(reconstruction.complex_volume.values(j, :, :), ...
                     size(amplitude, 1), header.Alines_in_Bframe);
-                phase = oce.motion.estimateLoupasPhaseIncrement(iq, window);
+                if rawMode, phase = angle(iq);
+                else, phase = oce.motion.estimateLoupasPhaseIncrement(iq, window); end
                 supportAmplitude = conv(amplitude(:, j), ones(window, 1) / window, 'valid');
                 c = waveTemporalCoherence(iq, window);
                 surfaceIndex = border.Idx(j);
@@ -165,7 +176,14 @@ function data = loadWaveMotionPlane(binFile, options)
                     surfaceMm = NaN;
                 end
                 surface(line, column) = surfaceMm * 1e-3;
-                if planeType == "bmode"
+                if rawMode
+                    nativeColumn = (line-1)*nx+column;
+                    motion(:,nativeColumn,:) = reshape(single(phase),nz,1,nt);
+                    structural(:,nativeColumn) = 20*log10(max(supportAmplitude,realmin));
+                    coherence(:,nativeColumn) = c;
+                    inside(:,nativeColumn) = isfinite(surfaceMm) & depthAxis >= surfaceMm;
+                    depthBelow(:,nativeColumn) = (depthAxis-surfaceMm)*1e-3;
+                elseif planeType == "bmode"
                     motion(:, column, :) = reshape(single(phase), nz, 1, nt);
                     structural(:, column) = 20 * log10(max(supportAmplitude, realmin));
                     coherence(:, column) = c;
@@ -208,7 +226,12 @@ function data = loadWaveMotionPlane(binFile, options)
     structural = structural - referenceDb;
     valid = inside & isfinite(structural) & ...
         structural >= options.intensity_floor_db & coherence >= options.coherence_threshold;
-    if planeType == "bmode"
+    if rawMode
+        % An absolute phase is always in the principal branch. The increment
+        % pi gate belongs to the old incremental path and cannot reject raw
+        % optical phase before an explicitly selected unwrap method.
+        valid = valid & all(isfinite(motion),3);
+    elseif planeType == "bmode"
         valid = valid & all(isfinite(motion),3) & all(abs(motion) <= options.max_phase_step_rad,3);
     end
     % Keep measured rejected traces for diagnosis; valid_mask controls maps.
@@ -235,6 +258,41 @@ function data = loadWaveMotionPlane(binFile, options)
     metadata.surface_search_fft_indices = [searchStart searchEnd];
     previewDb = 20 * log10(max(previewAmplitude, realmin));
     previewDb = previewDb - max(previewDb, [], 'all');
+    if rawMode
+        [a,b] = ndgrid(lateral,bmodes);
+        indices = a(:)+(b(:)-1)*geometry.samples_per_bmode;
+        nativeSurface = reshape(surface',1,[]);
+        data = struct('wrapped_phase',motion,'layout',"depth_native_position_time", ...
+            'x_m',geometry.bmode_lateral_axis_mm(lateral)'*1e-3, ...
+            'row_m',depthAxis(:)'*1e-3,'t_s',(0:nt-1)/(system.a_scan_rate*1000), ...
+            'valid_mask',valid,'structural_db',structural,'coherence',coherence, ...
+            'plane_type',planeType,'metadata',metadata, ...
+            'native',struct('geometry',geometry,'global_lateral_indices',indices(:)', ...
+                'lateral_indices',lateral,'bmode_indices',bmodes, ...
+                'surface_z_m',nativeSurface,'posterior_z_m',repmat(rawDepthAxis(end)*1e-3,1,planeColumns), ...
+                'depth_below_surface_m',depthBelow,'axial_weight',10.^(structural/10).*coherence), ...
+            'preview',struct('intensity_db',previewDb,'depth_m',rawDepthAxis*1e-3, ...
+                'x_m',geometry.bmode_lateral_axis_mm(lateral)'*1e-3, ...
+                'surface_m',surface(1,:),'bmode_index',bmodes(1)));
+        data.metadata.source_kind = "bounded_bin_raw_phase";
+        data.metadata.motion_quantity = "wrapped_optical_phase";
+        data.metadata.motion_estimator = "angle_complex_volume";
+        data.metadata.phase_convention = "angle_IQ";
+        data.metadata.time_origin = "local_response_original_sample";
+        data.metadata.processing_order = "complex_reconstruction -> raw_wrapped_phase -> unwrap_pending";
+        data.metadata.phase_registration_status = options.phase_registration_status;
+        data.metadata.spatial_phase_repeatability_verified = options.phase_registration_status == "verified";
+        data.metadata.phase_registration_performed = false;
+        data.metadata.scan_geometry = geometry.scan_geometry;
+        data.metadata.axial_aggregation = "none_before_unwrap";
+        if planeType == "bmode"
+            [coordinates,qc] = placeWaveBmode(struct('x_m',data.x_m),geometry,bmodes(1),lateral);
+            data.x_m = coordinates.x_m;
+            data.preview.x_m = data.x_m;
+            data.metadata.bmode_qc = qc;
+        end
+        return;
+    end
     data = struct('motion', motion, ...
         'x_m', geometry.bmode_lateral_axis_mm(lateral)' * 1e-3, ...
         'row_m', rowAxis(:)', 't_s', ((0:nt-1) + .5) / (system.a_scan_rate * 1000), ...
@@ -375,7 +433,7 @@ function options = resolve_options(value)
         'surface_peak_threshold_db', 6, 'surface_method', "inherited_threshold", ...
         'surface_index', [], 'show_progress', false, 'OCTSystemOptions', [], ...
         'phase_registration_status',"unverified",'min_interpolation_resultant',.5, ...
-        'max_triangle_edge_mm',[],'max_phase_step_rad',pi);
+        'max_triangle_edge_mm',[],'max_phase_step_rad',pi,'phase_product',"phase_increment");
     if ~isstruct(value) || ~isscalar(value)
         error('OCE:Acquisition:InvalidWavePlaneOptions', 'options must be a scalar struct.');
     end
@@ -387,6 +445,10 @@ function options = resolve_options(value)
         options.(names{i}) = value.(names{i});
     end
     options.plane_type = lower(string(options.plane_type));
+    options.phase_product = lower(string(options.phase_product));
+    if ~isscalar(options.phase_product) || ~ismember(options.phase_product,["phase_increment","raw_wrapped"])
+        error('OCE:Acquisition:InvalidWavePlaneOptions','phase_product must be phase_increment or raw_wrapped.');
+    end
     if ~isscalar(options.plane_type) || ~ismember(options.plane_type, ["auto", "bmode", "enface"])
         error('OCE:Acquisition:InvalidWavePlaneOptions', 'plane_type must be auto, bmode or enface.');
     end

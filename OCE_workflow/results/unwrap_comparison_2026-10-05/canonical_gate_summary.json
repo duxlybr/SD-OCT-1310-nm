@@ -1,0 +1,12 @@
+{
+  "passed": 51,
+  "failed": 2,
+  "total": 53,
+  "update_baseline": false,
+  "failures": [
+    "test_interactive_acquisition_architecture",
+    "test_manual_single_file_workflow_contract"
+  ],
+  "evidence": "canonical_gate.log",
+  "results_csv_source": "Parsed canonical log; runner returned struct, initial writetable export failed after complete suite."
+}

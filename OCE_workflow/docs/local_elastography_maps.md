@@ -11,12 +11,19 @@ documentado en el encabezado. La ausencia de generador queda como dato ausente.
 ## Dos entradas y geometría
 
 En `run_elastography_interactive.m`, `input_mode="bin"` lee el archivo por
-bloques; `input_mode="stepwise"` consume `acquisition_state`, `phase_result`
-y `border_result` ya calculados. La segunda entrada usa
-`oce.acquisition.buildWaveMotionPlane`: no repite lectura BIN, FFT ni fase.
-El contrato requiere fase incremental del propietario de movimiento
-(`unwrap_then_difference` o `loupas`); una fase óptica absoluta envuelta no
-es directamente una señal de movimiento.
+bloques; `input_mode="stepwise"` consume `acquisition_state` y `border_result`
+ya calculados. La segunda entrada usa `oce.acquisition.buildWaveMotionPlane`:
+no repite lectura BIN ni FFT. El driver inicia con `phase_product="raw_wrapped"`
+y `phase_derivative_2d`: conserva `angle(IQ)` en la rejilla nativa de
+profundidad, posición y tiempo. Una fase óptica absoluta envuelta requiere
+unwrap antes de ser usada como señal mecánica.
+
+La interfaz inicia con unwrap óptico temporal por voxel independiente: la fase
+estática de distintos dispersores puede ser aleatoria. `temporal_depth` añade
+un supuesto de continuidad entre profundidades y permanece disponible para
+comparación explícita. Un mapa de velocidad más limpio no demuestra que ese
+supuesto recupere mejor el movimiento crudo. La rama incremental previa sigue
+disponible mediante `phase_product="phase_increment"` y reutiliza `phase_result`.
 
 También puede activar `show_local_wave_maps` en la sección **7C** de
 `run_acquisition_stepwise.m` o **9** de `run_raster_enface_stepwise.m`.
@@ -95,6 +102,7 @@ preview guardado en GUI como calibración cuantitativa.
 
 | Método | Uso principal | Limitación relevante |
 | --- | --- | --- |
+| `phase_derivative_2d` | Derivadas locales del fasor mecánico tras unwrap; polinomio robusto de orden 1 o 2 | El unwrap no separa ondas interferentes ni identifica el modo físico |
 | `phase_gradient` | Campo dominado por una dirección y fase local coherente | Interferencia entre ondas opuestas o varios modos sesga el gradiente |
 | `directional_phase` | Onda propagante con reflexiones; aislar una dirección del fasor | Filtro angular y ventana finitos; no separa modos con igual dirección/número de onda cercano |
 | `reverberant` + `scalar2d` | Campo difuso escalar de ondas en un plano, perfil J0 | No es el modelo axial de un campo volumétrico de corte |
@@ -111,6 +119,68 @@ espectral de un movimiento uniforme como propagación. La amplitud mínima se
 compara también con el campo medido antes del filtro; una banda casi vacía no
 se normaliza a su propio ruido. Esta sustracción exige una apertura suficiente
 para resolver la onda y no identifica por sí sola el modo físico.
+
+### Fase cruda, unwrap y derivada 2D
+
+`workflows/run_phase_unwrap_comparison.m` ejecuta la comparación controlada.
+En la interfaz, **Entrada de fase = raw_wrapped** activa este orden:
+
+1. Reconstrucción OCT y selección de soporte mediante bordes/intensidad;
+   extracción de fase envuelta sin Loupas, diferencia temporal, suavizado,
+   interpolación geométrica ni selección de banda axial.
+2. `oce.motion.unwrapPhase` sobre tiempo (`raw_unwrap_domain="temporal"`,
+   `dimensions=3`) o tiempo y profundidad (`"temporal_depth"`, `[3 1]`),
+   independientemente en cada posición adquirida. Se usa el registro completo;
+   no se enlazan posiciones con speckle distinto ni B-modes independientes.
+3. `oce.acquisition.finalizeUnwrappedWavePlane`: retiro del promedio temporal,
+   agregación axial real e interpolación geométrica con soporte medido.
+4. Selección temporal, ajuste armónico con tendencia y Hann, filtro direccional
+   opcional, unwrap de la fase **del fasor mecánico**, derivada local y QC.
+
+La interfaz comienza con `temporal` en el modo crudo; `temporal_depth` queda
+como comparación con un prior axial explícito. La continuidad del movimiento no implica continuidad de la fase
+óptica absoluta entre scatterers de distintas profundidades. Imponer esa
+continuidad puede introducir saltos temporales aun con un muestreo temporal
+resuelto. La comparación del dominio de unwrap es parte de la validación.
+
+El unwrap óptico recupera movimiento del scatterer; el unwrap modal permite
+derivar la fase espacial de la onda. Son productos distintos. Cambiar método
+o iteraciones vuelve a desenvolver el mismo producto crudo; cambiar sólo las
+ventanas del estimador reutiliza ese producto, sin repetir lectura o FFT.
+El MAT exportado conserva la entrada cruda y la procedencia del procesamiento.
+
+| Unwrap | Comportamiento |
+| --- | --- |
+| `sequential` | Primero tiempo y luego profundidad; respeta los segmentos válidos y depende del orden |
+| `least_squares_dct` | Poisson de mínimos cuadrados sobre gradientes envueltos; puede cambiar los valores de fase si los gradientes ruidosos son inconsistentes |
+| `tie_dct` | TIE DCT con correcciones enteras; devuelve fase cruda más múltiplos de `2*pi`, con un presupuesto fijo de correcciones |
+
+`tie_dct` implementa el método TIE DCT mencionado como TIE_DTC. El control
+`unwrap_iterations=8` significa **un solve inicial y ocho correcciones**, sin
+parada por convergencia. Los otros métodos registran cero correcciones ejecutadas.
+En componentes válidos rectangulares se usa DCT/Neumann; en componentes con
+huecos se resuelve el mismo operador mediante un grafo enmascarado, registrado
+en diagnósticos. Los huecos quedan NaN y cada componente tiene un pistón
+desconocido; la derivada no mezcla componentes desconectados en un ajuste.
+Véase [Zhao et al., 2018](https://doi.org/10.1088/1361-6501/aaec5c).
+
+La derivada 2D estima `c=omega/hypot(kx,krow)` para `pd_geometry="in_plane"`,
+siguiendo el principio de derivación local de la fase mecánica utilizado por
+[Zvietcovich et al., 2020, ecuación 2](https://pmc.ncbi.nlm.nih.gov/articles/PMC10041740/).
+El filtrado direccional y la estimación local 2D también se describen en
+[Liu, Kijanka y Urban, 2021](https://doi.org/10.1364/BOE.416661).
+El polinomio robusto de segundo orden es una extensión de implementación:
+aproxima la curvatura local y evalúa las derivadas en el centro de la ventana;
+el primer orden permite comparar un frente local plano. No se presenta como
+reproducción literal de esos algoritmos. El filtro direccional precede este
+unwrap modal, siempre después del unwrap óptico.
+
+`pd_geometry="auto"` usa `in_plane` en enface y `lateral` en B-scan. En Rayleigh
+o Lamb, profundidad representa la estructura modal y puede cambiar de signo;
+`lateral` calcula `omega/abs(kx)` con una constante independiente por fila,
+sin interpretar ese cambio de fase axial como propagación. Para un campo bulk
+oblicuo medido en XZ seleccione `in_plane`; una proyección lateral produce
+`c/abs(cos(theta))`. La selección debe basarse en la geometría física.
 
 La autocorrelación angular usa las distancias físicas X/Y/Z; el muestreo
 anisótropo de un B-mode no debe tratarse como píxeles cuadrados. Para movimiento

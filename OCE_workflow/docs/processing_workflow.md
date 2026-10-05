@@ -305,3 +305,11 @@ the surface, time/frequency, local estimation and quality rejection. Raster
 data are read in bounded blocks. Young conversion requires an explicit wave
 model. See [local elastography maps](local_elastography_maps.md) for operation,
 physical limitations, bibliography and simulator comparison.
+
+This interactive driver starts with raw wrapped phase and `phase_derivative_2d`.
+Use `workflows/run_phase_unwrap_comparison.m` to compare sequential, least-squares
+DCT and TIE-DCT on the same BIN or reconstructed stepwise IQ/borders. Raw phase
+is unwrapped before temporal processing, averaging or geometry interpolation.
+The TIE budget is an initial solve plus the specified fixed correction count.
+Full native phase volumes can require substantial memory for raster acquisitions;
+crop depth and select positions before loading, without averaging wrapped phase.
