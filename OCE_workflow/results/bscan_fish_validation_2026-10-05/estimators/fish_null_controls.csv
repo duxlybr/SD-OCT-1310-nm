@@ -1,0 +1,5 @@
+control,method,accepted_count,roi_count,accepted_coverage_fraction,median_reported_speed_without_physical_truth,median_consensus_count
+independent_spatial_phase_harmonic,phase_gradient,0,28561,0,NaN,NaN
+independent_spatial_phase_harmonic,directional_phase,0,28561,0,NaN,NaN
+independent_temporal_shuffle,phase_gradient,0,28561,0,NaN,NaN
+independent_temporal_shuffle,directional_phase,0,28561,0,NaN,NaN

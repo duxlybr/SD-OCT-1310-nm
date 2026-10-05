@@ -1,0 +1,18 @@
+homogeneous completed; map coverage 24.69 %
+stiff_inclusion completed; map coverage 24.69 %
+soft_inclusion completed; map coverage 24.69 %
+        case_name           region       truth_pixels    accepted_pixels    coverage_pct    speed_median_m_s    speed_bias_pct    speed_median_abs_error_pct    young_median_kpa    young_bias_pct    young_median_abs_error_pct
+    _________________    ____________    ____________    _______________    ____________    ________________    ______________    __________________________    ________________    ______________    __________________________
+
+    "homogeneous"        "core"                81               81                100            1.9966            -0.33495                0.99285                    11.92            -0.66877                 1.9956
+    "homogeneous"        "background"        2128             2127             99.953            1.9777              -1.282                 1.3996                   11.694             -2.5476                 2.7843
+    "homogeneous"        "interface"         4684             4682             99.957            1.9757             -1.3797                 1.4764                   11.671             -2.7404                  2.935
+    "homogeneous"        "farfield"          6893             6890             99.956            1.9766             -1.3346                 1.4422                   11.682             -2.6515                 2.8752
+    "stiff_inclusion"    "core"                81               81                100             2.854             0.73466                 1.3364                   24.354              1.4747                 2.6907
+    "stiff_inclusion"    "background"        2128             2125             99.859            1.9785               -1.24                 1.3563                   11.704             -2.4645                 2.6942
+    "stiff_inclusion"    "interface"         4684             4679             99.893            2.0339            -0.93844                 2.4299                   12.369             -1.8681                 4.8261
+    "stiff_inclusion"    "farfield"          6893             6885             99.884            2.0069             -1.0406                 2.0078                   12.042             -2.0704                 3.9945
+    "soft_inclusion"     "core"                81               81                100            1.3869             -2.0937                 2.0937                   5.7514             -4.1436                 4.1436
+    "soft_inclusion"     "background"        2128             2126             99.906            1.9735             -1.4888                 1.5581                   11.645             -2.9555                 3.0934
+    "soft_inclusion"     "interface"         4684             4682             99.957            1.7957             -2.6317                 4.2309                    9.641             -5.1941                 8.3347
+    "soft_inclusion"     "farfield"          6893             6889             99.942            1.9194             -2.0644                 2.7634                   11.015             -4.0862                 5.4746

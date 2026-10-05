@@ -1,0 +1,15 @@
+                         surface_method: "max_in_search"
+                     max_phase_step_rad: 6.2832
+                    surface_valid_count: 75
+                      oct_support_count: 44398
+                  old_oct_support_count: 44398
+                      PG_accepted_count: 232
+                  old_PG_accepted_count: 232
+                    PG_speed_median_m_s: 3.0994
+    native_phase_max_abs_difference_rad: 0
+            native_OCT_mask_exact_equal: 1
+                    PG_mask_exact_equal: 1
+        PG_speed_max_abs_difference_m_s: 0
+                         interpretation: "Explicit exploratory candidate surface and increment bound; reproduction does not certify anatomy, repeatability, propagation, Rayleigh mode or accuracy"
+
+EXPLORATORY_BIN_INPUT_CHECK_FINISHED

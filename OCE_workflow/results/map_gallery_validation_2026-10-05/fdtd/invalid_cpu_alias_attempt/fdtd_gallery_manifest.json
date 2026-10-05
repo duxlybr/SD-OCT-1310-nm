@@ -1,0 +1,137 @@
+[
+  {
+    "label": "lamb_a0_homogeneous_12kPa",
+    "geometry": {
+      "size_x_mm": 14,
+      "size_y_mm": 7,
+      "size_z_mm": 0.6,
+      "surface": "plana",
+      "dome_radius_mm": 7.8,
+      "layers": [
+        {
+          "material": {
+            "name": "background_12kPa",
+            "E_kPa": 12,
+            "nu": 0.495,
+            "rho": 1000,
+            "eta_Pa_s": 0,
+            "n": 1.35,
+            "backscatter_db": -55.0,
+            "mu_oct_per_mm": 1.0,
+            "alpha_db_cm_mhz": 0.45,
+            "c_acoustic": 1540.0,
+            "is_fluid": false,
+            "c_fluid_sim": 0.0,
+            "color": "#4c78a8"
+          },
+          "thickness_mm": 0
+        }
+      ],
+      "inclusions": [],
+      "bottom": "libre",
+      "lateral": "absorbente"
+    },
+    "excitation": {
+      "mode": "arf_sin_contacto",
+      "regime": "armonico",
+      "pressure_MPa": 0.007,
+      "carrier_hz": 954900.0,
+      "shape": "linea",
+      "center_x_mm": -5.5,
+      "center_y_mm": 0.0,
+      "size_a_mm": 0.6,
+      "size_b_mm": 12,
+      "angle_deg": 0.0,
+      "focal_depth_mm": 0.5,
+      "dof_mm": 3.0,
+      "ch2_waveform": "Pulso",
+      "ch2_freq_hz": 1000.0,
+      "ch2_duty": 0.5,
+      "ch2_cycles": 1,
+      "ch2_delay_ms": 2.0,
+      "rise_time_us": 50.0,
+      "harmonic_hz": 1000.0,
+      "n_sources": 1,
+      "source_layout": "anillo",
+      "ring_radius_mm": 0,
+      "tip_radius_mm": 0.25,
+      "random_phase": false,
+      "seed": 1,
+      "ramp_periods": 2
+    },
+    "settings": {
+      "cell_mm": 0.1,
+      "ppw": 10.0,
+      "f_max_hz": 0.0,
+      "courant": 0.85,
+      "pml_cells": 12,
+      "pml_R": 0.0001,
+      "duration_ms": 0.0,
+      "record_margin_mm": 0,
+      "record_depth_mm": 0.25,
+      "record_stride": 1,
+      "backend": "cpu",
+      "harmonic_window_periods": 2,
+      "harmonic_min_periods": 12,
+      "harmonic_max_periods": 24,
+      "harmonic_tol": 0.005,
+      "harmonics": 1,
+      "max_cells": 30000000
+    },
+    "record_info": {
+      "backend": "CPU (NumPy)",
+      "celda_mm": 0.1,
+      "restricciones_celda": {
+        "usuario": 0.1
+      },
+      "malla": [
+        165,
+        95,
+        12
+      ],
+      "celdas_M": 0.1881,
+      "dt_max_us": 2.4374885404937823,
+      "c_fluido_sim": 20.133334809925593,
+      "memoria_GB": 0.021576881408691406,
+      "fuentes": "1805 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m\u00b3",
+      "registro": [
+        73,
+        52,
+        5
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          0
+        ]
+      },
+      "dt_us": 2.4330900243309004,
+      "pasos": 4932,
+      "periodos": 12.0,
+      "convergencia_rel": 0.0,
+      "tiempo_s": 96.76242260000436,
+      "advertencias": [
+        "La fuente tiene 6.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+      ]
+    },
+    "source_centers_mm": [
+      [
+        -5.5,
+        0.0
+      ]
+    ],
+    "elapsed_s": 96.79285540001001,
+    "nominal_plate_thickness_mm": 0.6,
+    "axial_solid_node_count": 6,
+    "wavelength_bg_m": 0.0015416067201425205,
+    "warning": "Continuum local model is conditional in heterogeneous regions. Free-plate boundaries are discretized; record cell/thickness resolution."
+  }
+]

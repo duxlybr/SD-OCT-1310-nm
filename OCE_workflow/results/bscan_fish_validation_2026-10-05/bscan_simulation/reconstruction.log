@@ -1,0 +1,9 @@
+rayleigh_exact_xz_snr60 phase_gradient support 100.0% c1.913 E12kPa
+rayleigh_exact_xz_snr60 directional_phase support 100.0% c1.924 E12.14kPa
+rayleigh_exact_xz_snr20 phase_gradient support 100.0% c1.913 E12kPa
+rayleigh_exact_xz_snr20 directional_phase support 100.0% c1.925 E12.16kPa
+rayleigh_true_fdtd_xz phase_gradient support 100.0% c1.889 E11.7kPa
+rayleigh_true_fdtd_xz directional_phase support 100.0% c1.93 E12.22kPa
+lamb_plate_physical_inclusion_xz phase_gradient support 100.0% c0.2944 E11.98kPa
+lamb_plate_physical_inclusion_xz directional_phase support 100.0% c0.2935 E11.83kPa
+BSCAN_VALIDATION_FINISHED

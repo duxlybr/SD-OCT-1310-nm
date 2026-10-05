@@ -1,0 +1,578 @@
+[
+  {
+    "label": "rayleigh_12kPa_original_mesh010mm",
+    "model": "rayleigh",
+    "shape": [
+      11,
+      61,
+      160
+    ],
+    "grid_cell_m": 0.0001,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "model": "homogeneous traction-free Rayleigh halfspace eigenfunction",
+      "secular_speed": 1.9125811646201856
+    },
+    "record_info": {
+      "backend": "CPU (NumPy)",
+      "celda_mm": 0.1,
+      "restricciones_celda": {
+        "usuario": 0.1
+      },
+      "malla": [
+        165,
+        65,
+        46
+      ],
+      "celdas_M": 0.49335,
+      "dt_max_us": 2.4374885404937823,
+      "c_fluido_sim": 20.133334809925593,
+      "memoria_GB": 0.06007835268974304,
+      "fuentes": "2015 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m\u00b3",
+      "registro": [
+        63,
+        5,
+        14
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          12
+        ]
+      },
+      "dt_us": 2.4330900243309004,
+      "pasos": 4932,
+      "periodos": 12.0,
+      "convergencia_rel": 0.0037090107798576355,
+      "tiempo_s": 427.9931062999822,
+      "advertencias": []
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz",
+    "model": "lamb_a0_free",
+    "shape": [
+      12,
+      102,
+      160
+    ],
+    "grid_cell_m": 4.9999999999999996e-05,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "phase_speed_m_s": 1.5416067201425205,
+      "shear_speed_m_s": 2.0033416898825336,
+      "longitudinal_speed_m_s": 20.133334809925593,
+      "wavenumber_rad_m": 4075.7381406580203,
+      "kh_full_thickness": 2.445442884394812,
+      "dispersion_relative_residual": 1.3613782967128455e-16,
+      "navier_analytic_relative_residual": 7.148676694823699e-14,
+      "navier_fd4_relative_residual": 6.292538045031914e-08,
+      "traction_relative_residual": 1.1520550453188508e-14,
+      "traction_xz_top_relative": 8.818878724870846e-17,
+      "traction_xz_bottom_relative": 8.818878724870846e-17,
+      "traction_zz_top_relative": 1.1520550453188508e-14,
+      "traction_zz_bottom_relative": 1.1520550453188508e-14,
+      "axial_even_parity_relative": 7.020203198592515e-16,
+      "inplane_odd_parity_relative": 5.265152398944387e-16,
+      "surface_axial_normalization_error": 0.0,
+      "z_origin": "top_free_face",
+      "time_convention": "real(U*exp(-i*omega*t))",
+      "propagation": "+x",
+      "model": "homogeneous_isotropic_unloaded_free_plate_A0",
+      "exact_scope": "single continuum eigenmode; not localized forcing or heterogeneous inclusion",
+      "reference_doi": "10.1098/rspa.1917.0008",
+      "passed": true
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+      "celda_mm": 0.049999999999999996,
+      "restricciones_celda": {
+        "usuario": 0.049999999999999996
+      },
+      "malla": [
+        302,
+        117,
+        18
+      ],
+      "celdas_M": 0.636012,
+      "dt_max_us": 1.218744270246891,
+      "c_fluido_sim": 20.133334809925593,
+      "memoria_GB": 0.07050329446792603,
+      "fuentes": "3393 nodos fuente en 1 grupo(s); F pico = 6.867e+06 N/m\u00b3",
+      "registro": [
+        104,
+        5,
+        15
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          0
+        ]
+      },
+      "dt_us": 1.218026796589525,
+      "pasos": 29556,
+      "periodos": 36.0,
+      "convergencia_rel": 0.0027176227886229753,
+      "tiempo_s": 17.335490599999957,
+      "advertencias": "La fuente tiene 9.2 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h060mm_500Hz",
+    "model": "lamb_a0_free",
+    "shape": [
+      12,
+      165,
+      160
+    ],
+    "grid_cell_m": 4.9999999999999996e-05,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "phase_speed_m_s": 1.2492616832110597,
+      "shear_speed_m_s": 2.0033416898825336,
+      "longitudinal_speed_m_s": 20.133334809925593,
+      "wavenumber_rad_m": 2514.759474183784,
+      "kh_full_thickness": 1.50885568451027,
+      "dispersion_relative_residual": 3.5446697253216154e-16,
+      "navier_analytic_relative_residual": 2.3524932074806557e-13,
+      "navier_fd4_relative_residual": 4.3018345751246434e-08,
+      "traction_relative_residual": 2.0222368937814947e-14,
+      "traction_xz_top_relative": 6.192017296980008e-16,
+      "traction_xz_bottom_relative": 6.192017296980008e-16,
+      "traction_zz_top_relative": 2.0222368937814947e-14,
+      "traction_zz_bottom_relative": 2.0222368937814947e-14,
+      "axial_even_parity_relative": 1.5206478673721037e-15,
+      "inplane_odd_parity_relative": 7.603239336860519e-16,
+      "surface_axial_normalization_error": 0.0,
+      "z_origin": "top_free_face",
+      "time_convention": "real(U*exp(-i*omega*t))",
+      "propagation": "+x",
+      "model": "homogeneous_isotropic_unloaded_free_plate_A0",
+      "exact_scope": "single continuum eigenmode; not localized forcing or heterogeneous inclusion",
+      "reference_doi": "10.1098/rspa.1917.0008",
+      "passed": true
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.6 de 8.0 GB libres)",
+      "celda_mm": 0.049999999999999996,
+      "restricciones_celda": {
+        "usuario": 0.049999999999999996
+      },
+      "malla": [
+        475,
+        175,
+        18
+      ],
+      "celdas_M": 1.49625,
+      "dt_max_us": 1.218744270246891,
+      "c_fluido_sim": 20.133334809925593,
+      "memoria_GB": 0.16260869801044464,
+      "fuentes": "8225 nodos fuente en 1 grupo(s); F pico = 6.88e+06 N/m\u00b3",
+      "registro": [
+        167,
+        7,
+        15
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          0
+        ]
+      },
+      "dt_us": 1.218026796589525,
+      "pasos": 68964,
+      "periodos": 42.0,
+      "convergencia_rel": 0.004471915308386087,
+      "tiempo_s": 87.26490189999959,
+      "advertencias": []
+    }
+  },
+  {
+    "label": "lamb_A0_12kPa_h120mm_1000Hz",
+    "model": "lamb_a0_free",
+    "shape": [
+      13,
+      66,
+      160
+    ],
+    "grid_cell_m": 8.802150947675694e-05,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "phase_speed_m_s": 1.7604301895351389,
+      "shear_speed_m_s": 2.0033416898825336,
+      "longitudinal_speed_m_s": 20.133334809925593,
+      "wavenumber_rad_m": 3569.1192667166943,
+      "kh_full_thickness": 4.2829431200600325,
+      "dispersion_relative_residual": 1.3138174613086508e-16,
+      "navier_analytic_relative_residual": 4.577872257989824e-14,
+      "navier_fd4_relative_residual": 3.759548332773764e-07,
+      "traction_relative_residual": 6.506234101949769e-15,
+      "traction_xz_top_relative": 1.9921856940380395e-16,
+      "traction_xz_bottom_relative": 1.9921856940380395e-16,
+      "traction_zz_top_relative": 6.506234101949769e-15,
+      "traction_zz_bottom_relative": 6.506234101949769e-15,
+      "axial_even_parity_relative": 6.943699554168493e-16,
+      "inplane_odd_parity_relative": 5.207774665626369e-16,
+      "surface_axial_normalization_error": 2.220446049250313e-16,
+      "z_origin": "top_free_face",
+      "time_convention": "real(U*exp(-i*omega*t))",
+      "propagation": "+x",
+      "model": "homogeneous_isotropic_unloaded_free_plate_A0",
+      "exact_scope": "single continuum eigenmode; not localized forcing or heterogeneous inclusion",
+      "reference_doi": "10.1098/rspa.1917.0008",
+      "passed": true
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.8 de 8.0 GB libres)",
+      "celda_mm": 0.08802150947675694,
+      "restricciones_celda": {
+        "usuario": 0.08802150947675694
+      },
+      "malla": [
+        205,
+        85,
+        20
+      ],
+      "celdas_M": 0.3485,
+      "dt_max_us": 2.145514206665599,
+      "c_fluido_sim": 20.133334809925593,
+      "memoria_GB": 0.03951442241668701,
+      "fuentes": "1615 nodos fuente en 1 grupo(s); F pico = 3.908e+06 N/m\u00b3",
+      "registro": [
+        68,
+        3,
+        17
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          0
+        ]
+      },
+      "dt_us": 2.1413276231263385,
+      "pasos": 10274,
+      "periodos": 22.0,
+      "convergencia_rel": 0.003267102874815464,
+      "tiempo_s": 3.1496753999999783,
+      "advertencias": "La fuente tiene 6.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  },
+  {
+    "label": "rayleigh_12kPa_nu045_1500Hz",
+    "model": "rayleigh",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "grid_cell_m": 6.434549375342181e-05,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "model": "homogeneous traction-free Rayleigh halfspace eigenfunction",
+      "secular_speed": 1.9303648126026545
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+      "celda_mm": 0.06434549375342181,
+      "restricciones_celda": {
+        "usuario": 0.06434549375342181
+      },
+      "malla": [
+        205,
+        85,
+        52
+      ],
+      "celdas_M": 0.9061,
+      "dt_max_us": 4.680459261057578,
+      "c_fluido_sim": 6.746646676632055,
+      "memoria_GB": 0.10747447609901428,
+      "fuentes": "1615 nodos fuente en 1 grupo(s); F pico = 5.347e+06 N/m\u00b3",
+      "registro": [
+        68,
+        5,
+        39
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          12
+        ]
+      },
+      "dt_us": 4.662004662004662,
+      "pasos": 1716,
+      "periodos": 12.0,
+      "convergencia_rel": 0.004364891909062862,
+      "tiempo_s": 1.448354300000119,
+      "advertencias": "La fuente tiene 6.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  },
+  {
+    "label": "rayleigh_12kPa_point_source_1000Hz",
+    "model": "rayleigh",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "grid_cell_m": 9.562905823100928e-05,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "model": "homogeneous traction-free Rayleigh halfspace eigenfunction",
+      "secular_speed": 1.9125811646201856
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+      "celda_mm": 0.09562905823100928,
+      "restricciones_celda": {
+        "usuario": 0.09562905823100928
+      },
+      "malla": [
+        205,
+        85,
+        52
+      ],
+      "celdas_M": 0.9061,
+      "dt_max_us": 2.330947335762978,
+      "c_fluido_sim": 20.133334809925593,
+      "memoria_GB": 0.1074349582195282,
+      "fuentes": "29 nodos fuente en 1 grupo(s); F pico = 3.597e+06 N/m\u00b3",
+      "registro": [
+        68,
+        4,
+        39
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          12
+        ]
+      },
+      "dt_us": 2.3255813953488373,
+      "pasos": 5160,
+      "periodos": 12.0,
+      "convergencia_rel": 0.0004249532939866185,
+      "tiempo_s": 4.282911799999965,
+      "advertencias": "La fuente tiene 2.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  },
+  {
+    "label": "rayleigh_12kPa_stiff_inclusion",
+    "model": "rayleigh",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "grid_cell_m": 9.562905823100928e-05,
+    "reference_scope": "homogeneous analytic baseline, not exact heterogeneous wavefield",
+    "analytic_checks": {
+      "model": "homogeneous traction-free Rayleigh halfspace eigenfunction",
+      "secular_speed": 1.9125811646201856
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+      "celda_mm": 0.09562905823100928,
+      "restricciones_celda": {
+        "usuario": 0.09562905823100928
+      },
+      "malla": [
+        205,
+        85,
+        52
+      ],
+      "celdas_M": 0.9061,
+      "dt_max_us": 1.6482286677067175,
+      "c_fluido_sim": 28.472835143995113,
+      "memoria_GB": 0.1074349582195282,
+      "fuentes": "1615 nodos fuente en 1 grupo(s); F pico = 3.597e+06 N/m\u00b3",
+      "registro": [
+        68,
+        4,
+        39
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          12
+        ]
+      },
+      "dt_us": 1.6474464579901154,
+      "pasos": 8498,
+      "periodos": 14.0,
+      "convergencia_rel": 0.0010993400355800986,
+      "tiempo_s": 7.168537499999957,
+      "advertencias": "La fuente tiene 6.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  },
+  {
+    "label": "rayleigh_24kPa_1000Hz",
+    "model": "rayleigh",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "grid_cell_m": 0.00013523991110725978,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "model": "homogeneous traction-free Rayleigh halfspace eigenfunction",
+      "secular_speed": 2.7047982221451954
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+      "celda_mm": 0.13523991110725977,
+      "restricciones_celda": {
+        "usuario": 0.13523991110725977
+      },
+      "malla": [
+        205,
+        85,
+        52
+      ],
+      "celdas_M": 0.9061,
+      "dt_max_us": 2.3309473357629775,
+      "c_fluido_sim": 28.472835143995113,
+      "memoria_GB": 0.1074349582195282,
+      "fuentes": "1615 nodos fuente en 1 grupo(s); F pico = 2.544e+06 N/m\u00b3",
+      "registro": [
+        68,
+        4,
+        39
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          12
+        ]
+      },
+      "dt_us": 2.3255813953488373,
+      "pasos": 5160,
+      "periodos": 12.0,
+      "convergencia_rel": 0.004149919375777245,
+      "tiempo_s": 4.35051929999986,
+      "advertencias": "La fuente tiene 6.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  },
+  {
+    "label": "rayleigh_6kPa_1000Hz",
+    "model": "rayleigh",
+    "shape": [
+      17,
+      66,
+      160
+    ],
+    "grid_cell_m": 6.761995555362989e-05,
+    "reference_scope": "exact homogeneous continuous modal reference vs numerical excited finite domain",
+    "analytic_checks": {
+      "model": "homogeneous traction-free Rayleigh halfspace eigenfunction",
+      "secular_speed": 1.3523991110725977
+    },
+    "record_info": {
+      "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+      "celda_mm": 0.06761995555362989,
+      "restricciones_celda": {
+        "usuario": 0.06761995555362989
+      },
+      "malla": [
+        205,
+        85,
+        52
+      ],
+      "celdas_M": 0.9061,
+      "dt_max_us": 2.3309473357629775,
+      "c_fluido_sim": 14.236417571997556,
+      "memoria_GB": 0.1074349582195282,
+      "fuentes": "1615 nodos fuente en 1 grupo(s); F pico = 5.088e+06 N/m\u00b3",
+      "registro": [
+        68,
+        4,
+        39
+      ],
+      "pml": {
+        "x": [
+          12,
+          12
+        ],
+        "y": [
+          12,
+          12
+        ],
+        "z": [
+          0,
+          12
+        ]
+      },
+      "dt_us": 2.3255813953488373,
+      "pasos": 5160,
+      "periodos": 12.0,
+      "convergencia_rel": 0.004149916581809521,
+      "tiempo_s": 4.333218999999872,
+      "advertencias": "La fuente tiene 6.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    }
+  }
+]

@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-05",
+  "timezone": "America/Lima",
+  "synthetic_realizations": 104,
+  "synthetic_method_runs": 312,
+  "experimental_runs": 200,
+  "experimental_null_runs": 20,
+  "young_reference_cases": 90,
+  "young_model_runs": 234,
+  "young_perturbation_runs": 1296,
+  "fdtd_cases": 4,
+  "regression_pass": 50,
+  "regression_fail": 2,
+  "final_max_synthetic_null_coverage_pct": 0.0,
+  "max_experimental_null_coverage_pct": 0.44,
+  "production_fix": "remove directional common spatial motion; measured amplitude reference; ULP-tolerant integer spatial spans"
+}

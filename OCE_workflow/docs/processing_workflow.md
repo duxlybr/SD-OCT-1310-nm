@@ -8,6 +8,7 @@ parameter files and generated results outside the repository.
 | Need | Human entrypoint | Programmatic owner |
 | --- | --- | --- |
 | Inspect one acquisition by stages | `workflows/run_acquisition_stepwise.m` | Explicit domain calls |
+| Tune local wave-speed/Young maps and raster depth planes | `workflows/run_elastography_interactive.m` | `oce.interaction.tuneWaveSpeedMaps` |
 | Process one raster, rings or spiral acquisition to an en-face video | `workflows/run_raster_enface_stepwise.m` | Explicit domain calls |
 | Prepare interactively, then process a batch | `workflows/run_experiment_batch.m` | Preparation and batch owners |
 | Process one prepared acquisition | `workflows/process_single_acquisition.m` | `oce.pipeline.runSingleAcquisition` |
@@ -296,3 +297,11 @@ The sample frequencies remain summary intent and are never promoted to physical
 Tables use existing CSV/XLSX exporters. Experiment scan-axis summary persistence
 defaults to `Results/ExperimentSummary/experiment_scan_axis_summary.mat`.
 See [validation](repository/validation_status.md) before delivering workflow changes.
+# Local wave-speed and Young maps
+
+For interactive exploration of a single BIN or a simulator MAT motion plane,
+open `workflows/run_elastography_interactive.m`. The controls expose depth below
+the surface, time/frequency, local estimation and quality rejection. Raster
+data are read in bounded blocks. Young conversion requires an explicit wave
+model. See [local elastography maps](local_elastography_maps.md) for operation,
+physical limitations, bibliography and simulator comparison.

@@ -1,0 +1,205 @@
+Plane luis3_bmode1_offset_0p00mm: [698   75  399], saved MAT only
+1 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.2 W0.8: coverage 0.0018 IoU 0.579 median 2.14 status ok
+2 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.2 W1.2: coverage 0.0011 IoU 1 median 2.24 status ok
+3 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0005 IoU 0.474 median 2.33 status ok
+4 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU 0.0175 median 1.96 status ok
+5 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+6 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+7 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+8 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+9 luis3_bmode1_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+10 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.2 W0.8: coverage 0.0011 IoU 0.302 median 2 status ok
+11 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.2 W1.2: coverage 0.0003 IoU 0.281 median 2.06 status ok
+12 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+13 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+14 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+15 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+16 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+17 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+18 luis3_bmode1_offset_0p00mm directional_phase_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+19 NULL luis3_bmode1_offset_0p00mm directional_phase_scalar2d temporal_shuffle_common: coverage 0.0000 reference 0.0011 IoU 0
+20 NULL luis3_bmode1_offset_0p00mm directional_phase_scalar2d independent_harmonic_phase: coverage 0.0000 reference 0.0011 IoU 0
+Plane raster_offset_0p00mm: [50   50  399], saved MAT only
+21 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.2 W0.8: coverage 0.1112 IoU 0.784 median 2.57 status ok
+22 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.2 W1.2: coverage 0.0872 IoU 1 median 2.46 status ok
+23 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0532 IoU 0.61 median 2.43 status ok
+24 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0480 IoU 0.47 median 2.23 status ok
+25 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0280 IoU 0.321 median 2.15 status ok
+26 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0072 IoU 0.0826 median 2.27 status ok
+27 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0156 IoU 0.179 median 1.98 status ok
+28 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0084 IoU 0.0963 median 2.07 status ok
+29 raster_offset_0p00mm directional_phase_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+30 raster_offset_0p00mm directional_phase_scalar2d full_record C0.2 W0.8: coverage 0.0156 IoU 0.179 median 1.98 status ok
+31 raster_offset_0p00mm directional_phase_scalar2d full_record C0.2 W1.2: coverage 0.0052 IoU 0.0596 median 2.03 status ok
+32 raster_offset_0p00mm directional_phase_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+33 raster_offset_0p00mm directional_phase_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+34 raster_offset_0p00mm directional_phase_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+35 raster_offset_0p00mm directional_phase_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+36 raster_offset_0p00mm directional_phase_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+37 raster_offset_0p00mm directional_phase_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+38 raster_offset_0p00mm directional_phase_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+39 NULL raster_offset_0p00mm directional_phase_scalar2d temporal_shuffle_common: coverage 0.0000 reference 0.0872 IoU 0
+40 NULL raster_offset_0p00mm directional_phase_scalar2d independent_harmonic_phase: coverage 0.0000 reference 0.0872 IoU 0
+41 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+42 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.2 W1.2: coverage 0.1264 IoU 1 median 2.46 status ok
+43 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0952 IoU 0.753 median 2.58 status ok
+44 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+45 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0540 IoU 0.427 median 2.6 status ok
+46 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0252 IoU 0.199 median 2.58 status ok
+47 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+48 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0180 IoU 0.142 median 2.8 status ok
+49 raster_offset_0p00mm reverberant_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+50 raster_offset_0p00mm reverberant_scalar2d full_record C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+51 raster_offset_0p00mm reverberant_scalar2d full_record C0.2 W1.2: coverage 0.0232 IoU 0.184 median 2.77 status ok
+52 raster_offset_0p00mm reverberant_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+53 raster_offset_0p00mm reverberant_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+54 raster_offset_0p00mm reverberant_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+55 raster_offset_0p00mm reverberant_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+56 raster_offset_0p00mm reverberant_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+57 raster_offset_0p00mm reverberant_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+58 raster_offset_0p00mm reverberant_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+59 NULL raster_offset_0p00mm reverberant_scalar2d temporal_shuffle_common: coverage 0.0044 reference 0.1264 IoU 0.0348
+60 NULL raster_offset_0p00mm reverberant_scalar2d independent_harmonic_phase: coverage 0.0032 reference 0.1264 IoU 0.0253
+61 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+62 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.2 W1.2: coverage 0.1264 IoU 1 median 2.17 status ok
+63 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.2 W1.8: coverage 0.0952 IoU 0.753 median 2.27 status ok
+64 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+65 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.4 W1.2: coverage 0.0540 IoU 0.427 median 2.29 status ok
+66 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.4 W1.8: coverage 0.0252 IoU 0.199 median 2.27 status ok
+67 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+68 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.6 W1.2: coverage 0.0180 IoU 0.142 median 2.47 status ok
+69 raster_offset_0p00mm reverberant_shear3d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+70 raster_offset_0p00mm reverberant_shear3d full_record C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+71 raster_offset_0p00mm reverberant_shear3d full_record C0.2 W1.2: coverage 0.0232 IoU 0.184 median 2.44 status ok
+72 raster_offset_0p00mm reverberant_shear3d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+73 raster_offset_0p00mm reverberant_shear3d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+74 raster_offset_0p00mm reverberant_shear3d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+75 raster_offset_0p00mm reverberant_shear3d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+76 raster_offset_0p00mm reverberant_shear3d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+77 raster_offset_0p00mm reverberant_shear3d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+78 raster_offset_0p00mm reverberant_shear3d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+79 NULL raster_offset_0p00mm reverberant_shear3d temporal_shuffle_common: coverage 0.0044 reference 0.1264 IoU 0.0348
+80 NULL raster_offset_0p00mm reverberant_shear3d independent_harmonic_phase: coverage 0.0000 reference 0.1264 IoU 0
+Plane raster_offset_0p10mm: [50   50  399], saved MAT only
+81 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.2 W0.8: coverage 0.0892 IoU 0.839 median 2.61 status ok
+82 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.2 W1.2: coverage 0.0748 IoU 1 median 2.59 status ok
+83 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0388 IoU 0.519 median 2.59 status ok
+84 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0276 IoU 0.28 median 2.52 status ok
+85 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0216 IoU 0.217 median 2.52 status ok
+86 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+87 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0080 IoU 0.107 median 2.4 status ok
+88 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+89 raster_offset_0p10mm directional_phase_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+90 raster_offset_0p10mm directional_phase_scalar2d full_record C0.2 W0.8: coverage 0.0064 IoU 0.0856 median 2.34 status ok
+91 raster_offset_0p10mm directional_phase_scalar2d full_record C0.2 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+92 raster_offset_0p10mm directional_phase_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+93 raster_offset_0p10mm directional_phase_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+94 raster_offset_0p10mm directional_phase_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+95 raster_offset_0p10mm directional_phase_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+96 raster_offset_0p10mm directional_phase_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+97 raster_offset_0p10mm directional_phase_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+98 raster_offset_0p10mm directional_phase_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+99 NULL raster_offset_0p10mm directional_phase_scalar2d temporal_shuffle_common: coverage 0.0000 reference 0.0748 IoU 0
+100 NULL raster_offset_0p10mm directional_phase_scalar2d independent_harmonic_phase: coverage 0.0000 reference 0.0748 IoU 0
+101 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+102 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.2 W1.2: coverage 0.1096 IoU 1 median 2.49 status ok
+103 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0760 IoU 0.693 median 2.89 status ok
+104 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+105 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0220 IoU 0.201 median 3.47 status ok
+106 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+107 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+108 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+109 raster_offset_0p10mm reverberant_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+110 raster_offset_0p10mm reverberant_scalar2d full_record C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+111 raster_offset_0p10mm reverberant_scalar2d full_record C0.2 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+112 raster_offset_0p10mm reverberant_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+113 raster_offset_0p10mm reverberant_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+114 raster_offset_0p10mm reverberant_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+115 raster_offset_0p10mm reverberant_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+116 raster_offset_0p10mm reverberant_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+117 raster_offset_0p10mm reverberant_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+118 raster_offset_0p10mm reverberant_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+119 NULL raster_offset_0p10mm reverberant_scalar2d temporal_shuffle_common: coverage 0.0000 reference 0.1096 IoU 0
+120 NULL raster_offset_0p10mm reverberant_scalar2d independent_harmonic_phase: coverage 0.0012 reference 0.1096 IoU 0.0109
+121 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+122 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.2 W1.2: coverage 0.1096 IoU 1 median 2.19 status ok
+123 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.2 W1.8: coverage 0.0760 IoU 0.693 median 2.56 status ok
+124 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+125 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.4 W1.2: coverage 0.0220 IoU 0.201 median 3.08 status ok
+126 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+127 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+128 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+129 raster_offset_0p10mm reverberant_shear3d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+130 raster_offset_0p10mm reverberant_shear3d full_record C0.2 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+131 raster_offset_0p10mm reverberant_shear3d full_record C0.2 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+132 raster_offset_0p10mm reverberant_shear3d full_record C0.2 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+133 raster_offset_0p10mm reverberant_shear3d full_record C0.4 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+134 raster_offset_0p10mm reverberant_shear3d full_record C0.4 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+135 raster_offset_0p10mm reverberant_shear3d full_record C0.4 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+136 raster_offset_0p10mm reverberant_shear3d full_record C0.6 W0.8: coverage 0.0000 IoU 0 median NaN status ok
+137 raster_offset_0p10mm reverberant_shear3d full_record C0.6 W1.2: coverage 0.0000 IoU 0 median NaN status ok
+138 raster_offset_0p10mm reverberant_shear3d full_record C0.6 W1.8: coverage 0.0000 IoU 0 median NaN status ok
+139 NULL raster_offset_0p10mm reverberant_shear3d temporal_shuffle_common: coverage 0.0000 reference 0.1096 IoU 0
+140 NULL raster_offset_0p10mm reverberant_shear3d independent_harmonic_phase: coverage 0.0000 reference 0.1096 IoU 0
+Plane raster_offset_0p25mm: [50   50  399], saved MAT only
+141 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.2 W0.8: coverage 0.0024 IoU 0 median 3.87 status ok
+142 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.2 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+143 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+144 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+145 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+146 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+147 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+148 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+149 raster_offset_0p25mm directional_phase_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+150 raster_offset_0p25mm directional_phase_scalar2d full_record C0.2 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+151 raster_offset_0p25mm directional_phase_scalar2d full_record C0.2 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+152 raster_offset_0p25mm directional_phase_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+153 raster_offset_0p25mm directional_phase_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+154 raster_offset_0p25mm directional_phase_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+155 raster_offset_0p25mm directional_phase_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+156 raster_offset_0p25mm directional_phase_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+157 raster_offset_0p25mm directional_phase_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+158 raster_offset_0p25mm directional_phase_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+159 NULL raster_offset_0p25mm directional_phase_scalar2d temporal_shuffle_common: coverage 0.0000 reference 0.0000 IoU NaN
+160 NULL raster_offset_0p25mm directional_phase_scalar2d independent_harmonic_phase: coverage 0.0000 reference 0.0000 IoU NaN
+161 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.2 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+162 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.2 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+163 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.2 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+164 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+165 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.4 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+166 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+167 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+168 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+169 raster_offset_0p25mm reverberant_scalar2d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+170 raster_offset_0p25mm reverberant_scalar2d full_record C0.2 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+171 raster_offset_0p25mm reverberant_scalar2d full_record C0.2 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+172 raster_offset_0p25mm reverberant_scalar2d full_record C0.2 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+173 raster_offset_0p25mm reverberant_scalar2d full_record C0.4 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+174 raster_offset_0p25mm reverberant_scalar2d full_record C0.4 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+175 raster_offset_0p25mm reverberant_scalar2d full_record C0.4 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+176 raster_offset_0p25mm reverberant_scalar2d full_record C0.6 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+177 raster_offset_0p25mm reverberant_scalar2d full_record C0.6 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+178 raster_offset_0p25mm reverberant_scalar2d full_record C0.6 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+179 NULL raster_offset_0p25mm reverberant_scalar2d temporal_shuffle_common: coverage 0.0000 reference 0.0000 IoU NaN
+180 NULL raster_offset_0p25mm reverberant_scalar2d independent_harmonic_phase: coverage 0.0000 reference 0.0000 IoU NaN
+181 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.2 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+182 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.2 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+183 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.2 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+184 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.4 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+185 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.4 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+186 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.4 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+187 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.6 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+188 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.6 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+189 raster_offset_0p25mm reverberant_shear3d early_2to4ms C0.6 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+190 raster_offset_0p25mm reverberant_shear3d full_record C0.2 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+191 raster_offset_0p25mm reverberant_shear3d full_record C0.2 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+192 raster_offset_0p25mm reverberant_shear3d full_record C0.2 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+193 raster_offset_0p25mm reverberant_shear3d full_record C0.4 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+194 raster_offset_0p25mm reverberant_shear3d full_record C0.4 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+195 raster_offset_0p25mm reverberant_shear3d full_record C0.4 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+196 raster_offset_0p25mm reverberant_shear3d full_record C0.6 W0.8: coverage 0.0000 IoU NaN median NaN status ok
+197 raster_offset_0p25mm reverberant_shear3d full_record C0.6 W1.2: coverage 0.0000 IoU NaN median NaN status ok
+198 raster_offset_0p25mm reverberant_shear3d full_record C0.6 W1.8: coverage 0.0000 IoU NaN median NaN status ok
+199 NULL raster_offset_0p25mm reverberant_shear3d temporal_shuffle_common: coverage 0.0000 reference 0.0000 IoU NaN
+200 NULL raster_offset_0p25mm reverberant_shear3d independent_harmonic_phase: coverage 0.0000 reference 0.0000 IoU NaN
+EXPERIMENTAL_SENSITIVITY_FINISHED

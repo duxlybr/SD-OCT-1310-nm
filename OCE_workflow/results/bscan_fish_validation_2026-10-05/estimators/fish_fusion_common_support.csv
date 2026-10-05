@@ -1,0 +1,11 @@
+method,fusion,common_support_count,median_absolute_relative_speed_error,median_absolute_relative_young_discrepancy
+phase_gradient,arithmetic_speed_mean,28561,0.00680108645536159,0.0136145312919556
+phase_gradient,speed_median,28561,0.00463853021482796,0.0092632139286275
+phase_gradient,arithmetic_slowness_mean,28561,0.00675384127245371,0.0135150436420457
+phase_gradient,slowness_median,28561,0.00463780405595193,0.00926236585341422
+phase_gradient,robust_slowness,28561,0.00669480469818406,0.0133883588287199
+directional_phase,arithmetic_speed_mean,28561,0.00402834825707998,0.00804476253515063
+directional_phase,speed_median,28561,0.00347822797337127,0.00694843125785227
+directional_phase,arithmetic_slowness_mean,28561,0.00406755142049753,0.00812195855654785
+directional_phase,slowness_median,28561,0.00347915018317246,0.00694843428724035
+directional_phase,robust_slowness,28561,0.00403029491449003,0.00804590828514729

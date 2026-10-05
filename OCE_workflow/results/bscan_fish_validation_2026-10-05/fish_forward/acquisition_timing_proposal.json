@@ -1,0 +1,66 @@
+{
+  "schema_name": "oce_timing_proposal",
+  "schema_version": "proposal-1",
+  "status": "design_only_not_acquired_data",
+  "header_extension": {
+    "timing_schema": "oce_timing-1",
+    "timing_sidecar": {"relative_path": "string", "sha256": "string", "size_bytes": "uint64"},
+    "clock_ids": "list[string]",
+    "timestamp_status": "observed|planned|unknown",
+    "phase_coherent_within_acquisition": "true|false|null",
+    "phase_coherent_between_acquisitions": "true|false|null",
+    "phase_coherence_evidence": "string|null"
+  },
+  "sidecar_tables": {
+    "clocks": {
+      "clock_id": "string", "domain": "hardware|host", "device": "string",
+      "counter_route": "string|null", "nominal_hz": "float64|null", "measured_hz": "float64|null",
+      "frequency_uncertainty_hz": "float64|null", "epoch_definition": "string",
+      "counter_bits": "uint16|null", "wrap_policy": "string|null", "tick_uncertainty": "float64|null",
+      "reference_clock_source": "string|null", "lock_observed": "bool|null"
+    },
+    "host_commands": {
+      "command_id": "uint64", "acquisition_id": "string", "excitation_id": "string|null",
+      "command": "string", "send_monotonic_ns": "uint64", "return_monotonic_ns": "uint64|null",
+      "send_utc": "iso8601", "clock_id": "host", "readback": "object|null", "status": "string",
+      "physical_event_timestamp": null
+    },
+    "excitations": {
+      "excitation_id": "string", "acquisition_id": "string", "source_id": "string",
+      "job_index": "uint64|null", "repetition_index": "uint64|null", "source_xyz_mm": "float64[3]|null",
+      "source_angle_nominal_deg": "float64|null", "position_status": "commanded|observed|unknown",
+      "settings_sha256": "string", "readback_sha256": "string|null", "phase_reference_event_id": "uint64|null",
+      "reference_kind": "pfi13_command|generator_sync|generator_envelope|mechanical_monitor|unknown",
+      "reference_channel": "string|null", "mechanical_delay_s": "float64|null"
+    },
+    "events": {
+      "event_id": "uint64", "excitation_id": "string|null", "event_kind": "string",
+      "clock_id": "string", "hardware_tick": "uint64|null", "tick_uncertainty": "float64|null",
+      "polarity": "rising|falling|na", "status": "observed|planned|unknown",
+      "host_monotonic_ns": "uint64|null", "channel": "string"
+    },
+    "alines": {
+      "chronological_index": "uint64", "stored_raw_index": "uint64|null", "segment_index": "uint64",
+      "bscan_index": "uint64", "m_index": "uint64", "aline_index": "uint64", "sweep_index": "uint64",
+      "raster_row": "uint64|null", "raster_column": "uint64|null", "polar_angle_deg": "float64|null",
+      "polar_radius_mm": "float64|null", "xy_commanded_mm": "float64[2]", "xy_observed_mm": "float64[2]|null",
+      "xy_volts": "float64[2]", "excitation_id": "string|null", "camera_trigger_event_id": "uint64|null",
+      "exposure_start_tick": "uint64|null", "exposure_mid_tick": "uint64|null", "clock_id": "string|null",
+      "time_status": "observed|planned|unknown", "logical_reverse": "bool",
+      "valid": "bool", "lost": "bool", "duplicate": "bool"
+    },
+    "calibrations": {
+      "calibration_id": "string", "date_utc": "iso8601", "method": "string",
+      "clock_mapping": "object|null", "trigger_to_exposure_s": "float64|null",
+      "delay_uncertainty_s": "float64|null", "timestamp_definition": "string",
+      "reference_to_force_s": "float64|null", "reference_to_force_uncertainty_s": "float64|null"
+    }
+  },
+  "compatibility": {
+    "old_files": "Missing timing remains null/unknown; declared excitation metadata must retain provenance.",
+    "storage": "Preserve raw chronology when applying spatial reverse-order permutations. Never reverse M time.",
+    "generator_configuration": "CH1 external AM has no Sync per manufacturer guide; validate CH2 burst Sync or observe envelope.",
+    "resource_check": "Verify unused counter/digitalizer routes; existing ctr0/ctr1 outputs cannot be assumed free.",
+    "phase_fusion": "No raw cross-acquisition phasor sum unless reference and coherence are established."
+  }
+}

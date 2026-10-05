@@ -62,7 +62,7 @@ acquisition_mode = "mb_mode";
 % scan_geometry: "automatic" (from the header scan pattern) |
 % "angular_bmodes" | "raster" | "polar". Meridians, linear, crosshair and
 % one-line rasters are angular B-modes and reach dispersion; multi-line
-% rasters, rings and spirals stop after section 7B (use
+% rasters, rings and spirals support local maps in 7C (use
 % run_raster_enface_stepwise.m for their en-face video).
 scan_geometry = "automatic";
 
@@ -418,6 +418,36 @@ if generate_filtered_motion_video
         'CLim', video_clim, ...
         'ShowProgress', manual_show_progress, ...
         'FilePrefix', file_prefix);
+end
+
+%% 7C. OPTIONAL LOCAL VELOCITY / YOUNG MAPS
+% B-scan: one independent stored B-mode in any maintained scan geometry.
+% Enface: raster, spiral or concentric rings, using the geometry operator.
+% This reuses phase and the validated anterior/posterior borders from 5-6.
+% Rerun this section after upstream border/phase changes. No BIN reread.
+%
+% --- USER OPTIONS ---
+show_local_wave_maps = false;  % true | false
+local_plane_options = struct('plane_type', "auto", 'bmode_index', 1, ...
+    'depth_offset_mm', 0, 'depth_band_mm', .04, ...
+    'phase_registration_status', "unverified");
+local_map_options = struct('young_model', "none");
+% Legacy files require the measured/mechanical excitation frequency:
+% local_map_options.frequency_hz = 1000;  % Luis3; raster example = 2000
+
+% --- EXECUTION ---
+if show_local_wave_maps
+    local_wave_plane = oce.acquisition.buildWaveMotionPlane( ...
+        acquisition_state, phase_result, border_result, local_plane_options);
+    local_wave_map_ui = oce.interaction.tuneWaveSpeedMaps( ...
+        local_wave_plane, local_map_options);
+end
+
+% Angular k-f dispersion below is defined only for angular B-modes.
+if string(acquisition_state.geometry.scan_geometry) ~= "angular_bmodes"
+    fprintf('Local maps and motion products are available. Angular dispersion ends here for %s geometry.\n', ...
+        string(acquisition_state.geometry.scan_geometry));
+    return;
 end
 
 %% 8. DISPERSION WINDOWS

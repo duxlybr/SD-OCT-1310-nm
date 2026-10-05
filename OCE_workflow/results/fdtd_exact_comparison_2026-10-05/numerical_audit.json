@@ -1,0 +1,10 @@
+{
+  "paired_cases": 9,
+  "identical_axes_masks": true,
+  "finite_fields": true,
+  "backend_control": {
+    "relative_l2": 1.3759540706814732e-07,
+    "maximum_relative_difference": 3.168273678966216e-07,
+    "scope": "Matched coarse mesh CPU/GPU backend control; not spatial convergence"
+  }
+}

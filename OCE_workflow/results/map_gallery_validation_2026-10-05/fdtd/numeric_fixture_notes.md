@@ -1,0 +1,9 @@
+# Integridad del registro y tipos del fixture
+
+El primer intento armónico CPU produjo desplazamiento exactamente cero. La fuente y el soporte de muestreo sí funcionan: la prueba `diagnose_source_support.py` conserva velocidad y esfuerzo no nulos tras inyección, incluidos valores en el ROI. El fallo ocurre al convertir los acumuladores armónicos a NumPy: `Backend.asnumpy` devuelve una vista en CPU y `run_harmonic` borra después el acumulador, borrando simultáneamente el espectro exportado y el estado anterior de convergencia. Esto explicaba tanto el campo cero como la falsa convergencia cero.
+
+El exportador usa únicamente una adaptación de la instancia `SnapshotBackend` que copia los snapshots. Las ecuaciones, condiciones mecánicas, fuerzas y código del simulador permanecen iguales. El intento inválido queda archivado fuera de la galería; no se usó para inferir propagación.
+
+Otro detalle del fixture es `rho=1000` exportado como `int64` por SciPy. La API actual `invertYoungModulus` acepta valores numéricos enteros, pero sus operaciones matriciales bulk/Rayleigh pueden fallar y las operaciones escalares A0 pueden redondear a pascales enteros. Esta ampliación normaliza explícitamente los escalares físicos a `double` al ingresar el fixture, sin editar producción. La interfaz interactiva ya proporciona `double`. Todas las métricas finales y mapas de esta carpeta se recalcularon con esa normalización; este caso de tipos numéricos sigue siendo una limitación de la API general, ajena a las hipótesis mecánicas.
+
+El ancho de fuente de 0.6 mm es FWHM gaussiano. La inyección se trunca a `S > 1e-3`; el semiancho conservador de soporte es `FWHM*sqrt(log(1000)/(4*log(2)))`, aproximadamente 0.947 mm. El criterio de campo lejano se aplica desde ese soporte activo, y todos los extremos de la ventana deben superar dos longitudes de onda de fondo. El mapa anterior que usaba FWHM/2 está archivado como diagnóstico y no forma parte de la galería final.

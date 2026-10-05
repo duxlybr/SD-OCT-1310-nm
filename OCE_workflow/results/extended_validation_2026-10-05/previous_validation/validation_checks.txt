@@ -1,0 +1,9 @@
+OCE local map validation
+MATLAB R2025b: affected scientific tests PASS; complete catalog 50 PASS, 2 FAIL.
+The two failures predate this implementation at HEAD df84dd5:
+- test_interactive_acquisition_architecture: MIMT inventory expects 151 files; committed tree contains 144.
+- test_manual_single_file_workflow_contract: test expects filtered video false; committed workflow sets true.
+No golden baseline, numerical tolerance or historical scientific default was changed to suppress these failures.
+UI verified with a synthetic reflected field, temporal/spectral preview and real legacy BIN loading. Invalid regions remain NaN. Numerical result and display smoothing remain separate.
+See estimator_metrics.csv and comparison.png for the 8 analytic cases plus one CPU noncontact FDTD case. These are model-controlled validations, not experimental ground truth.
+See experimental/ for the real-data observations. Surface position and wave model remain conditional assumptions.

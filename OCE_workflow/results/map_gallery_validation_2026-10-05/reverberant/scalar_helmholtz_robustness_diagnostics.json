@@ -1,0 +1,59 @@
+[
+  {
+    "case": "source_seed_20261006",
+    "dx_m": 0.0001,
+    "grid_points": 241,
+    "source_seed": 20261006,
+    "measurement_noise_seed": 20261005,
+    "noise_preamble_shape": [
+      241,
+      241,
+      240
+    ],
+    "input_snr_db": 25,
+    "f_hz": 1800.0,
+    "E_background_pa": 12000.0,
+    "E_inclusion_pa": 24000.0,
+    "relative_sparse_residual": 7.760606316590175e-14,
+    "minimum_aperture_source_gap_wavelengths": 2.7727935698581705,
+    "minimum_aperture_absorber_gap_m": 0.0047
+  },
+  {
+    "case": "source_seed_20261007",
+    "dx_m": 0.0001,
+    "grid_points": 241,
+    "source_seed": 20261007,
+    "measurement_noise_seed": 20261005,
+    "noise_preamble_shape": [
+      241,
+      241,
+      240
+    ],
+    "input_snr_db": 25,
+    "f_hz": 1800.0,
+    "E_background_pa": 12000.0,
+    "E_inclusion_pa": 24000.0,
+    "relative_sparse_residual": 7.095423619672953e-14,
+    "minimum_aperture_source_gap_wavelengths": 2.7727935698581705,
+    "minimum_aperture_absorber_gap_m": 0.0047
+  },
+  {
+    "case": "grid_refinement_dx_0p075mm",
+    "dx_m": 7.5e-05,
+    "grid_points": 321,
+    "source_seed": 20261005,
+    "measurement_noise_seed": 20261005,
+    "noise_preamble_shape": [
+      241,
+      241,
+      240
+    ],
+    "input_snr_db": 25,
+    "f_hz": 1800.0,
+    "E_background_pa": 12000.0,
+    "E_inclusion_pa": 24000.0,
+    "relative_sparse_residual": 7.471999982074003e-14,
+    "minimum_aperture_source_gap_wavelengths": 2.7403968786669974,
+    "minimum_aperture_absorber_gap_m": 0.004600000000000001
+  }
+]

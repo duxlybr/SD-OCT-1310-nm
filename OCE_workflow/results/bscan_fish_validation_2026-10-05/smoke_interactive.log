@@ -1,0 +1,14 @@
+CHECKCODE src/+oce/+interaction/tuneWaveSpeedMaps.m: 0 diagnostics
+CHECKCODE workflows/run_elastography_interactive.m: 1 diagnostics
+line12 CLFUNC: Using 'clear' with the 'functions' option usually decreases code performance and is often unnecessary.
+CHECKCODE workflows/run_multi_excitation_elastography.m: 2 diagnostics
+line84 UNRCH: This statement (and possibly following ones) cannot be reached.
+line138 UNRCH: This statement (and possibly following ones) cannot be reached.
+CHECKCODE workflows/run_acquisition_stepwise.m: 2 diagnostics
+line405 NASGU: Value assigned to variable might be unused.
+line688 AGROW: Variable appears to change size on every loop iteration. Consider preallocating for speed.
+CHECKCODE workflows/run_raster_enface_stepwise.m: 3 diagnostics
+line38 CLFUNC: Using 'clear' with the 'functions' option usually decreases code performance and is often unnecessary.
+line199 NASGU: Value assigned to variable might be unused.
+line346 NASGU: Value assigned to variable might be unused.
+INTERACTIVE_MEMORY_PLANE_SMOKE_PASS

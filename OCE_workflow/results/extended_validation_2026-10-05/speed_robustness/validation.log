@@ -1,0 +1,103 @@
+main 1/80 planar seed 101 SNR Inf elapsed 2.0s
+main 2/80 planar seed 101 SNR 20 elapsed 4.0s
+main 3/80 planar seed 101 SNR 10 elapsed 5.9s
+main 4/80 planar seed 101 SNR 5 elapsed 7.6s
+main 5/80 planar seed 101 SNR 0 elapsed 9.3s
+main 6/80 strong_reflection seed 101 SNR Inf elapsed 10.9s
+main 7/80 strong_reflection seed 101 SNR 20 elapsed 12.5s
+main 8/80 strong_reflection seed 101 SNR 10 elapsed 14.1s
+main 9/80 strong_reflection seed 101 SNR 5 elapsed 15.6s
+main 10/80 strong_reflection seed 101 SNR 0 elapsed 16.9s
+main 11/80 scalar2d_diffuse seed 101 SNR Inf elapsed 18.7s
+main 12/80 scalar2d_diffuse seed 101 SNR 20 elapsed 20.3s
+main 13/80 scalar2d_diffuse seed 101 SNR 10 elapsed 22.0s
+main 14/80 scalar2d_diffuse seed 101 SNR 5 elapsed 23.5s
+main 15/80 scalar2d_diffuse seed 101 SNR 0 elapsed 24.6s
+main 16/80 axial_shear3d_xy seed 101 SNR Inf elapsed 26.0s
+main 17/80 axial_shear3d_xy seed 101 SNR 20 elapsed 27.4s
+main 18/80 axial_shear3d_xy seed 101 SNR 10 elapsed 28.7s
+main 19/80 axial_shear3d_xy seed 101 SNR 5 elapsed 30.1s
+main 20/80 axial_shear3d_xy seed 101 SNR 0 elapsed 31.1s
+main 21/80 planar seed 307 SNR Inf elapsed 32.7s
+main 22/80 planar seed 307 SNR 20 elapsed 34.3s
+main 23/80 planar seed 307 SNR 10 elapsed 36.0s
+main 24/80 planar seed 307 SNR 5 elapsed 37.6s
+main 25/80 planar seed 307 SNR 0 elapsed 39.3s
+main 26/80 strong_reflection seed 307 SNR Inf elapsed 40.9s
+main 27/80 strong_reflection seed 307 SNR 20 elapsed 42.5s
+main 28/80 strong_reflection seed 307 SNR 10 elapsed 44.1s
+main 29/80 strong_reflection seed 307 SNR 5 elapsed 45.6s
+main 30/80 strong_reflection seed 307 SNR 0 elapsed 46.9s
+main 31/80 scalar2d_diffuse seed 307 SNR Inf elapsed 48.6s
+main 32/80 scalar2d_diffuse seed 307 SNR 20 elapsed 50.3s
+main 33/80 scalar2d_diffuse seed 307 SNR 10 elapsed 51.9s
+main 34/80 scalar2d_diffuse seed 307 SNR 5 elapsed 53.5s
+main 35/80 scalar2d_diffuse seed 307 SNR 0 elapsed 54.7s
+main 36/80 axial_shear3d_xy seed 307 SNR Inf elapsed 55.9s
+main 37/80 axial_shear3d_xy seed 307 SNR 20 elapsed 57.1s
+main 38/80 axial_shear3d_xy seed 307 SNR 10 elapsed 58.3s
+main 39/80 axial_shear3d_xy seed 307 SNR 5 elapsed 59.3s
+main 40/80 axial_shear3d_xy seed 307 SNR 0 elapsed 60.0s
+main 41/80 planar seed 619 SNR Inf elapsed 61.5s
+main 42/80 planar seed 619 SNR 20 elapsed 63.1s
+main 43/80 planar seed 619 SNR 10 elapsed 64.7s
+main 44/80 planar seed 619 SNR 5 elapsed 66.2s
+main 45/80 planar seed 619 SNR 0 elapsed 67.9s
+main 46/80 strong_reflection seed 619 SNR Inf elapsed 69.4s
+main 47/80 strong_reflection seed 619 SNR 20 elapsed 71.0s
+main 48/80 strong_reflection seed 619 SNR 10 elapsed 72.5s
+main 49/80 strong_reflection seed 619 SNR 5 elapsed 73.9s
+main 50/80 strong_reflection seed 619 SNR 0 elapsed 75.2s
+main 51/80 scalar2d_diffuse seed 619 SNR Inf elapsed 76.8s
+main 52/80 scalar2d_diffuse seed 619 SNR 20 elapsed 78.3s
+main 53/80 scalar2d_diffuse seed 619 SNR 10 elapsed 79.9s
+main 54/80 scalar2d_diffuse seed 619 SNR 5 elapsed 81.4s
+main 55/80 scalar2d_diffuse seed 619 SNR 0 elapsed 82.6s
+main 56/80 axial_shear3d_xy seed 619 SNR Inf elapsed 83.9s
+main 57/80 axial_shear3d_xy seed 619 SNR 20 elapsed 85.2s
+main 58/80 axial_shear3d_xy seed 619 SNR 10 elapsed 86.6s
+main 59/80 axial_shear3d_xy seed 619 SNR 5 elapsed 87.8s
+main 60/80 axial_shear3d_xy seed 619 SNR 0 elapsed 88.8s
+main 61/80 planar seed 941 SNR Inf elapsed 90.3s
+main 62/80 planar seed 941 SNR 20 elapsed 91.9s
+main 63/80 planar seed 941 SNR 10 elapsed 93.4s
+main 64/80 planar seed 941 SNR 5 elapsed 95.0s
+main 65/80 planar seed 941 SNR 0 elapsed 96.6s
+main 66/80 strong_reflection seed 941 SNR Inf elapsed 98.2s
+main 67/80 strong_reflection seed 941 SNR 20 elapsed 99.7s
+main 68/80 strong_reflection seed 941 SNR 10 elapsed 101.3s
+main 69/80 strong_reflection seed 941 SNR 5 elapsed 102.7s
+main 70/80 strong_reflection seed 941 SNR 0 elapsed 104.0s
+main 71/80 scalar2d_diffuse seed 941 SNR Inf elapsed 105.5s
+main 72/80 scalar2d_diffuse seed 941 SNR 20 elapsed 107.1s
+main 73/80 scalar2d_diffuse seed 941 SNR 10 elapsed 108.6s
+main 74/80 scalar2d_diffuse seed 941 SNR 5 elapsed 110.1s
+main 75/80 scalar2d_diffuse seed 941 SNR 0 elapsed 111.3s
+main 76/80 axial_shear3d_xy seed 941 SNR Inf elapsed 112.6s
+main 77/80 axial_shear3d_xy seed 941 SNR 20 elapsed 114.0s
+main 78/80 axial_shear3d_xy seed 941 SNR 10 elapsed 115.4s
+main 79/80 axial_shear3d_xy seed 941 SNR 5 elapsed 116.6s
+main 80/80 axial_shear3d_xy seed 941 SNR 0 elapsed 117.2s
+controls seed 101 elapsed 130.0s
+controls seed 307 elapsed 131.9s
+controls seed 619 elapsed 133.9s
+controls seed 941 elapsed 135.8s
+DONE 104 realizations / 312 method runs; 137.9s
+    true_frequency_hz    supplied_frequency_hz          method           snr_db      seed       true_speed_m_s    accepted_pixels    coverage_pct    median_speed_m_s    bias_pct    median_absolute_error_pct    median_temporal_coherence    window_row_samples    window_x_samples
+    _________________    _____________________    ___________________    ______    _________    ______________    _______________    ____________    ________________    ________    _________________________    _________________________    __________________    ________________
+
+          1000                    900             "phase_gradient"         10      5.171e+06          2                1369             36.791            1.8005           -9.973               9.973                      0.86528                     25                   25
+          1000                    900             "directional_phase"      10      5.171e+06          2                1369             36.791            1.8099          -9.5026              9.5026                      0.86528                     25                   25
+          1000                    900             "reverberant"            10      5.171e+06          2                1369             36.791            1.7928           -10.36               10.36                      0.86528                     25                   25
+          1000                    950             "phase_gradient"         10      5.171e+06          2                1369             36.791            1.9007          -4.9653              4.9653                      0.93363                     25                   25
+          1000                    950             "directional_phase"      10      5.171e+06          2                1369             36.791            1.9108          -4.4612              4.4612                      0.93363                     25                   25
+          1000                    950             "reverberant"            10      5.171e+06          2                1369             36.791            1.8928          -5.3613              5.3613                      0.93363                     25                   25
+          1000                   1000             "phase_gradient"         10      5.171e+06          2                1369             36.791            2.0009         0.043186            0.054812                       0.9571                     25                   25
+          1000                   1000             "directional_phase"      10      5.171e+06          2                1369             36.791            2.0113          0.56682             0.70379                       0.9571                     25                   25
+          1000                   1000             "reverberant"            10      5.171e+06          2                1369             36.791            1.9926         -0.36916             0.36916                       0.9571                     25                   25
+          1000                   1050             "phase_gradient"         10      5.171e+06          2                1369             36.791             2.101           5.0485              5.0485                       0.9335                     25                   25
+          1000                   1050             "directional_phase"      10      5.171e+06          2                1369             36.791             2.112           5.5978              5.5978                       0.9335                     25                   25
+          1000                   1050             "reverberant"            10      5.171e+06          2                1369             36.791            2.0923           4.6133              4.6133                       0.9335                     25                   25
+          1000                   1100             "phase_gradient"         10      5.171e+06          2                1369             36.791             2.201           10.052              10.052                        0.865                     25                   25
+          1000                   1100             "directional_phase"      10      5.171e+06          2                1369             36.791            2.2126           10.628              10.628                        0.865                     25                   25
+          1000                   1100             "reverberant"            10      5.171e+06          2                1369             36.791            2.1917           9.5851              9.5851                        0.865                     25                   25

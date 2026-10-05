@@ -1,0 +1,5 @@
+probe,expected,observed,pass,accepted_pixels,median_measured_speed_m_s,physical_truth_speed_m_s,finding
+temporal_Nyquist,OCE:LocalSpeed:InvalidOptions,OCE:LocalSpeed:InvalidOptions,1,NaN,NaN,NaN,guard rejects invalid request
+insufficient_cycle,OCE:LocalSpeed:InsufficientCycles,OCE:LocalSpeed:InsufficientCycles,1,NaN,NaN,NaN,guard rejects invalid request
+descending_speed_range,OCE:LocalSpeed:InvalidOptions,OCE:LocalSpeed:InvalidOptions,1,NaN,NaN,NaN,guard rejects invalid request
+already_spatially_aliased_input,cannot identify alias uniquely,map alone is insufficient,1,1369,0.218512784514806,0.12,physical input speed violates spatial Nyquist; any returned alias is not an accuracy success

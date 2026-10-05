@@ -1,0 +1,4 @@
+contrast_ratio,coarse_ppw,fine_ppw,complex_field_relative_l2_after_global_scale,coarse_speed_median_m_s,fine_speed_median_m_s,median_speed_change_pct,interpretation
+1,18,24,0.0343258518061075,0.293183722039923,0.293843271299649,0.224961077353703,"Finite-difference refinement diagnostic; constitutive interface staircasing also changes, no convergence claim from two meshes alone"
+2,18,24,0.0323693131873382,0.295341626161731,0.296064200884245,0.244657257395309,"Finite-difference refinement diagnostic; constitutive interface staircasing also changes, no convergence claim from two meshes alone"
+0.5,18,24,0.0429624796654709,0.292131715460757,0.29285539412582,0.247723416104195,"Finite-difference refinement diagnostic; constitutive interface staircasing also changes, no convergence claim from two meshes alone"

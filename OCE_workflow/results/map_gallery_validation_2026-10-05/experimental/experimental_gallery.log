@@ -1,0 +1,6 @@
+experimental_luis3_bmode1_offset_0p00mm_directional_phase_rayleigh: 11/52350 accepted (0.0210%), speed 1.811967 m/s, conditional E 10.770656 kPa
+experimental_raster_offset_0p00mm_directional_phase_rayleigh: 158/2500 accepted (6.3200%), speed 2.334460 m/s, conditional E 17.877823 kPa
+experimental_raster_offset_0p10mm_directional_phase_rayleigh: 120/2500 accepted (4.8000%), speed 2.497630 m/s, conditional E 20.464343 kPa
+experimental_raster_offset_0p00mm_reverberant_bulk_shear: 316/2500 accepted (12.6400%), speed 2.165605 m/s, conditional E 14.022637 kPa
+experimental_raster_offset_0p10mm_reverberant_bulk_shear: 274/2500 accepted (10.9600%), speed 2.189803 m/s, conditional E 14.337782 kPa
+EXPERIMENTAL_SPEED_YOUNG_GALLERY_FINISHED

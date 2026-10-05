@@ -1,0 +1,10 @@
+Exact modal cases saved; cr 1.9125811646201856
+Discretizando la geometr�a
+{'backend': 'CPU (NumPy)', 'celda_mm': 0.1, 'restricciones_celda': {'usuario': 0.1}, 'malla': [165, 65, 46], 'celdas_M': 0.49335, 'dt_max_us': 2.4374885404937823, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.06007835268974304, 'fuentes': '2015 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m�', 'registro': (63, 5, 14), 'pml': {'x': (12, 12), 'y': (12, 12), 'z': (0, 12)}}
+FDTD arm�nico: 2 periodos, cambio inf % (72 s)
+FDTD arm�nico: 4 periodos, cambio 106.09 % (144 s)
+FDTD arm�nico: 6 periodos, cambio 88.26 % (217 s)
+FDTD arm�nico: 8 periodos, cambio 57.53 % (289 s)
+FDTD arm�nico: 10 periodos, cambio 10.47 % (358 s)
+FDTD arm�nico: 12 periodos, cambio 0.37 % (428 s)
+BSCAN_FORWARD_FINISHED

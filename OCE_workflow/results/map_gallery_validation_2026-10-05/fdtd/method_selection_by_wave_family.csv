@@ -1,0 +1,3 @@
+wave_model,selected_method,window_mm,selection_reason
+lamb_a0_free,directional_phase,1.2,sector +X suppresses reflected/secondary plate components; exploratory comparison
+rayleigh,phase_gradient,1.2,full local gradient retains curved/scattered surface-wave components; exploratory comparison
