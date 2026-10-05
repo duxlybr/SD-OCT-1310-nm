@@ -42,7 +42,13 @@ hasta `data_offset` es cero. Incluye:
 - hash SHA-256 del plan;
 - conteos de integridad y causa de una parada;
 - valores de inicio/fin λ (nm) usados para la linealización k diagnóstica;
-  la calibración medida del espectrómetro y la dispersión siguen pendientes.
+  la calibración medida del espectrómetro y la dispersión siguen pendientes;
+- `generator` (solo si la GUI DG4162 controló el generador en esa
+  adquisición): `model`, `role`, `settings` (valores programados: `ch1_vpp`,
+  `ch2_frequency_hz`, `ch2_waveform`, `ch2_delay_ms`, `ch2_burst_cycles`,
+  `excitation`), `state` (estado leído del equipo tras programarlo) y
+  `sequence` (fila de Excel, o `null`). La frecuencia de CH2 es la frecuencia
+  de excitación OCE.
 
 ## Payload
 

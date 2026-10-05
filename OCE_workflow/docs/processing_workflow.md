@@ -76,12 +76,12 @@ by the acquisition GUI (`gui/PYTHON_GUI_DG4162`):
 - **A-line rate.** The header camera line rate replaces the OCT profile's nominal
   `a_scan_rate` (`a_scan_rate_source = "acquisition_header"`).
 - **Excitation frequency.** With `frequency_Hz = []`,
-  `oce.acquisition.prepareSingleFileInputs` takes the CH2 burst frequency of the
-  generator header `<file>_dg4162.json` written next to the acquisition (the
-  instrument read-back `generator_state` when present). A numeric `frequency_Hz`
-  is still accepted for files without that header and is reported when it
+  `oce.acquisition.prepareSingleFileInputs` takes the CH2 burst frequency that
+  the GUI recorded in the `.bin` header section `generator` (the instrument
+  read-back `state` when present). A numeric `frequency_Hz` is still accepted
+  for files acquired without generator control and is reported when it
   differs. Batch processing keeps `frequency_Hz` from the Experimental Log and
-  warns when it differs from the generator header.
+  warns when it differs from the recorded generator.
 
 Batch preparation may seed the next compatible subexperiment with accepted window
 intent. Automatic centers are still resolved per acquisition. Quasi-harmonic and

@@ -34,8 +34,11 @@ function fixture = create_io_acquisition_fixture()
     fixture.compactExpectedRaw = create_compact_oct2_file( ...
         fullfile(fixture.rawDir, fixture.compactFilename), 1, 0, "");
     fixture.octoceFilename = 'octoce_raw_v1.bin';
+    % The DG4162 GUI records the generator in the .bin header.
+    fixture.generatorFrequencyHz = 1250;
     fixture.octoceExpectedRaw = create_octoce_raw_v1_file( ...
-        fullfile(fixture.rawDir, fixture.octoceFilename));
+        fullfile(fixture.rawDir, fixture.octoceFilename), struct(), ...
+        generator_section(fixture.generatorFrequencyHz));
     % One synthetic file per GUI MB scan pattern; expected raw data are in
     % forward A-line order.
     fixture.octocePatterns = struct();
@@ -59,11 +62,6 @@ function fixture = create_io_acquisition_fixture()
     fixture.octoceBmFilename = 'octoce_bm.bin';
     create_octoce_raw_v1_file(fullfile(fixture.rawDir, ...
         fixture.octoceBmFilename), struct('mode', 'BM'));
-    % Generator header written by the DG4162 GUI next to an acquisition.
-    fixture.generatorFrequencyHz = 1250;
-    write_generator_header(fullfile(fixture.rawDir, ...
-        'octoce_raw_v1_dg4162.json'), 'octoce_raw_v1.bin', ...
-        fixture.generatorFrequencyHz);
     fixture.truncatedRawFilename = 'truncated_oct2.bin';
     create_parser_faithful_oct2_file( ...
         fullfile(fixture.rawDir, fixture.truncatedRawFilename), -1);
@@ -319,7 +317,8 @@ function pattern = create_octoce_pattern(folder, filename, scanOverrides)
         create_octoce_raw_v1_file(fullfile(folder, filename), scanOverrides));
 end
 
-function write_generator_header(path, acquisitionFile, frequencyHz)
+function generator = generator_section(frequencyHz)
+    % Header section 'generator' written by the DG4162 GUI.
     settings = struct('ch1_vpp', 0.5, 'ch2_frequency_hz', frequencyHz, ...
         'ch2_waveform', 'Pulso', 'ch2_delay_ms', 2, ...
         'excitation', 'Con contacto', 'ch2_burst_cycles', 3);
@@ -327,20 +326,11 @@ function write_generator_header(path, acquisitionFile, frequencyHz)
         'ch1_frequency_hz', 954900, 'ch1_vpp', 0.5, ...
         'ch2_function', 'PULS', 'ch2_frequency_hz', frequencyHz, ...
         'ch2_delay_ms', 2, 'ch2_burst_cycles', 3);
-    record = struct('acquisition_file', acquisitionFile, ...
-        'created_local', '2026-10-04T12:00:00', ...
-        'generator_settings', settings, 'generator_state', state, ...
-        'sequence', []);
-    fileID = fopen(path, 'w');
-    if fileID < 0
-        error('Could not create synthetic generator header: %s', path);
-    end
-    cleanup = onCleanup(@() fclose(fileID));
-    fwrite(fileID, jsonencode(record), 'char');
-    clear cleanup
+    generator = struct('model', 'RIGOL DG4162', 'settings', settings, ...
+        'state', state, 'sequence', []);
 end
 
-function expectedRaw = create_octoce_raw_v1_file(path, scanOverrides)
+function expectedRaw = create_octoce_raw_v1_file(path, scanOverrides, generator)
     if nargin < 2
         scanOverrides = struct();
     end
@@ -405,6 +395,9 @@ function expectedRaw = create_octoce_raw_v1_file(path, scanOverrides)
         temporalCount * samplesPerBmode * lineCount;
     source.integrity.expected_alines = source.integrity.committed_alines;
     source.state = 'complete';
+    if nargin >= 3
+        source.generator = generator;
+    end
 
     jsonBytes = unicode2native(jsonencode(source), 'UTF-8');
     jsonLength = numel(jsonBytes);

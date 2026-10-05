@@ -57,7 +57,13 @@ def build_header(
     *,
     backend: str,
     trajectory_sha256: str,
+    extra_sections: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """JSON header of one acquisition.
+
+    ``extra_sections`` adds top-level sections recorded by the caller, such as
+    the excitation ``generator``; they cannot replace the core sections.
+    """
     expected_shape = (*scan.logical_shape_without_pixels, hardware.spectral_samples)
     header = {
         "format": "OCT/OCE raw acquisition",
@@ -143,6 +149,10 @@ def build_header(
             "(optimized with FWHM_80_ALines_TDMS.m); the payload is raw and unaffected."
         ],
     }
+    for name, section in (extra_sections or {}).items():
+        if name in header:
+            raise ValueError(f"La sección extra del header '{name}' reemplazaría una sección base.")
+        header[name] = section
     chunkable = (
         backend.endswith("-optimized")
         and scan.total_segments > 1

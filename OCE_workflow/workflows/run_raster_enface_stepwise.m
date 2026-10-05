@@ -126,8 +126,8 @@ oct_system_options = oce.config.getOCTSystemOptions(oct_system_profile);
 sample_type = "phantom";
 % excitation_type: "quasi_harmonic" | "pulse" (pulse uses frequency_Hz = NaN).
 excitation_type = "quasi_harmonic";
-% frequency_Hz: [] = CH2 frequency of the generator header written by the
-% GUI (<file>_dg4162.json) | a value in Hz for files without that header.
+% frequency_Hz: [] = CH2 frequency that the GUI recorded in the .bin header
+% | a value in Hz for files acquired without generator control.
 frequency_Hz = [];
 
 % --- EXECUTION ---
@@ -157,7 +157,7 @@ results_directory = string(results_directory);
 if isfield(acquisition_header, 'excitation') && ...
         acquisition_header.excitation.available
     generator = acquisition_header.excitation;
-    fprintf(['  Generator header: CH2 %s %g Hz, %d burst cycle(s), ' ...
+    fprintf(['  Generator (.bin header): CH2 %s %g Hz, %d burst cycle(s), ' ...
         'CH1 %g mVpp (%s)\n'], generator.waveform, generator.frequency_hz, ...
         generator.burst_cycles, 1000 * generator.carrier_amplitude_vpp, ...
         generator.contact);

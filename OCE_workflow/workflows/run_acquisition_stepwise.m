@@ -116,8 +116,8 @@ sample_type = "phantom";
 % quasi_harmonic uses a positive physical excitation frequency.
 % pulse has no single target frequency (frequency_Hz becomes NaN).
 excitation_type = "quasi_harmonic";
-% frequency_Hz: [] = CH2 frequency of the generator header written by the
-% GUI (<file>_dg4162.json) | a value in Hz for files without that header.
+% frequency_Hz: [] = CH2 frequency that the GUI recorded in the .bin header
+% | a value in Hz for files acquired without generator control.
 frequency_Hz = [];
 
 % --- EXECUTION ---
@@ -154,7 +154,7 @@ run_id = string(processing_inputs.acquisition_row.run_id);
 if isfield(acquisition_header, 'excitation') && ...
         acquisition_header.excitation.available
     generator = acquisition_header.excitation;
-    fprintf(['  Generator header: CH2 %s %g Hz, %d burst cycle(s), ' ...
+    fprintf(['  Generator (.bin header): CH2 %s %g Hz, %d burst cycle(s), ' ...
         'CH1 %g mVpp (%s)\n'], generator.waveform, generator.frequency_hz, ...
         generator.burst_cycles, 1000 * generator.carrier_amplitude_vpp, ...
         generator.contact);

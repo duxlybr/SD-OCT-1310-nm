@@ -46,6 +46,18 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(logical.shape, (2, 2, 4, 8))
             del logical
 
+    def test_extra_header_sections_are_recorded_without_replacing_core(self) -> None:
+        generator = {"model": "RIGOL DG4162", "settings": {"ch2_frequency_hz": 1000.0}}
+        header = build_header(self.scan, self.hardware, backend="test",
+                              trajectory_sha256="0" * 64, extra_sections={"generator": generator})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "generator.bin"
+            OctBinWriter(path, header).open().close(complete=False)
+            self.assertEqual(read_info(path).header["generator"], generator)
+        with self.assertRaises(ValueError):
+            build_header(self.scan, self.hardware, backend="test",
+                         trajectory_sha256="0" * 64, extra_sections={"scan": {}})
+
     def test_incomplete_file_remains_readable(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.bin"

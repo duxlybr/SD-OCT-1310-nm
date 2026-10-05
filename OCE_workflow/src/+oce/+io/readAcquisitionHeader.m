@@ -4,7 +4,7 @@ function scanInfo = readAcquisitionHeader(filename, filepath)
 % dimensions. Raw samples are not loaded. OCTOCE (GUI) MB files also report,
 % per stored line, bscan_length_mm, bscan_angle_deg and
 % bscan_storage_reversed; a_scan_rate_hz (camera line rate); and excitation,
-% read from the generator header <stem>_dg4162.json when the GUI wrote one.
+% read from the header 'generator' section when the GUI controlled it.
 % Crosshair B-scans are stored as consecutive X and Y lines (No_3Dscans = 2B).
 
     if nargin < 1 || isempty(filename)
@@ -185,7 +185,7 @@ function scanInfo = build_octoce_raw_v1_scan_info(fileID, fullPath)
     scanInfo.bscan_storage_reversed = lines.storage_reversed;
     scanInfo.raster_bidirectional = rasterBidirectional;
     scanInfo.a_scan_rate_hz = octoce_line_rate(hardware, fullPath);
-    scanInfo.excitation = read_generator_header(fullPath);
+    scanInfo.excitation = read_generator_header(source, fullPath);
 end
 
 function lines = octoce_bscan_lines(scan, pattern, scanBmodeCount, ...
@@ -278,80 +278,66 @@ function value = json_optional_logical(source, name, label, fullPath)
     end
 end
 
-function excitation = read_generator_header(fullPath)
-    % The DG4162 GUI writes the applied generator settings next to each
-    % acquisition as <stem>_dg4162.json. CH2 is the burst that modulates the
-    % CH1 carrier: its frequency is the OCE excitation frequency.
-    [folder, stem] = fileparts(fullPath);
-    sidecarPath = fullfile(folder, [stem '_dg4162.json']);
-    excitation = struct('available', false, 'source_file', "", ...
+function excitation = read_generator_header(source, fullPath)
+    % The DG4162 GUI records the applied generator in the .bin header section
+    % 'generator'. CH2 is the burst that modulates the CH1 carrier: its
+    % frequency is the OCE excitation frequency.
+    excitation = struct('available', false, 'source', "", ...
         'frequency_hz', NaN, 'burst_cycles', NaN, 'waveform', "", ...
         'trigger_delay_ms', NaN, 'carrier_frequency_hz', NaN, ...
         'carrier_amplitude_vpp', NaN, 'contact', "");
-    if ~isfile(sidecarPath)
+    if ~isfield(source, 'generator') || isempty(source.generator)
         return;
     end
-    try
-        record = jsondecode(fileread(sidecarPath));
-    catch exception
-        error('OCE:IO:InvalidGeneratorHeader', ...
-            'Invalid generator header %s: %s', sidecarPath, exception.message);
+    generator = source.generator;
+    if ~isstruct(generator) || ~isscalar(generator) || ...
+            ~isfield(generator, 'settings') || ~isstruct(generator.settings)
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE generator section lacks settings in: %s', fullPath);
     end
-    if ~isstruct(record) || ~isscalar(record) || ...
-            ~isfield(record, 'generator_settings') || ...
-            ~isstruct(record.generator_settings)
-        error('OCE:IO:InvalidGeneratorHeader', ...
-            'Generator header lacks generator_settings: %s', sidecarPath);
-    end
-    if isfield(record, 'acquisition_file') && ...
-            ~strcmpi(string(record.acquisition_file), [stem '.bin'])
-        warning('OCE:IO:GeneratorHeaderFilename', ...
-            ['Generator header %s was written for "%s"; it is used for ' ...
-             'the renamed acquisition "%s".'], sidecarPath, ...
-            string(record.acquisition_file), [stem '.bin']);
-    end
-    settings = record.generator_settings;
-    % generator_state is read back from the instrument after programming it,
-    % so it is the applied excitation whenever the GUI recorded it.
+    settings = generator.settings;
+    % state is read back from the instrument after programming it, so it is
+    % the applied excitation whenever the GUI recorded it.
     applied = settings;
-    if isfield(record, 'generator_state') && isstruct(record.generator_state)
-        applied = record.generator_state;
+    if isfield(generator, 'state') && isstruct(generator.state)
+        applied = generator.state;
     end
-    label = "Generator header " + string(sidecarPath);
     excitation.available = true;
-    excitation.source_file = string(sidecarPath);
+    excitation.source = "acquisition_header.generator";
     excitation.frequency_hz = generator_number(applied, ...
-        'ch2_frequency_hz', label, true);
+        'ch2_frequency_hz', fullPath, true);
     excitation.burst_cycles = generator_number(applied, ...
-        'ch2_burst_cycles', label, true);
+        'ch2_burst_cycles', fullPath, true);
     if excitation.burst_cycles ~= round(excitation.burst_cycles)
-        error('OCE:IO:InvalidGeneratorHeader', ...
-            '%s field ch2_burst_cycles must be an integer.', label);
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE generator ch2_burst_cycles must be an integer in: %s', ...
+            fullPath);
     end
     excitation.trigger_delay_ms = generator_number(applied, ...
-        'ch2_delay_ms', label, false);
+        'ch2_delay_ms', fullPath, false);
     excitation.carrier_amplitude_vpp = generator_number(applied, ...
-        'ch1_vpp', label, false);
+        'ch1_vpp', fullPath, false);
     excitation.carrier_frequency_hz = generator_number(applied, ...
-        'ch1_frequency_hz', label, false);
+        'ch1_frequency_hz', fullPath, false);
     excitation.waveform = generator_text(settings, 'ch2_waveform');
     excitation.contact = generator_text(settings, 'excitation');
 end
 
-function value = generator_number(source, name, label, required)
+function value = generator_number(source, name, fullPath, required)
     value = NaN;
     if ~isfield(source, name)
         if required
-            error('OCE:IO:InvalidGeneratorHeader', ...
-                '%s is missing %s.', label, name);
+            error('OCE:IO:InvalidAcquisitionHeader', ...
+                'OCTOCE generator section is missing %s in: %s', name, fullPath);
         end
         return;
     end
     value = source.(name);
     if ~isnumeric(value) || ~isscalar(value) || ~isfinite(value) || ...
             (required && value <= 0)
-        error('OCE:IO:InvalidGeneratorHeader', ...
-            '%s field %s must be a finite number.', label, name);
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE generator field %s must be a finite number in: %s', ...
+            name, fullPath);
     end
     value = double(value);
 end

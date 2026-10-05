@@ -115,10 +115,10 @@ the first acquired A-line and B-scan; polar positions are centered on the scan
 center.
 
 The OCTOCE header also records the camera line rate (`a_scan_rate_hz`), which
-sets the MB time-sample interval. The DG4162 GUI writes the applied generator
-settings next to the acquisition as `<file>_dg4162.json`; the reader exposes them
-as `excitation` (`frequency_hz` is the CH2 burst frequency, the OCE excitation
-frequency). Standalone processing takes `frequency_Hz` from it when the user
+sets the MB time-sample interval. When the DG4162 GUI controls the generator, the
+header section `generator` records the programmed settings and the instrument
+read-back state; the reader exposes them as `excitation` (`frequency_hz` is the
+CH2 burst frequency, the OCE excitation frequency). Standalone processing takes `frequency_Hz` from it when the user
 leaves `frequency_Hz = []`; the Experimental Log remains the batch frequency
 contract.
 
