@@ -5,7 +5,7 @@ function inputs = prepareProcessingInputs(experimentRoot, subExperiment, queryVa
 % Output: validated paths plus persisted system, acquisition, and processing
 % parameter contracts. Side effects are limited to non-blocking warnings when
 % optional Experimental Log dimensions, or a quasi-harmonic frequency_Hz,
-% disagree with the normalized raw header or its generator header.
+% disagree with the normalized raw header (including its generator section).
 % The acquisition package owns data preparation; output-producing functions
 % create directories when needed.
 %
@@ -169,7 +169,7 @@ function warn_on_excitation_metadata_mismatch(row, header, filename)
     end
     if value ~= header.excitation.frequency_hz
         warning('OCE:Acquisition:MetadataHeaderMismatch', ...
-            ['frequency_Hz differs from the generator header for "%s": ' ...
+            ['frequency_Hz differs from the generator recorded in "%s": ' ...
              'log=%g Hz, generator=%g Hz. The Experimental Log value is ' ...
              'used for processing.'], filename, value, ...
             header.excitation.frequency_hz);

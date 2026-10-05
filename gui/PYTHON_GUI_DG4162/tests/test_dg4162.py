@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import re
 import tempfile
@@ -20,6 +19,7 @@ from octoce.dg4162 import (
     check_ch1_vpp,
 )
 from octoce.naming import clean_stem, default_stem, unique_path
+from octoce.storage import read_info
 from octoce.sequence import DurationModel, build_jobs, read_rows, sequence_remaining_s, write_template
 
 
@@ -572,7 +572,7 @@ class DG4162GuiTests(unittest.TestCase):
             time.sleep(0.01)
         self.assertTrue(condition(), "timeout esperando a la GUI")
 
-    def test_default_name_suffix_sidecar_and_output1_cycle(self) -> None:
+    def test_default_name_suffix_generator_header_and_output1_cycle(self) -> None:
         app = self.app
         self.root.update()
         self.assertIn("OCE_4A_1B_3M_2SS_300mVpp_2000Hz.bin", app.target_var.get())
@@ -588,8 +588,13 @@ class DG4162GuiTests(unittest.TestCase):
         self.assertTrue(all(pair == ("ON", "ON") for pair in seen_on))
         stem = "OCE_4A_1B_3M_2SS_300mVpp_2000Hz"
         self.assertTrue((self.folder / f"{stem}.bin").exists())
-        sidecar = json.loads((self.folder / f"{stem}_dg4162.json").read_text(encoding="utf-8"))
-        self.assertAlmostEqual(sidecar["generator_settings"]["ch1_vpp"], 0.3)
+        # The generator is recorded in the .bin header; no separate file.
+        generator = read_info(self.folder / f"{stem}.bin").header["generator"]
+        self.assertAlmostEqual(generator["settings"]["ch1_vpp"], 0.3)
+        self.assertAlmostEqual(generator["state"]["ch2_frequency_hz"], 2000.0)
+        self.assertTrue(generator["state"]["output1"])
+        self.assertIsNone(generator["sequence"])
+        self.assertEqual(list(self.folder.glob("*_dg4162.json")), [])
         self.assertEqual(self.instrument.state[":OUTP2"], "ON")
         self.assertIn(f"{stem}_1.bin", app.target_var.get())
 
@@ -621,9 +626,12 @@ class DG4162GuiTests(unittest.TestCase):
     def fake_engine(self, outcomes: list[str]):
         """engine.start replacement: writes the file and reports the next outcome."""
         calls: list[Path] = []
+        self.header_sections: list[dict | None] = []
 
         def start(scan, hardware, *, output_path=None, backend=None, continuous=False):
             calls.append(Path(output_path))
+            sections, self.app.engine.header_metadata = self.app.engine.header_metadata, None
+            self.header_sections.append(sections)
             hook, self.app.engine.before_acquire = self.app.engine.before_acquire, None
             if hook is not None:
                 hook()
@@ -643,8 +651,10 @@ class DG4162GuiTests(unittest.TestCase):
         error.assert_not_called()
         error2.assert_not_called()
         self.assertEqual(len(set(calls)), 1)  # same name each time: the failed file was deleted
-        self.assertEqual(sorted(p.name for p in self.folder.iterdir()),
-                         [calls[0].name, calls[0].stem + "_dg4162.json"])
+        self.assertEqual(sorted(p.name for p in self.folder.iterdir()), [calls[0].name])
+        # Every attempt hands the generator section to the .bin header.
+        self.assertEqual(len(self.header_sections), 3)
+        self.assertTrue(all(sections and "generator" in sections for sections in self.header_sections))
         self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
 
     def test_retries_stop_after_three(self) -> None:

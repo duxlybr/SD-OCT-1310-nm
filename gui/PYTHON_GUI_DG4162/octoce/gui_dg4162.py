@@ -1,7 +1,6 @@
 """USB GUI variant that also drives the RIGOL DG4162 and runs Excel series."""
 from __future__ import annotations
 
-import json
 import threading
 import time
 import tkinter as tk
@@ -870,9 +869,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             started = super()._start(confirm=confirm)
         finally:
             self._generator_run = False
-        if started:
-            self._write_generator_sidecar()
-        else:
+        if not started:
             self._run_kind = None
         return started
 
@@ -964,29 +961,23 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                     "dg4162", {"message": "OUTPUT1 estaba apagado al terminar el armado: encendido."}))
 
         self.engine.before_acquire = verify_excitation
+        if output is not None:
+            # The .bin header records the excitation; no separate file is written.
+            self.engine.header_metadata = {"generator": self._generator_header(settings)}
 
-    def _write_generator_sidecar(self) -> None:
-        output = self._last_output
-        if output is None or self._pending_settings is None:
-            return
+    def _generator_header(self, settings: GeneratorSettings) -> dict[str, Any]:
+        """Header section 'generator': programmed values and the read-back state."""
         job = self._current_job if self._sequence_active else None
-        record: dict[str, Any] = {
-            "acquisition_file": output.name,
-            "created_local": datetime.now().isoformat(timespec="seconds"),
-            "generator_settings": self._pending_settings.as_dict(),
-            "generator_state": self._applied_state.as_dict() if self._applied_state else None,
+        return {
+            "model": "RIGOL DG4162",
+            "role": "OCE excitation: CH1 carrier AM-modulated by the CH2 burst triggered by PFI13",
+            "settings": settings.as_dict(),
+            "state": self._applied_state.as_dict() if self._applied_state else None,
             "sequence": None if job is None else {
                 "excel_row": job.row, "repetition": job.repetition, "repetitions": job.repetitions,
                 "index": self._sequence_index + 1, "total": len(self._sequence_jobs),
             },
         }
-        path = output.with_name(output.stem + "_dg4162.json")
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with path.open("x", encoding="utf-8") as handle:
-                json.dump(record, handle, indent=2, ensure_ascii=False)
-        except OSError as exc:
-            self._append_log(f"No se pudo guardar {path.name}: {exc}")
 
     def _generator_off(self, reason: str) -> None:
         if not self._output1_on:
@@ -1007,6 +998,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
 
     def _on_oct_start_failed(self) -> None:
         self.engine.before_acquire = None
+        self.engine.header_metadata = None
         self._generator_off("inicio fallido")
         self._sync_link()
         super()._on_oct_start_failed()
@@ -1045,7 +1037,6 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         removed: list[str] = []
         candidates = (
             output,
-            output.with_name(output.stem + "_dg4162.json"),
             output.with_name(output.stem + "_usb.png"),
             output.with_name(output.stem + "_usb.mp4"),
         )
