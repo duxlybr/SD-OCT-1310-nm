@@ -186,6 +186,13 @@ function scanInfo = build_octoce_raw_v1_scan_info(fileID, fullPath)
     scanInfo.raster_bidirectional = rasterBidirectional;
     scanInfo.a_scan_rate_hz = octoce_line_rate(hardware, fullPath);
     scanInfo.excitation = read_generator_header(source, fullPath);
+    % Preserve acquisition evidence for bounded experimental plane loading.
+    % It remains header metadata, not an alternate OCT physics configuration.
+    for section = ["calibration", "synchronization", "hardware"]
+        if isfield(source, section)
+            scanInfo.("source_" + section) = source.(section);
+        end
+    end
 end
 
 function lines = octoce_bscan_lines(scan, pattern, scanBmodeCount, ...

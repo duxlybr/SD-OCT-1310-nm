@@ -354,3 +354,27 @@ if generate_enface_motion_video
         'FilePrefix', file_prefix);
     fprintf('En-face video written to:\n%s\n', enface_video_path);
 end
+
+%% 9. OPTIONAL LOCAL VELOCITY / YOUNG MAPS AT DEPTH OR IN B-SCAN
+% Surface phase alone cannot recover lower layers. This opt-in stage computes
+% the maintained depth-resolved product once and retains the borders of 5.
+%
+% --- USER OPTIONS ---
+show_local_wave_maps = false;  % true | false
+local_plane_options = struct('plane_type', "enface", 'bmode_index', 1, ...
+    'depth_offset_mm', 0, 'depth_band_mm', .04, ...
+    'phase_registration_status', "unverified");
+local_map_options = struct('young_model', "none");
+% local_map_options.frequency_hz = 2000;  % legacy raster example only
+
+% --- EXECUTION ---
+if show_local_wave_maps
+    depth_phase_result = oce.motion.computeDepthResolvedPhase( ...
+        reconstruction_result.complex_volume.values, config_for_run.MotionOptions);
+    phase_result = struct('depth_resolved', depth_phase_result, ...
+        'surface', surface_phase_result, 'options', config_for_run.MotionOptions);
+    local_wave_plane = oce.acquisition.buildWaveMotionPlane( ...
+        acquisition_state, phase_result, border_result, local_plane_options);
+    local_wave_map_ui = oce.interaction.tuneWaveSpeedMaps( ...
+        local_wave_plane, local_map_options);
+end

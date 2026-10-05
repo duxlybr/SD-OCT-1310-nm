@@ -88,6 +88,16 @@ None of these presentation paths recalculates scientific products.
 
 ## Specialized references
 
+Local elastography maps are an opt-in branch after motion-plane construction:
+`oce.acquisition.loadWaveMotionPlane` ->
+`oce.dispersion.estimateLocalSpeedMap` ->
+`oce.elastography.invertYoungModulus`. The interaction owner
+`oce.interaction.tuneWaveSpeedMaps` tunes these products without changing the
+established scientific-result schema or global dispersion defaults. Selected
+payload reading remains in `oce.io.readRawAcquisition`; reconstruction reuses
+the spectral preparation context across blocks. See
+[local elastography maps](../local_elastography_maps.md) for assumptions and validation.
+
 - [Dispersion windows](../dispersion_window_options.md): geometry, sampling and temporal alignment.
 - [Dispersion analysis](../dispersion_analysis_options.md): k-f, phase-gradient and diagnostics.
 - [Validation](validation_status.md): runner, catalog and controlled golden.

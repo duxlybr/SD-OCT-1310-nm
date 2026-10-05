@@ -1,0 +1,3 @@
+method,common_nominal_grid_pixels,median_absolute_relative_speed_difference,p95_absolute_relative_speed_difference,scope
+phase_gradient,21441,0.00174970970850241,0.00504508129637032,0-degree independent noise-free forward fields; native fitting then interpolation for comparison only
+directional_phase,27713,0.00164422200797509,0.00301802689585049,0-degree independent noise-free forward fields; native fitting then interpolation for comparison only

@@ -1,0 +1,204 @@
+{
+  "stem": "fish_individual_fields",
+  "grid_count": 421,
+  "dx_m": 7.142857142857143e-05,
+  "background_points_per_wavelength": 15.58154647686415,
+  "domain_half_m": 0.015,
+  "absorber_start_m": 0.0138,
+  "frequency_hz": 1800.0,
+  "source_radius_m": 0.012,
+  "source_sigma_normal_m": 0.00015,
+  "source_half_aperture_m": 0.007,
+  "source_relative_amplitude_cutoff": 0.001,
+  "source_normal_support_m": 0.0005575383283274757,
+  "window_m": 0.001,
+  "window_samples": 15,
+  "noise_snr_db": 25,
+  "primary_noise_base_seed": 20262005,
+  "secondary_noise_base_seed": 20272005,
+  "samples_per_acquisition": 160,
+  "phase_coherent_between_acquisitions": false,
+  "single_source_per_acquisition": true,
+  "simultaneous_field_sum_performed": false,
+  "forward": "div(mu grad U)+rho omega^2 U=-F; harmonic face averages; complex mass sponge",
+  "ground_truth": "material coefficient E; scalar-shear c=sqrt(E/[2rho(1+nu)]) conditional local reference",
+  "field_is_lossless_in_roi": true,
+  "full_elastodynamic_or_OCT_forward": false,
+  "geometry": {
+    "head_center_m": [
+      -0.001,
+      0.0
+    ],
+    "head_radius_m": 0.0022,
+    "tail_center_m": [
+      0.0023,
+      0.0
+    ],
+    "tail_radius_m": 0.0012,
+    "background_young_pa": 12000.0,
+    "head_young_pa": 24000.0,
+    "tail_young_pa": 24000.0,
+    "center_distance_m": 0.0033,
+    "axial_circle_overlap_m": 0.00010000000000000026,
+    "inclusion_policy": "union_of_two_circles_same_material_no_internal_material_interface"
+  },
+  "cases": [
+    {
+      "label": "fish_individual_000deg",
+      "angle_deg": 0.0,
+      "source_center_m": [
+        -0.012,
+        -0.0
+      ],
+      "source_phase_rad": 2.131682401590183,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 8.219697696967072e-14,
+      "force_scale_n_m3": 1781.8289313266484,
+      "source_l2_fraction_in_absorbing_rim": 0.0,
+      "minimum_complete_roi_source_gap_wavelengths": 4.440795623602376,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_045deg",
+      "angle_deg": 45.0,
+      "source_center_m": [
+        -0.008485281374238571,
+        -0.008485281374238571
+      ],
+      "source_phase_rad": 5.0973109302438795,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 8.206490839144617e-14,
+      "force_scale_n_m3": 1912.7107779949222,
+      "source_l2_fraction_in_absorbing_rim": 0.00017551699053092144,
+      "minimum_complete_roi_source_gap_wavelengths": 2.0216882370589566,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_090deg",
+      "angle_deg": 90.0,
+      "source_center_m": [
+        -7.347880794884119e-19,
+        -0.012
+      ],
+      "source_phase_rad": 1.2498666203009845,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 9.803088950483931e-14,
+      "force_scale_n_m3": 1794.3569761207714,
+      "source_l2_fraction_in_absorbing_rim": 0.0,
+      "minimum_complete_roi_source_gap_wavelengths": 4.440795623602376,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_135deg",
+      "angle_deg": 135.0,
+      "source_center_m": [
+        0.00848528137423857,
+        -0.008485281374238571
+      ],
+      "source_phase_rad": 0.7893971597936333,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 9.260551926239855e-14,
+      "force_scale_n_m3": 1911.0480350208054,
+      "source_l2_fraction_in_absorbing_rim": 0.00017551699053092054,
+      "minimum_complete_roi_source_gap_wavelengths": 2.021688237058957,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_180deg",
+      "angle_deg": 180.0,
+      "source_center_m": [
+        0.012,
+        -1.4695761589768239e-18
+      ],
+      "source_phase_rad": 2.971335215840646,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 1.0017580287242612e-13,
+      "force_scale_n_m3": 1770.9770173125232,
+      "source_l2_fraction_in_absorbing_rim": 0.0,
+      "minimum_complete_roi_source_gap_wavelengths": 4.440795623602376,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_225deg",
+      "angle_deg": 225.0,
+      "source_center_m": [
+        0.008485281374238573,
+        0.00848528137423857
+      ],
+      "source_phase_rad": 5.480116727777875,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 8.126865299739911e-14,
+      "force_scale_n_m3": 1911.0480350208065,
+      "source_l2_fraction_in_absorbing_rim": 0.00017551699053092146,
+      "minimum_complete_roi_source_gap_wavelengths": 2.0216882370589566,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_270deg",
+      "angle_deg": 270.0,
+      "source_center_m": [
+        2.2043642384652355e-18,
+        0.012
+      ],
+      "source_phase_rad": 2.671287944133287,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 8.573669122526436e-14,
+      "force_scale_n_m3": 1794.3569761207714,
+      "source_l2_fraction_in_absorbing_rim": 0.0,
+      "minimum_complete_roi_source_gap_wavelengths": 4.440795623602374,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    },
+    {
+      "label": "fish_individual_315deg",
+      "angle_deg": 315.0,
+      "source_center_m": [
+        -0.008485281374238568,
+        0.008485281374238573
+      ],
+      "source_phase_rad": 3.8363910151327927,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 9.748946981451057e-14,
+      "force_scale_n_m3": 1912.7107779949192,
+      "source_l2_fraction_in_absorbing_rim": 0.0001755169905309207,
+      "minimum_complete_roi_source_gap_wavelengths": 2.021688237058957,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 28561,
+      "head_core_pixels": 1369,
+      "tail_core_pixels": 148,
+      "background_pixels": 21828
+    }
+  ],
+  "elapsed_seconds": 23.402448599983472,
+  "python": "3.14.3",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "source_sha256": "49749cf78dd02fa31f9149290d9a94315dac9c2a3a937ac2a88a0d8fa1fae38f"
+}

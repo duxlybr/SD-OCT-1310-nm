@@ -1,0 +1,136 @@
+{
+  "config": {
+    "label": "lamb_A0_12kPa_h060mm_1000Hz",
+    "E": 12.0,
+    "nu": 0.495,
+    "rho": 1000.0,
+    "f": 1000.0,
+    "plate": true,
+    "h": 0.6
+  },
+  "geometry": {
+    "size_x_mm": 13.874460481282686,
+    "size_y_mm": 4.624820160427562,
+    "size_z_mm": 0.6,
+    "surface": "plana",
+    "dome_radius_mm": 7.8,
+    "layers": [
+      {
+        "material": {
+          "name": "lamb_A0_12kPa_h060mm_1000Hz",
+          "E_kPa": 12.0,
+          "nu": 0.495,
+          "rho": 1000.0,
+          "eta_Pa_s": 0,
+          "n": 1.35,
+          "backscatter_db": -55.0,
+          "mu_oct_per_mm": 1.0,
+          "alpha_db_cm_mhz": 0.45,
+          "c_acoustic": 1540.0,
+          "is_fluid": false,
+          "c_fluid_sim": 0.0,
+          "color": "#4c78a8"
+        },
+        "thickness_mm": 0
+      }
+    ],
+    "inclusions": [],
+    "bottom": "libre",
+    "lateral": "absorbente"
+  },
+  "excitation": {
+    "mode": "arf_sin_contacto",
+    "regime": "armonico",
+    "pressure_MPa": 0.007,
+    "carrier_hz": 954900.0,
+    "shape": "linea",
+    "center_x_mm": -4.624820160427562,
+    "center_y_mm": 0.0,
+    "size_a_mm": 0.4624820160427562,
+    "size_b_mm": 12.332853761140164,
+    "angle_deg": 0.0,
+    "focal_depth_mm": 0.5,
+    "dof_mm": 3.0,
+    "ch2_waveform": "Pulso",
+    "ch2_freq_hz": 1000.0,
+    "ch2_duty": 0.5,
+    "ch2_cycles": 1,
+    "ch2_delay_ms": 2.0,
+    "rise_time_us": 50.0,
+    "harmonic_hz": 1000.0,
+    "n_sources": 1,
+    "source_layout": "anillo",
+    "ring_radius_mm": 0,
+    "tip_radius_mm": 0.25,
+    "random_phase": false,
+    "seed": 1,
+    "ramp_periods": 2
+  },
+  "settings": {
+    "cell_mm": 0.049999999999999996,
+    "ppw": 10.0,
+    "f_max_hz": 0.0,
+    "courant": 0.85,
+    "pml_cells": 12,
+    "pml_R": 0.0001,
+    "duration_ms": 0.0,
+    "record_margin_mm": 0,
+    "record_depth_mm": 0.6,
+    "record_stride": 1,
+    "backend": "gpu",
+    "harmonic_window_periods": 2,
+    "harmonic_min_periods": 12,
+    "harmonic_max_periods": 36,
+    "harmonic_tol": 0.005,
+    "harmonics": 1,
+    "max_cells": 30000000
+  },
+  "record_info": {
+    "backend": "GPU NVIDIA GeForce RTX 5060 Ti (6.7 de 8.0 GB libres)",
+    "celda_mm": 0.049999999999999996,
+    "restricciones_celda": {
+      "usuario": 0.049999999999999996
+    },
+    "malla": [
+      302,
+      117,
+      18
+    ],
+    "celdas_M": 0.636012,
+    "dt_max_us": 1.218744270246891,
+    "c_fluido_sim": 20.133334809925593,
+    "memoria_GB": 0.07050329446792603,
+    "fuentes": "3393 nodos fuente en 1 grupo(s); F pico = 6.867e+06 N/m\u00b3",
+    "registro": [
+      104,
+      5,
+      15
+    ],
+    "pml": {
+      "x": [
+        12,
+        12
+      ],
+      "y": [
+        12,
+        12
+      ],
+      "z": [
+        0,
+        0
+      ]
+    },
+    "dt_us": 1.218026796589525,
+    "pasos": 29556,
+    "periodos": 36.0,
+    "convergencia_rel": 0.0027176227886229753,
+    "tiempo_s": 17.335490599999957,
+    "advertencias": [
+      "La fuente tiene 9.2 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+    ]
+  },
+  "seconds": 17.354659599999877,
+  "model_version": "2026.10.03-2",
+  "cpu_snapshot_copy_workaround": true,
+  "reference_scope": "exact homogeneous modal reference; heterogeneous constitutive map is not an exact wave-phase field"
+}

@@ -1,0 +1,24 @@
+{
+  "python": "3.14.3",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "matplotlib": "3.11.2",
+  "matlab_executable": "C:\\Program Files\\MATLAB\\R2025b\\bin\\matlab.exe",
+  "nominal_phases_seed": 20261005,
+  "trial_phases_seeds": [
+    20261006,
+    20261007
+  ],
+  "nominal_dx_m": 0.0001,
+  "refinement_dx_m": 7.5e-05,
+  "estimator_window_m": 0.0024,
+  "sha256": {
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\map_gallery_validation_2026-10-05\\reverberant\\generate_scalar_helmholtz_fields.py": "6736b127d10314ea137147692f2a08d25e9e79cf0a1c7aed0039108bbe092808",
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\map_gallery_validation_2026-10-05\\reverberant\\estimate_scalar_helmholtz_maps.m": "d447c8e086bedfc70b8e6fb196f026fe484866e3864bd61add7e3fa806ae61f3",
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\map_gallery_validation_2026-10-05\\reverberant\\render_scalar_helmholtz_maps.py": "dbb0015dbd35bbbd186e34b60a2ba88115530e735f4fd6f3b282623ac03ae748",
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\map_gallery_validation_2026-10-05\\reverberant\\run_scalar_helmholtz_robustness.py": "1c9e09d29ecf7f39d02eb476e10a0d58563589fb7477111335051a7d6d6c7a4f",
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\map_gallery_validation_2026-10-05\\reverberant\\summarize_scalar_helmholtz_validation.py": "a5512c9bcbebf07ddf9ac18129522ab2bf6381d6dc3c6b738ff84835b803c86b",
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\src\\+oce\\+dispersion\\estimateLocalSpeedMap.m": "31f718275cf3b4df91a864aa65a82e26f8cf4857a05f321888d8d2b49c717f2c",
+    "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\src\\+oce\\+elastography\\invertYoungModulus.m": "3e7e1f369e881d601b68502b04aec6367bbab042aa37745bc6de495a2534f36d"
+  }
+}

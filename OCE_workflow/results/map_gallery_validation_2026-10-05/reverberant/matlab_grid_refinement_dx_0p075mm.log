@@ -1,0 +1,8 @@
+grid_refinement_dx_0p075mm completed; map coverage 24.78 %
+             case_name                 region       truth_pixels    accepted_pixels    coverage_pct    speed_median_m_s    speed_bias_pct    speed_median_abs_error_pct    young_median_kpa    young_bias_pct    young_median_abs_error_pct
+    ____________________________    ____________    ____________    _______________    ____________    ________________    ______________    __________________________    ________________    ______________    __________________________
+
+    "grid_refinement_dx_0p075mm"    "core"               137               137              100             2.8605             0.96478                 1.4708                   24.465              1.9389                 2.9199
+    "grid_refinement_dx_0p075mm"    "background"        4008              4008              100             1.9971            -0.30958                0.86973                   11.926            -0.61819                 1.7395
+    "grid_refinement_dx_0p075mm"    "interface"         8332              8327            99.94             2.0629             0.18753                 2.3749                   12.724             0.37542                 4.7784
+    "grid_refinement_dx_0p075mm"    "farfield"         12477             12472            99.96             2.0238           -0.039749                 1.4874                   12.246           -0.079482                 2.9748

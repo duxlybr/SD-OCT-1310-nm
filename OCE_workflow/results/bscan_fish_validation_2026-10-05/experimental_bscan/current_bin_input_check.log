@@ -1,0 +1,27 @@
+                    old_surface_method: "max_in_search"
+                    new_surface_method: "inherited_threshold"
+               old_surface_valid_count: 75
+               new_surface_valid_count: 2
+                 old_surface_median_mm: 0.2114
+                 new_surface_median_mm: 0.2157
+                         old_oct_count: 44398
+                         new_oct_count: 150
+                          old_PG_count: 232
+                          new_PG_count: 0
+                  old_speed_median_m_s: 3.0994
+                  new_speed_median_m_s: NaN
+    surface_max_absolute_difference_mm: 0.0042
+      native_motion_max_difference_rad: 0
+                        interpretation: "One input check, unverified anatomy/calibration; not experimental accuracy validation"
+
+CURRENT_BIN_INPUT_CHECK_FINISHED
+[Warning: The following error was caught while executing 'onCleanup' class destructor:
+Error using close
+Invalid figure handle.
+
+Error in check_current_bin_input>@()close(fig) (line 29)
+fig=figure('Visible','off','Color','w','Position',[20 20 1500 800]);cleanup=onCleanup(@()close(fig)); %#ok<NASGU>
+                                                                                         ^^^^^^^^^^
+Error in onCleanup/delete (line 29)
+            obj.task();
+            ^^^^^^^^^^]

@@ -1,0 +1,73 @@
+Independent B-mode1: OCT mask 44398/52350
+Bmode1 directional_phase dir0 full_record: complete
+Bmode1 directional_phase dir0 pre_0to2ms: complete
+Bmode1 directional_phase dir0 early_2to4ms: complete
+Bmode1 directional_phase dir0 2to6ms: complete
+Bmode1 directional_phase dir0 late_4to8ms: complete
+Bmode1 directional_phase dir180 full_record: complete
+Bmode1 directional_phase dir180 pre_0to2ms: complete
+Bmode1 directional_phase dir180 early_2to4ms: complete
+Bmode1 directional_phase dir180 2to6ms: complete
+Bmode1 directional_phase dir180 late_4to8ms: complete
+Bmode1 phase_gradient dir0 full_record: complete
+Bmode1 phase_gradient dir0 pre_0to2ms: complete
+Bmode1 phase_gradient dir0 early_2to4ms: complete
+Bmode1 phase_gradient dir0 2to6ms: complete
+Bmode1 phase_gradient dir0 late_4to8ms: complete
+Bmode1 AIAscalar2d support 0
+Bmode1 AIAshear3d support 0
+Independent B-mode2: OCT mask 42817/52350
+Bmode2 directional_phase dir0 full_record: complete
+Bmode2 directional_phase dir0 pre_0to2ms: complete
+Bmode2 directional_phase dir0 early_2to4ms: complete
+Bmode2 directional_phase dir0 2to6ms: complete
+Bmode2 directional_phase dir0 late_4to8ms: complete
+Bmode2 directional_phase dir180 full_record: complete
+Bmode2 directional_phase dir180 pre_0to2ms: complete
+Bmode2 directional_phase dir180 early_2to4ms: complete
+Bmode2 directional_phase dir180 2to6ms: complete
+Bmode2 directional_phase dir180 late_4to8ms: complete
+Bmode2 phase_gradient dir0 full_record: complete
+Bmode2 phase_gradient dir0 pre_0to2ms: complete
+Bmode2 phase_gradient dir0 early_2to4ms: complete
+Bmode2 phase_gradient dir0 2to6ms: complete
+Bmode2 phase_gradient dir0 late_4to8ms: complete
+Bmode2 AIAscalar2d support 0
+Bmode2 AIAshear3d support 0
+Independent B-mode3: OCT mask 43703/52350
+Bmode3 directional_phase dir0 full_record: complete
+Bmode3 directional_phase dir0 pre_0to2ms: complete
+Bmode3 directional_phase dir0 early_2to4ms: complete
+Bmode3 directional_phase dir0 2to6ms: complete
+Bmode3 directional_phase dir0 late_4to8ms: complete
+Bmode3 directional_phase dir180 full_record: complete
+Bmode3 directional_phase dir180 pre_0to2ms: complete
+Bmode3 directional_phase dir180 early_2to4ms: complete
+Bmode3 directional_phase dir180 2to6ms: complete
+Bmode3 directional_phase dir180 late_4to8ms: complete
+Bmode3 phase_gradient dir0 full_record: complete
+Bmode3 phase_gradient dir0 pre_0to2ms: complete
+Bmode3 phase_gradient dir0 early_2to4ms: complete
+Bmode3 phase_gradient dir0 2to6ms: complete
+Bmode3 phase_gradient dir0 late_4to8ms: complete
+Bmode3 AIAscalar2d support 0
+Bmode3 AIAshear3d support 0
+Independent B-mode4: OCT mask 44005/52350
+Bmode4 directional_phase dir0 full_record: complete
+Bmode4 directional_phase dir0 pre_0to2ms: complete
+Bmode4 directional_phase dir0 early_2to4ms: complete
+Bmode4 directional_phase dir0 2to6ms: complete
+Bmode4 directional_phase dir0 late_4to8ms: complete
+Bmode4 directional_phase dir180 full_record: complete
+Bmode4 directional_phase dir180 pre_0to2ms: complete
+Bmode4 directional_phase dir180 early_2to4ms: complete
+Bmode4 directional_phase dir180 2to6ms: complete
+Bmode4 directional_phase dir180 late_4to8ms: complete
+Bmode4 phase_gradient dir0 full_record: complete
+Bmode4 phase_gradient dir0 pre_0to2ms: complete
+Bmode4 phase_gradient dir0 early_2to4ms: complete
+Bmode4 phase_gradient dir0 2to6ms: complete
+Bmode4 phase_gradient dir0 late_4to8ms: complete
+Bmode4 AIAscalar2d support 0
+Bmode4 AIAshear3d support 0
+INDEPENDENT_LUIS3_STUDY_FINISHED

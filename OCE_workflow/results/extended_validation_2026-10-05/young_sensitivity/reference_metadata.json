@@ -1,0 +1,33 @@
+{
+  "description": "Independent scalar Rayleigh-Lamb A0 and Rayleigh secular forward references; homogeneous isotropic elastic unstressed unfluidloaded media.",
+  "E_pa": [
+    3000.0,
+    12000.0,
+    30000.0
+  ],
+  "thickness_m": [
+    0.0001,
+    0.0003,
+    0.001
+  ],
+  "frequency_hz": [
+    300.0,
+    1000.0,
+    2000.0
+  ],
+  "poisson_ratio": [
+    0.45,
+    0.495
+  ],
+  "density_kg_m3": 1000.0,
+  "a0_reference_count": 54,
+  "total_reference_count": 90,
+  "reference_failures": [],
+  "python_version": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+  "numpy_version": "2.5.3",
+  "scipy_version": "1.18.1",
+  "forward_source": "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\workflows\\export_simulator_wave_cases.py",
+  "forward_source_sha256": "fcb1b5cfb697a2a1aefb239b8d810b4d90783478594151e8c6df559d8fc3dfc2",
+  "truth_generation_uses_production_inversion": false,
+  "experimental_ground_truth": false
+}

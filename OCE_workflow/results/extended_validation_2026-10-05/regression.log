@@ -1,0 +1,516 @@
+
+OCE repository regression suite
+===============================
+Repository: C:\Users\proyecto.pi1081\Desktop\SD-OCT-1310-nm\OCE_workflow
+Synthetic golden available: 1
+
+[Contracts and resolution]
+PASS     test_final_architecture_contract
+PASS     test_parameter_preparation_chain_contract
+PASS     test_maintained_terminology_contract
+PASS     test_fireice_dependency_contract
+PASS     test_canonical_helper_ownership_contract
+FAIL     test_interactive_acquisition_architecture - Error using test_interactive_acquisition_architecture>assert_mimt_tree (line 187)
+Expected 151 preserved MIMT files; actual=144.
+PASS     test_synthetic_golden_harness_contract
+PASS     test_path_and_function_resolution
+PASS     test_config_domain_resolution
+PASS     test_io_acquisition_resolution
+PASS     test_border_domain_resolution
+PASS     test_motion_domain_resolution
+PASS     test_filtering_domain_resolution
+PASS     test_dispersion_windows_resolution
+PASS     test_dispersion_analysis_resolution
+PASS     test_results_domain_resolution
+PASS     test_plotting_domain_resolution
+PASS     test_pipeline_domain_resolution
+
+[Unit behavior]
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Preparing temporal phase preview. Select 2 spatial points.
+Computing phase preview for point 1 of 2...
+Computing phase preview for point 2 of 2...
+Temporal phase preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Preparing temporal phase preview. Select 2 spatial points.
+Computing phase preview for point 1 of 2...
+Computing phase preview for point 2 of 2...
+Temporal phase preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Building B-mode preview for depth selection...
+B-mode preview ready.
+PASS     test_interactive_acquisition_helpers
+PASS     test_find_surface
+PASS     test_loupas_phase_increment
+PASS     test_manual_preview_helpers
+
+[Integration and workflow]
+PASS     test_startup_contract
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Preparing temporal phase preview. Select 2 spatial points.
+Computing phase preview for point 1 of 2...
+Computing phase preview for point 2 of 2...
+Temporal phase preview ready.
+Saved acquisition parameters to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpa9fc27e1_11e9_414b_bf4e_47927db72226\Params\synthetic\Params_synthetic.mat
+Building B-mode preview for depth selection...
+B-mode preview ready.
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tped8752fd_08f1_43dd_a00b_494a6a3fac07\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Building B-mode preview for depth selection...
+B-mode preview ready.
+PASS     test_prepare_acquisition_parameters_contract
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpc88b6a36_6df7_444a_a262_20c76aefa3aa\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpc88b6a36_6df7_444a_a262_20c76aefa3aa\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+FAIL     test_manual_single_file_workflow_contract - Error using test_manual_single_file_workflow_contract>assert_optional_sections (line 311)
+Filtered video must remain an independent opt-in output.
+PASS     test_phase_speed_persistence_contract
+
+Sub-experiment results summary
+------------------------------
+Experiment root: C:\Users\proyecto.pi1081\AppData\Local\Temp\tp52372e68_d221_4a07_bb8b_adbe213612b1\experiment
+Sub-experiment:  SyntheticResults
+Root dir:        C:\Users\proyecto.pi1081\AppData\Local\Temp\tp52372e68_d221_4a07_bb8b_adbe213612b1\summary_output
+Group keys:      frequency_Hz
+Repetition key:  rep_id
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In oce.pipeline.runSubexperimentSummary (line 50)
+In test_results_summary_persistence_contract (line 8)
+In run_regression_tests (line 64)]
+Saved summary CSV:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp52372e68_d221_4a07_bb8b_adbe213612b1\summary_output\Summary Tables\results_summary_table.csv
+Saved summary XLSX:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp52372e68_d221_4a07_bb8b_adbe213612b1\summary_output\Summary Tables\results_summary_table.xlsx
+Sub-experiment results summary complete.
+PASS     test_results_summary_persistence_contract
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In test_results_export_contract (line 8)
+In run_regression_tests (line 64)]
+Saved summary CSV:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp7b930e94_3282_457b_bc50_7c130b90d013\summary_output\Summary Tables\results_summary_table.csv
+Saved summary XLSX:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp7b930e94_3282_457b_bc50_7c130b90d013\summary_output\Summary Tables\results_summary_table.xlsx
+PASS     test_results_export_contract
+PASS     test_plotting_individual_contract
+PASS     test_plotting_summary_contract
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp2ab49e0a_b747_4e60_a1b8_ad18430890f8\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp2ab49e0a_b747_4e60_a1b8_ad18430890f8\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+PASS     test_pipeline_single_contract
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpb36e2d95_0576_45f9_b49c_f4c69834d7f1\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpb36e2d95_0576_45f9_b49c_f4c69834d7f1\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+
+Batch OCE workflow
+------------------
+Number of acquisitions: 3
+[Warning: [2/3] Failed: R_FAIL
+Intentional stub failure.]
+[> In oce.pipeline.runBatchProcessing (line 67)
+In test_pipeline_batch_contract (line 5)
+In run_regression_tests (line 64)]
+Batch completed: 2 success, 1 failure.
+
+Batch OCE workflow
+------------------
+Number of acquisitions: 2
+[Warning: [1/2] Failed: R_FAIL
+Intentional stub failure.]
+[> In oce.pipeline.runBatchProcessing (line 67)
+In test_pipeline_batch_contract>@()oce.pipeline.runBatchProcessing(fixture.io.root,fixture.io.subExperiment,["R_FAIL";"R1"],'SingleRunFunction',@single_stub,'StopOnError',true) (line 24)
+In test_pipeline_batch_contract>assert_identifier (line 78)
+In test_pipeline_batch_contract (line 23)
+In run_regression_tests (line 64)]
+PASS     test_pipeline_batch_contract
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp16ed8e0e_1837_40b9_8b40_9a3ddd334175\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp16ed8e0e_1837_40b9_8b40_9a3ddd334175\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+
+Sub-experiment results summary
+------------------------------
+Experiment root: C:\Users\proyecto.pi1081\AppData\Local\Temp\tp6756969a_ab9a_4852_8acd_a561d15ed622\experiment
+Sub-experiment:  SyntheticResults
+Root dir:        C:\Users\proyecto.pi1081\AppData\Local\Temp\tp6756969a_ab9a_4852_8acd_a561d15ed622\summary_output
+Group keys:      frequency_Hz
+Repetition key:  rep_id
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In oce.pipeline.runSubexperimentSummary (line 50)
+In test_pipeline_summary_contract (line 7)
+In run_regression_tests (line 64)]
+Saved summary CSV:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp6756969a_ab9a_4852_8acd_a561d15ed622\summary_output\Summary Tables\results_summary_table.csv
+Saved summary XLSX:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp6756969a_ab9a_4852_8acd_a561d15ed622\summary_output\Summary Tables\results_summary_table.xlsx
+Sub-experiment results summary complete.
+PASS     test_pipeline_summary_contract
+PASS     test_pipeline_workflow_contract
+
+[Synthetic regression]
+PASS     test_local_speed_estimators
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpbfc6373e_b5c6_4047_b4de_d3871378d176\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+PASS     test_wave_motion_plane
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp142ab263_9bf6_4570_9888_b47c8d5787f0\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp142ab263_9bf6_4570_9888_b47c8d5787f0\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpc954f727_6f8d_4afe_ab1e_a70cb0897fdd\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpc954f727_6f8d_4afe_ab1e_a70cb0897fdd\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp5b14162b_4fa7_4675_b3b9_a16cc12e1d1e\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpd3f292be_c027_4397_a525_1aac9a5afdc9\Params\synthetic\ProcessingConfig_synthetic.mat
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpe0dea476_1b7d_43d3_ab71_d980d14e3776\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tpe0dea476_1b7d_43d3_ab71_d980d14e3776\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+PASS     test_config_domain_contract
+Saved processing_config to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp169e96aa_9a81_4ecb_95fe_a9f1b5dc30c9\Params\synthetic_subexperiment\ProcessingConfig_synthetic_subexperiment.mat
+Saved acquisition params to:
+C:\Users\proyecto.pi1081\AppData\Local\Temp\tp169e96aa_9a81_4ecb_95fe_a9f1b5dc30c9\Params\synthetic_subexperiment\AcquisitionParams_synthetic_subexperiment.mat
+PASS     test_io_acquisition_contract
+PASS     test_oct_system_reconstruction_contract
+PASS     test_spectral_domain_1310_contract
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_domain_contract (line 21)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_domain_contract (line 21)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_domain_contract (line 33)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_domain_contract (line 33)
+In run_regression_tests (line 64)]
+PASS     test_border_domain_contract
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 16)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 16)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 16)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 16)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 16)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 16)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_each_bmode (line 84)
+In test_border_multibmode_contract (line 17)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_each_bmode (line 84)
+In test_border_multibmode_contract (line 17)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_each_bmode (line 84)
+In test_border_multibmode_contract (line 17)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_each_bmode (line 84)
+In test_border_multibmode_contract (line 17)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_each_bmode (line 84)
+In test_border_multibmode_contract (line 17)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_each_bmode (line 84)
+In test_border_multibmode_contract (line 17)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 24)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 24)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 24)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 24)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 63)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 24)
+In run_regression_tests (line 64)]
+[Warning: Ill-conditioned matrix produced while fitting. Results might be inaccurate. Try centering and scaling, or add points at
+non-repeated x values.]
+[> In curvefit.attention/Warning/throw (line 30)
+In fit>iLinearFit (line 753)
+In fit>iFit (line 465)
+In fit (line 117)
+In oce.borders.methods.findAdaptiveCornealBorders>fit_border_by_bmode (line 231)
+In oce.borders.methods.findAdaptiveCornealBorders>detect_single_bmode (line 88)
+In oce.borders.methods.findAdaptiveCornealBorders (line 24)
+In test_border_multibmode_contract>run_detector (line 68)
+In test_border_multibmode_contract (line 24)
+In run_regression_tests (line 64)]
+PASS     test_border_multibmode_contract
+PASS     test_phantom_border_robustness_contract
+PASS     test_motion_domain_contract
+PASS     test_filtering_domain_contract
+PASS     test_dispersion_windows_contract
+PASS     test_dispersion_analysis_contract
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In test_results_domain_contract (line 9)
+In run_regression_tests (line 64)]
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In test_results_domain_contract>assert_missing_modes (line 121)
+In test_results_domain_contract (line 22)
+In run_regression_tests (line 64)]
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In test_results_domain_contract>assert_duplicate_modes (line 154)
+In test_results_domain_contract (line 23)
+In run_regression_tests (line 64)]
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In test_results_domain_contract>assert_duplicate_modes (line 157)
+In test_results_domain_contract (line 23)
+In run_regression_tests (line 64)]
+PASS     test_results_domain_contract
+PASS     test_results_angular_ordering_contract
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In oce.results.buildExperimentResultSet (line 37)
+In test_experiment_scan_axis_summary_contract (line 12)
+In run_regression_tests (line 64)]
+[Warning: 3 empty experiment.data cell(s) were found. Summary functions may fail if the grid is incomplete.]
+[> In oce.results.buildSubexperimentResultSet>report_empty_cells (line 348)
+In oce.results.buildSubexperimentResultSet (line 119)
+In oce.results.buildExperimentResultSet (line 37)
+In test_experiment_scan_axis_summary_contract (line 12)
+In run_regression_tests (line 64)]
+[Warning: 6 empty experiment.data cell(s) were found across selected sub-experiments.]
+[> In oce.results.buildExperimentResultSet (line 89)
+In test_experiment_scan_axis_summary_contract (line 12)
+In run_regression_tests (line 64)]
+PASS     test_experiment_scan_axis_summary_contract
+PASS     test_results_summary_contract
+PASS     test_synthetic_scientific_golden
+-----------------------------
+PASS=50 FAIL=2 SKIPPED=0

@@ -1,0 +1,50 @@
+Shape [698   75  399], mask 44398/52350, x 0.000..9.933 mm dx 0.13423 mm, z 0.004..2.952 mm dz 0.004229 mm, t 0.010..7.970 ms dt 20.000 us
+           roi                    stage             count     fraction     depth_min_mm    depth_max_mm
+    _________________    _______________________    _____    __________    ____________    ____________
+
+    "baseline_2to4ms"    "raw_oct_mask"             44398        0.8481      0.21143          2.9515
+    "baseline_2to4ms"    "finite_harmonic"          44398        0.8481      0.21143          2.9515
+    "baseline_2to4ms"    "temporal_coherence"        4864      0.092913      0.21143          2.9515
+    "baseline_2to4ms"    "directional_amplitude"     4531      0.086552      0.21143          2.9515
+    "baseline_2to4ms"    "full_window_centers"       4080      0.077937      0.21143          2.9135
+    "baseline_2to4ms"    "local_support"              175     0.0033429      0.23257         0.34251
+    "baseline_2to4ms"    "fit_computed"               175     0.0033429      0.23257         0.34251
+    "baseline_2to4ms"    "not_aliased"                175     0.0033429      0.23257         0.34251
+    "baseline_2to4ms"    "circular_fit_error"          11    0.00021012      0.25371           0.296
+    "baseline_2to4ms"    "speed_range"                 11    0.00021012      0.25371           0.296
+    "baseline_2to4ms"    "accepted"                    11    0.00021012      0.25371           0.296
+    "full_record"        "raw_oct_mask"             44398        0.8481      0.21143          2.9515
+    "full_record"        "finite_harmonic"          44398        0.8481      0.21143          2.9515
+    "full_record"        "temporal_coherence"         551      0.010525      0.21143          2.8923
+    "full_record"        "directional_amplitude"      396     0.0075645      0.21143          2.8839
+    "full_record"        "full_window_centers"        396     0.0075645      0.21143          2.8839
+    "full_record"        "local_support"              106     0.0020248      0.23257         0.32137
+    "full_record"        "fit_computed"               106     0.0020248      0.23257         0.32137
+    "full_record"        "not_aliased"                106     0.0020248      0.23257         0.32137
+    "full_record"        "circular_fit_error"           0             0          NaN             NaN
+    "full_record"        "speed_range"                  0             0          NaN             NaN
+    "full_record"        "accepted"                     0             0          NaN             NaN
+    "2to6ms"             "raw_oct_mask"             44398        0.8481      0.21143          2.9515
+    "2to6ms"             "finite_harmonic"          44398        0.8481      0.21143          2.9515
+    "2to6ms"             "temporal_coherence"        1505      0.028749      0.21143          2.9515
+    "2to6ms"             "directional_amplitude"     1128      0.021547      0.21143          2.9515
+    "2to6ms"             "full_window_centers"       1063      0.020306      0.21143          2.9093
+    "2to6ms"             "local_support"              185     0.0035339      0.23257         0.34251
+    "2to6ms"             "fit_computed"               185     0.0035339      0.23257         0.34251
+    "2to6ms"             "not_aliased"                185     0.0035339      0.23257         0.34251
+    "2to6ms"             "circular_fit_error"          10    0.00019102      0.25794         0.29177
+    "2to6ms"             "speed_range"                 10    0.00019102      0.25794         0.29177
+    "2to6ms"             "accepted"                    10    0.00019102      0.25794         0.29177
+    "4to8ms"             "raw_oct_mask"             44398        0.8481      0.21143          2.9515
+    "4to8ms"             "finite_harmonic"          44398        0.8481      0.21143          2.9515
+    "4to8ms"             "temporal_coherence"         697      0.013314      0.21143          2.9473
+    "4to8ms"             "directional_amplitude"      485     0.0092646       0.6512          2.9346
+    "4to8ms"             "full_window_centers"        433     0.0082713       0.6512          2.9093
+    "4to8ms"             "local_support"                0             0          NaN             NaN
+    "4to8ms"             "fit_computed"                 0             0          NaN             NaN
+    "4to8ms"             "not_aliased"                  0             0          NaN             NaN
+    "4to8ms"             "circular_fit_error"           0             0          NaN             NaN
+    "4to8ms"             "speed_range"                  0             0          NaN             NaN
+    "4to8ms"             "accepted"                     0             0          NaN             NaN
+
+LUIS3_INITIAL_DIAGNOSIS_FINISHED

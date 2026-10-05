@@ -1,0 +1,20 @@
+Plate: lambda 4.909601 mm, kh 0.255955, cphase 0.294576 m/s
+Reusing identical physical PDE ppw18 contrast1...
+PDE residual 4.54e-13, 154729 unknowns, elapsed 5.5 s
+Reusing identical physical PDE ppw18 contrast2...
+PDE residual 4.56e-13, 154729 unknowns, elapsed 5.5 s
+Solving plate ppw18 contrast0.5...
+PDE residual 4.37e-13, 154729 unknowns, elapsed 5.8 s
+Reusing identical physical PDE ppw24 contrast1...
+PDE residual 1.37e-12, 275425 unknowns, elapsed 13.7 s
+Reusing identical physical PDE ppw24 contrast2...
+PDE residual 1.42e-12, 275425 unknowns, elapsed 13.7 s
+Solving plate ppw24 contrast0.5...
+PDE residual 1.34e-12, 275425 unknowns, elapsed 13.6 s
+Estimated ppw18 contrast1: displayed support 100.00%
+Estimated ppw18 contrast2: displayed support 100.00%
+Estimated ppw18 contrast0.5: displayed support 100.00%
+Estimated ppw24 contrast1: displayed support 100.00%
+Estimated ppw24 contrast2: displayed support 100.00%
+Estimated ppw24 contrast0.5: displayed support 99.99%
+PHYSICAL_LAMB_PLATE_GALLERY_FINISHED

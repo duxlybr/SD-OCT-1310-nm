@@ -1,0 +1,71 @@
+{
+  "stem": "fish_grid_check_000deg",
+  "grid_count": 481,
+  "dx_m": 6.25e-05,
+  "background_points_per_wavelength": 17.807481687844742,
+  "domain_half_m": 0.015,
+  "absorber_start_m": 0.0138,
+  "frequency_hz": 1800.0,
+  "source_radius_m": 0.012,
+  "source_sigma_normal_m": 0.00015,
+  "source_half_aperture_m": 0.007,
+  "source_relative_amplitude_cutoff": 0.001,
+  "source_normal_support_m": 0.0005575383283274757,
+  "window_m": 0.001,
+  "window_samples": 17,
+  "noise_snr_db": 25,
+  "primary_noise_base_seed": 20262005,
+  "secondary_noise_base_seed": 20272005,
+  "samples_per_acquisition": 160,
+  "phase_coherent_between_acquisitions": false,
+  "single_source_per_acquisition": true,
+  "simultaneous_field_sum_performed": false,
+  "forward": "div(mu grad U)+rho omega^2 U=-F; harmonic face averages; complex mass sponge",
+  "ground_truth": "material coefficient E; scalar-shear c=sqrt(E/[2rho(1+nu)]) conditional local reference",
+  "field_is_lossless_in_roi": true,
+  "full_elastodynamic_or_OCT_forward": false,
+  "geometry": {
+    "head_center_m": [
+      -0.001,
+      0.0
+    ],
+    "head_radius_m": 0.0022,
+    "tail_center_m": [
+      0.0023,
+      0.0
+    ],
+    "tail_radius_m": 0.0012,
+    "background_young_pa": 12000.0,
+    "head_young_pa": 24000.0,
+    "tail_young_pa": 24000.0,
+    "center_distance_m": 0.0033,
+    "axial_circle_overlap_m": 0.00010000000000000026,
+    "inclusion_policy": "union_of_two_circles_same_material_no_internal_material_interface"
+  },
+  "cases": [
+    {
+      "label": "fish_individual_000deg",
+      "angle_deg": 0.0,
+      "source_center_m": [
+        -0.012,
+        -0.0
+      ],
+      "source_phase_rad": 2.131682401590183,
+      "simultaneous_source_count": 1,
+      "relative_sparse_residual": 1.3734970404821257e-13,
+      "force_scale_n_m3": 1787.3866088176558,
+      "source_l2_fraction_in_absorbing_rim": 0.0,
+      "minimum_complete_roi_source_gap_wavelengths": 4.440795623602376,
+      "minimum_complete_roi_absorber_gap_mm": 7.299999999999999,
+      "roi_pixels": 37249,
+      "head_core_pixels": 1789,
+      "tail_core_pixels": 192,
+      "background_pixels": 28445
+    }
+  ],
+  "elapsed_seconds": 3.045745299983537,
+  "python": "3.14.3",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "source_sha256": "49749cf78dd02fa31f9149290d9a94315dac9c2a3a937ac2a88a0d8fa1fae38f"
+}

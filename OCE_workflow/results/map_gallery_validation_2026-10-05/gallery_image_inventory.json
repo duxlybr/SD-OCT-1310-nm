@@ -1,0 +1,369 @@
+{
+  "gallery": "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\Speed_Young_Maps",
+  "image_count": 45,
+  "only_png": true,
+  "image_readability_check": true,
+  "images": [
+    {
+      "filename": "comparison_exact_fdtd_lamb_A0_12kPa_h060mm_1000Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 145974,
+      "sha256": "881879445982c6cd91cbfeb23cd685f865fd17a9051353845d2ff4ecc235fd13"
+    },
+    {
+      "filename": "comparison_exact_fdtd_lamb_A0_12kPa_h060mm_500Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 149740,
+      "sha256": "3256b4b6cea6a5954edb341466a9e17bb672942d17cab56b2d1f35481afe417e"
+    },
+    {
+      "filename": "comparison_exact_fdtd_lamb_A0_12kPa_h120mm_1000Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 137676,
+      "sha256": "1a08a270fa41630152f210b2549b8ed8632665f94dfddc888daa3ae58d90a056"
+    },
+    {
+      "filename": "comparison_exact_fdtd_rayleigh_12kPa_nu045_1500Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 154117,
+      "sha256": "e262119027ff958b38a2999ddc088176fbf6cef6dc090a312b665aa02e63b388"
+    },
+    {
+      "filename": "comparison_exact_fdtd_rayleigh_12kPa_original_mesh010mm_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 149398,
+      "sha256": "9ea9c88a0ce026c40a46fb73255f181c2eb14253c6cfa024ee5569bfdf66bee7"
+    },
+    {
+      "filename": "comparison_exact_fdtd_rayleigh_12kPa_point_source_1000Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 138073,
+      "sha256": "9880d39551baf987f9c8176bc0a04fa637dc159845c8d9f0e536475516cdb40a"
+    },
+    {
+      "filename": "comparison_exact_fdtd_rayleigh_12kPa_stiff_inclusion_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 159470,
+      "sha256": "2be93c7293fe2637329809198dca34c8eb156fb6466082c38a4b7d128a2879d6"
+    },
+    {
+      "filename": "comparison_exact_fdtd_rayleigh_24kPa_1000Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 140245,
+      "sha256": "6d7ceca6e145a7931c792a318ea9a66d16e4ccd89757eab26d7ccaee1611dffe"
+    },
+    {
+      "filename": "comparison_exact_fdtd_rayleigh_6kPa_1000Hz_speed_young.png",
+      "family": "paired_exact_FDTD_XZ",
+      "width_px": 2994,
+      "height_px": 1391,
+      "bytes": 141872,
+      "sha256": "b3d10cec854f90c5ee61409e543859834720def84118c3da7b6c5a584d07294a"
+    },
+    {
+      "filename": "experimental_luis3_bmode1_phase_gradient_rayleigh_full_and_zoom.png",
+      "family": "experimental",
+      "width_px": 2406,
+      "height_px": 1482,
+      "bytes": 185014,
+      "sha256": "f68b535a4d5dfc6002aae04563ab2177966993cfb77dc7f74a0e5f607803eea5"
+    },
+    {
+      "filename": "experimental_luis3_bmode2_phase_gradient_rayleigh_full_and_zoom.png",
+      "family": "experimental",
+      "width_px": 2406,
+      "height_px": 1482,
+      "bytes": 183748,
+      "sha256": "e615d538ef7af68d83e7680c4e2ebce3585ce40e3289fcb4c10460a7518f5d8c"
+    },
+    {
+      "filename": "experimental_luis3_bmode3_phase_gradient_rayleigh_full_and_zoom.png",
+      "family": "experimental",
+      "width_px": 2406,
+      "height_px": 1482,
+      "bytes": 182183,
+      "sha256": "75f2be0d7fab4a307229b945b155deca1e6cd057640d1f76eada1c29d8334efc"
+    },
+    {
+      "filename": "experimental_luis3_bmode4_phase_gradient_rayleigh_full_and_zoom.png",
+      "family": "experimental",
+      "width_px": 2406,
+      "height_px": 1482,
+      "bytes": 181278,
+      "sha256": "401bc66de92e7ca9c179a41055949ccc769e7729212c349000c67d0e0d676fcb"
+    },
+    {
+      "filename": "experimental_raster_offset_0p00mm_directional_phase_rayleigh.png",
+      "family": "experimental",
+      "width_px": 2233,
+      "height_px": 1327,
+      "bytes": 179787,
+      "sha256": "c0eb3e36e6c4559e377519ce4f5ace9288aa2dbdaae55b7e3bd387c45e6ff417"
+    },
+    {
+      "filename": "experimental_raster_offset_0p00mm_reverberant_bulk_shear.png",
+      "family": "experimental",
+      "width_px": 2233,
+      "height_px": 1327,
+      "bytes": 182031,
+      "sha256": "8931b8dbd10246a5ece74df7edc482481a4d9d01343d41bffd256cb95a73c09d"
+    },
+    {
+      "filename": "experimental_raster_offset_0p10mm_directional_phase_rayleigh.png",
+      "family": "experimental",
+      "width_px": 2233,
+      "height_px": 1327,
+      "bytes": 179906,
+      "sha256": "65b4f12ba2e73b51aeb4ce2366083143c2ef16703d376ed21f4958420d38b697"
+    },
+    {
+      "filename": "experimental_raster_offset_0p10mm_reverberant_bulk_shear.png",
+      "family": "experimental",
+      "width_px": 2233,
+      "height_px": 1327,
+      "bytes": 183011,
+      "sha256": "3d44bd3bc312f715c4a0a8756d73b83bf3d6e08784a0c06b8d13ae2b27db649c"
+    },
+    {
+      "filename": "fdtd_lamb_a0_homogeneous_12kPa_speed_young.png",
+      "family": "elastodynamic_fdtd",
+      "width_px": 2383,
+      "height_px": 897,
+      "bytes": 99252,
+      "sha256": "b44c5fe73d29085574a9c1e02e22771918d77802ad4dca1b532a1f63165fcfd6"
+    },
+    {
+      "filename": "fdtd_rayleigh_homogeneous_12kPa_speed_young.png",
+      "family": "elastodynamic_fdtd",
+      "width_px": 2383,
+      "height_px": 888,
+      "bytes": 90307,
+      "sha256": "8e5d915b20959e8a4cd405582d4527a832458f20f8cb15a242cb237b1196a645"
+    },
+    {
+      "filename": "fdtd_rayleigh_inclusion_24kPa_speed_young.png",
+      "family": "elastodynamic_fdtd",
+      "width_px": 2383,
+      "height_px": 888,
+      "bytes": 104172,
+      "sha256": "ff5eae0c27ff2bda5a1447a16276ad339f6df222e51513d63562ecbba51d3838"
+    },
+    {
+      "filename": "fdtd_rayleigh_inclusion_6kPa_speed_young.png",
+      "family": "elastodynamic_fdtd",
+      "width_px": 2383,
+      "height_px": 888,
+      "bytes": 98503,
+      "sha256": "f4d3be4f05ac340696006a6a655ef6cc2bdc00f7c9f11ce55deadfc56fa9d5a9"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_000_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 159908,
+      "sha256": "eb6db2c4bfb8df40c43c834364a9ecbfbadc7d28d185ca4059077705d61faacb"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_045_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 167950,
+      "sha256": "7fd2534ea640d43afef25b7dc50891c74e36f1a57e36ec40e6b44fd87cc1ebbe"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_090_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 164780,
+      "sha256": "aaaed919ab2d334df1f5e40e2558cf23dd1756ac5e05b146f952565df60faae8"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_135_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 174064,
+      "sha256": "52b907201fee55d584308d8475196dcbc2e4558d95c74e7a88730aaa50591c25"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_180_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 159210,
+      "sha256": "6dd9a6456f8ca84220b146f8390af97953f81b1bdb502de6804d777d9cc8efc9"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_225_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 171499,
+      "sha256": "d07f57ebe00e1f5c41a7ea02fdfe6534aae62908663e242eec0ede89999e4378"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_270_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 165285,
+      "sha256": "03c0a0e014d3e794d5e82bea9cae86a026d81eacb326de73382010fd4181451c"
+    },
+    {
+      "filename": "fish_phase_gradient_excitation_315_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 171221,
+      "sha256": "8e513478b0f383d11f57b9f155f2ecf80a6e328985e368c33a4a0004dd72021f"
+    },
+    {
+      "filename": "fish_phase_gradient_robust_slowness_speed_young.png",
+      "family": "eight_independent_scalar_SH",
+      "width_px": 2059,
+      "height_px": 996,
+      "bytes": 178638,
+      "sha256": "c17138cc6ee6ab74eae3b1da2168cec33b8c904a654b5d235e1cc98f338c663e"
+    },
+    {
+      "filename": "reverberant_scalar2d_homogeneous_speed_young.png",
+      "family": "scalar_reverberant_helmholtz",
+      "width_px": 2052,
+      "height_px": 1908,
+      "bytes": 188449,
+      "sha256": "d0ac9bc36dbcb85022da4c1d9d8ae5a1ecea44b501f5e01e7a7a3a2e0667f0d0"
+    },
+    {
+      "filename": "reverberant_scalar2d_soft_inclusion_speed_young.png",
+      "family": "scalar_reverberant_helmholtz",
+      "width_px": 2052,
+      "height_px": 1908,
+      "bytes": 245909,
+      "sha256": "dd471eb7a97aa19cd13dd16e5db437ab1cd1b29877befe70170ed9d1f0b0d37b"
+    },
+    {
+      "filename": "reverberant_scalar2d_stiff_inclusion_speed_young.png",
+      "family": "scalar_reverberant_helmholtz",
+      "width_px": 2052,
+      "height_px": 1908,
+      "bytes": 247843,
+      "sha256": "b6e460387f08805bfa8eb1bde3b8024aac8447a13ed3dea91665132cf6f01e32"
+    },
+    {
+      "filename": "simulation_bscan_lamb_plate_physical_inclusion_xz_directional_phase_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2223,
+      "height_px": 1224,
+      "bytes": 140525,
+      "sha256": "75e0168d321652c568112d47b2d0ec442eb5e9e6e484659affe37057e0005b13"
+    },
+    {
+      "filename": "simulation_bscan_lamb_plate_physical_inclusion_xz_phase_gradient_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2223,
+      "height_px": 1224,
+      "bytes": 142202,
+      "sha256": "4cffd9b8dbcbf85ca1604d9f7473fb20bcc76d2763b7963955d383c2fbe5f223"
+    },
+    {
+      "filename": "simulation_bscan_rayleigh_exact_xz_snr20_directional_phase_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2210,
+      "height_px": 1224,
+      "bytes": 134974,
+      "sha256": "9914e5dbe3c1c440f9f085ad0dd9ccdf6872fd5f169970234ca22152746f1573"
+    },
+    {
+      "filename": "simulation_bscan_rayleigh_exact_xz_snr20_phase_gradient_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2210,
+      "height_px": 1224,
+      "bytes": 130541,
+      "sha256": "f92afd2bea884f657528ff3ce051e040154392748423e3448a4e0f680bde196e"
+    },
+    {
+      "filename": "simulation_bscan_rayleigh_exact_xz_snr60_directional_phase_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2210,
+      "height_px": 1224,
+      "bytes": 111892,
+      "sha256": "456cb160cfbb18a06e167c7a32bc292f6676dec0c95b057f48f2116e095ca521"
+    },
+    {
+      "filename": "simulation_bscan_rayleigh_exact_xz_snr60_phase_gradient_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2210,
+      "height_px": 1224,
+      "bytes": 115794,
+      "sha256": "c7edc5960b3d2d9885ff2a8ec6dd0fd752593fd9588e8b30213c5b5252cf3814"
+    },
+    {
+      "filename": "simulation_bscan_rayleigh_true_fdtd_xz_directional_phase_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2210,
+      "height_px": 1224,
+      "bytes": 121414,
+      "sha256": "77e8d8b141bbfe730952ee91f9e312985e11484b8f0d372243cef569badf37f5"
+    },
+    {
+      "filename": "simulation_bscan_rayleigh_true_fdtd_xz_phase_gradient_speed_young.png",
+      "family": "bscan_modal_or_elastodynamic",
+      "width_px": 2210,
+      "height_px": 1224,
+      "bytes": 121639,
+      "sha256": "5f5b44c953e14b652edcb34de5fcd19fe0f3fdc75b7e6af1413fd11c78afa31a"
+    },
+    {
+      "filename": "simulation_lamb_plate_physical_inclusion_speed.png",
+      "family": "thin_flexural_lamb_plate",
+      "width_px": 2098,
+      "height_px": 1177,
+      "bytes": 183118,
+      "sha256": "e0a94559e324a19f075a2e42f87c5e70c5644c0af400830ec28ec015fea0ad6c"
+    },
+    {
+      "filename": "simulation_lamb_plate_physical_inclusion_young.png",
+      "family": "thin_flexural_lamb_plate",
+      "width_px": 2089,
+      "height_px": 1177,
+      "bytes": 179587,
+      "sha256": "6dd5ecb5d92a5c67d37d1aba569aab8d786f9e5a5a01b730b3dbffb1b884202a"
+    },
+    {
+      "filename": "simulation_lamb_plate_soft_inclusion_speed.png",
+      "family": "thin_flexural_lamb_plate",
+      "width_px": 2098,
+      "height_px": 1177,
+      "bytes": 183707,
+      "sha256": "3934f06050918f5e00f26c5099bb3e70dd50c402909fd5be6a77cd8505f12b3b"
+    },
+    {
+      "filename": "simulation_lamb_plate_soft_inclusion_young.png",
+      "family": "thin_flexural_lamb_plate",
+      "width_px": 2089,
+      "height_px": 1177,
+      "bytes": 175561,
+      "sha256": "5693ddfbd023ba6740242323942998751e75fc3d520c9880121dd6cfa75f6ece"
+    }
+  ],
+  "note": "Numerical validation lives in sibling subfolders; no metadata written to image gallery."
+}

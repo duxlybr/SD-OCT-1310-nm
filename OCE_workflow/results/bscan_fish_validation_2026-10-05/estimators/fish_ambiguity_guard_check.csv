@@ -1,0 +1,5 @@
+realization,method,original_accepted_count,new_gap_rejected_count,minimum_measurements_near_median_anchor
+primary,phase_gradient,28561,0,4
+primary,directional_phase,28561,0,5
+noise2,phase_gradient,28561,0,4
+noise2,directional_phase,28561,0,5

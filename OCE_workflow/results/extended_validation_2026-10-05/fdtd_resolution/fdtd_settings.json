@@ -1,0 +1,511 @@
+{
+  "model_version": "2026.10.03-2",
+  "material": {
+    "name": "benchmark_gel",
+    "E_kPa": 12.0,
+    "nu": 0.495,
+    "rho": 1000.0,
+    "eta_Pa_s": 0.0,
+    "n": 1.35,
+    "backscatter_db": -55.0,
+    "mu_oct_per_mm": 1.0,
+    "alpha_db_cm_mhz": 0.45,
+    "c_acoustic": 1540.0,
+    "is_fluid": false,
+    "c_fluid_sim": 0.0,
+    "color": "#4c78a8"
+  },
+  "geometry": {
+    "size_x_mm": 9.0,
+    "size_y_mm": 3.4,
+    "size_z_mm": 4.0,
+    "surface": "plana",
+    "dome_radius_mm": 7.8,
+    "layers": [
+      {
+        "material": {
+          "name": "benchmark_gel",
+          "E_kPa": 12.0,
+          "nu": 0.495,
+          "rho": 1000.0,
+          "eta_Pa_s": 0.0,
+          "n": 1.35,
+          "backscatter_db": -55.0,
+          "mu_oct_per_mm": 1.0,
+          "alpha_db_cm_mhz": 0.45,
+          "c_acoustic": 1540.0,
+          "is_fluid": false,
+          "c_fluid_sim": 0.0,
+          "color": "#4c78a8"
+        },
+        "thickness_mm": 0.0
+      }
+    ],
+    "inclusions": [],
+    "bottom": "absorbente",
+    "lateral": "absorbente"
+  },
+  "excitation": {
+    "mode": "arf_sin_contacto",
+    "regime": "transitorio",
+    "pressure_MPa": 0.007,
+    "carrier_hz": 954900.0,
+    "shape": "linea",
+    "center_x_mm": -3,
+    "center_y_mm": 0.0,
+    "size_a_mm": 0.8,
+    "size_b_mm": 10,
+    "angle_deg": 0.0,
+    "focal_depth_mm": 0.5,
+    "dof_mm": 3.0,
+    "ch2_waveform": "Pulso gaussiano",
+    "ch2_freq_hz": 1000.0,
+    "ch2_duty": 0.5,
+    "ch2_cycles": 1,
+    "ch2_delay_ms": 0,
+    "rise_time_us": 50,
+    "harmonic_hz": 2000.0,
+    "n_sources": 8,
+    "source_layout": "anillo",
+    "ring_radius_mm": 3.0,
+    "tip_radius_mm": 0.25,
+    "random_phase": false,
+    "seed": 1,
+    "ramp_periods": 2.0
+  },
+  "cases": [
+    {
+      "label": "fdtd_cell_0.20mm_courant_0.85",
+      "settings": {
+        "cell_mm": 0.2,
+        "ppw": 10.0,
+        "f_max_hz": 0.0,
+        "courant": 0.85,
+        "pml_cells": 6,
+        "pml_R": 0.0001,
+        "duration_ms": 0.0,
+        "record_margin_mm": 0.0,
+        "record_depth_mm": 0.4,
+        "record_stride": 1,
+        "backend": "cpu",
+        "harmonic_window_periods": 2,
+        "harmonic_min_periods": 6,
+        "harmonic_max_periods": 80,
+        "harmonic_tol": 0.01,
+        "harmonics": 2,
+        "max_cells": 30000000
+      },
+      "solver_description": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.2,
+        "restricciones_celda": {
+          "usuario": 0.2
+        },
+        "malla": [
+          58,
+          30,
+          30
+        ],
+        "celdas_M": 0.0522,
+        "dt_max_us": 4.8749770809875645,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.006416141986846924,
+        "fuentes": "360 nodos fuente en 1 grupo(s); F pico = 1.647e+06 N/m\u00b3",
+        "registro": [
+          25,
+          16,
+          5
+        ],
+        "pml": {
+          "x": [
+            6,
+            6
+          ],
+          "y": [
+            6,
+            6
+          ],
+          "z": [
+            0,
+            6
+          ]
+        }
+      },
+      "record_info": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.2,
+        "restricciones_celda": {
+          "usuario": 0.2
+        },
+        "malla": [
+          58,
+          30,
+          30
+        ],
+        "celdas_M": 0.0522,
+        "dt_max_us": 4.8749770809875645,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.006416141986846924,
+        "fuentes": "360 nodos fuente en 1 grupo(s); F pico = 1.647e+06 N/m\u00b3",
+        "registro": [
+          25,
+          16,
+          5
+        ],
+        "pml": {
+          "x": [
+            6,
+            6
+          ],
+          "y": [
+            6,
+            6
+          ],
+          "z": [
+            0,
+            6
+          ]
+        },
+        "dt_us": 4.444444444444445,
+        "pasos": 1800,
+        "tiempo_s": 6.401975400018273,
+        "residual_final_rel": 0.10530369310035595,
+        "advertencias": [
+          "La fuente tiene 4.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+        ]
+      },
+      "elapsed_s": 6.4114008999895304,
+      "samples": [
+        16,
+        25,
+        201
+      ],
+      "continuum_reference_m_s": 1.9125811646201856
+    },
+    {
+      "label": "fdtd_cell_0.15mm_courant_0.85",
+      "settings": {
+        "cell_mm": 0.15,
+        "ppw": 10.0,
+        "f_max_hz": 0.0,
+        "courant": 0.85,
+        "pml_cells": 8,
+        "pml_R": 0.0001,
+        "duration_ms": 0.0,
+        "record_margin_mm": 0.0,
+        "record_depth_mm": 0.4,
+        "record_stride": 1,
+        "backend": "cpu",
+        "harmonic_window_periods": 2,
+        "harmonic_min_periods": 6,
+        "harmonic_max_periods": 80,
+        "harmonic_tol": 0.01,
+        "harmonics": 2,
+        "max_cells": 30000000
+      },
+      "solver_description": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.15,
+        "restricciones_celda": {
+          "usuario": 0.15
+        },
+        "malla": [
+          77,
+          40,
+          39
+        ],
+        "celdas_M": 0.12012,
+        "dt_max_us": 3.656232810740673,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.014772176742553711,
+        "fuentes": "680 nodos fuente en 1 grupo(s); F pico = 2.293e+06 N/m\u00b3",
+        "registro": [
+          32,
+          21,
+          6
+        ],
+        "pml": {
+          "x": [
+            8,
+            8
+          ],
+          "y": [
+            8,
+            8
+          ],
+          "z": [
+            0,
+            8
+          ]
+        }
+      },
+      "record_info": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.15,
+        "restricciones_celda": {
+          "usuario": 0.15
+        },
+        "malla": [
+          77,
+          40,
+          39
+        ],
+        "celdas_M": 0.12012,
+        "dt_max_us": 3.656232810740673,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.014772176742553711,
+        "fuentes": "680 nodos fuente en 1 grupo(s); F pico = 2.293e+06 N/m\u00b3",
+        "registro": [
+          32,
+          21,
+          6
+        ],
+        "pml": {
+          "x": [
+            8,
+            8
+          ],
+          "y": [
+            8,
+            8
+          ],
+          "z": [
+            0,
+            8
+          ]
+        },
+        "dt_us": 3.6363636363636367,
+        "pasos": 2200,
+        "tiempo_s": 17.612369100010255,
+        "residual_final_rel": 0.08721001097585193,
+        "advertencias": [
+          "La fuente tiene 5.3 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+        ]
+      },
+      "elapsed_s": 17.63008090000949,
+      "samples": [
+        21,
+        32,
+        201
+      ],
+      "continuum_reference_m_s": 1.9125811646201856
+    },
+    {
+      "label": "fdtd_cell_0.10mm_courant_0.85",
+      "settings": {
+        "cell_mm": 0.1,
+        "ppw": 10.0,
+        "f_max_hz": 0.0,
+        "courant": 0.85,
+        "pml_cells": 12,
+        "pml_R": 0.0001,
+        "duration_ms": 0.0,
+        "record_margin_mm": 0.0,
+        "record_depth_mm": 0.4,
+        "record_stride": 1,
+        "backend": "cpu",
+        "harmonic_window_periods": 2,
+        "harmonic_min_periods": 6,
+        "harmonic_max_periods": 80,
+        "harmonic_tol": 0.01,
+        "harmonics": 2,
+        "max_cells": 30000000
+      },
+      "solver_description": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.1,
+        "restricciones_celda": {
+          "usuario": 0.1
+        },
+        "malla": [
+          115,
+          59,
+          56
+        ],
+        "celdas_M": 0.37996,
+        "dt_max_us": 2.4374885404937823,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.046826958656311035,
+        "fuentes": "1475 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m\u00b3",
+        "registro": [
+          47,
+          30,
+          7
+        ],
+        "pml": {
+          "x": [
+            12,
+            12
+          ],
+          "y": [
+            12,
+            12
+          ],
+          "z": [
+            0,
+            12
+          ]
+        }
+      },
+      "record_info": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.1,
+        "restricciones_celda": {
+          "usuario": 0.1
+        },
+        "malla": [
+          115,
+          59,
+          56
+        ],
+        "celdas_M": 0.37996,
+        "dt_max_us": 2.4374885404937823,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.046826958656311035,
+        "fuentes": "1475 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m\u00b3",
+        "registro": [
+          47,
+          30,
+          7
+        ],
+        "pml": {
+          "x": [
+            12,
+            12
+          ],
+          "y": [
+            12,
+            12
+          ],
+          "z": [
+            0,
+            12
+          ]
+        },
+        "dt_us": 2.3529411764705883,
+        "pasos": 3400,
+        "tiempo_s": 221.18287700001383,
+        "residual_final_rel": 0.0901388443597651,
+        "advertencias": [
+          "La fuente tiene 8.0 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+        ]
+      },
+      "elapsed_s": 221.25772769999458,
+      "samples": [
+        30,
+        47,
+        201
+      ],
+      "continuum_reference_m_s": 1.9125811646201856
+    },
+    {
+      "label": "fdtd_cell_0.15mm_courant_0.50",
+      "settings": {
+        "cell_mm": 0.15,
+        "ppw": 10.0,
+        "f_max_hz": 0.0,
+        "courant": 0.5,
+        "pml_cells": 8,
+        "pml_R": 0.0001,
+        "duration_ms": 0.0,
+        "record_margin_mm": 0.0,
+        "record_depth_mm": 0.4,
+        "record_stride": 1,
+        "backend": "cpu",
+        "harmonic_window_periods": 2,
+        "harmonic_min_periods": 6,
+        "harmonic_max_periods": 80,
+        "harmonic_tol": 0.01,
+        "harmonics": 2,
+        "max_cells": 30000000
+      },
+      "solver_description": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.15,
+        "restricciones_celda": {
+          "usuario": 0.15
+        },
+        "malla": [
+          77,
+          40,
+          39
+        ],
+        "celdas_M": 0.12012,
+        "dt_max_us": 2.1507251827886313,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.014772176742553711,
+        "fuentes": "680 nodos fuente en 1 grupo(s); F pico = 2.293e+06 N/m\u00b3",
+        "registro": [
+          32,
+          21,
+          6
+        ],
+        "pml": {
+          "x": [
+            8,
+            8
+          ],
+          "y": [
+            8,
+            8
+          ],
+          "z": [
+            0,
+            8
+          ]
+        }
+      },
+      "record_info": {
+        "backend": "CPU (NumPy)",
+        "celda_mm": 0.15,
+        "restricciones_celda": {
+          "usuario": 0.15
+        },
+        "malla": [
+          77,
+          40,
+          39
+        ],
+        "celdas_M": 0.12012,
+        "dt_max_us": 2.1507251827886313,
+        "c_fluido_sim": 20.133334809925593,
+        "memoria_GB": 0.014772176742553711,
+        "fuentes": "680 nodos fuente en 1 grupo(s); F pico = 2.293e+06 N/m\u00b3",
+        "registro": [
+          32,
+          21,
+          6
+        ],
+        "pml": {
+          "x": [
+            8,
+            8
+          ],
+          "y": [
+            8,
+            8
+          ],
+          "z": [
+            0,
+            8
+          ]
+        },
+        "dt_us": 2.105263157894737,
+        "pasos": 3800,
+        "tiempo_s": 32.01682400002028,
+        "residual_final_rel": 0.08735175309506962,
+        "advertencias": [
+          "La fuente tiene 5.3 muestras por FWHM (< 10 recomendadas [Palmeri2017]); la distribuci\u00f3n de fuerza queda sub-muestreada."
+        ]
+      },
+      "elapsed_s": 32.035591699997894,
+      "samples": [
+        21,
+        32,
+        201
+      ],
+      "continuum_reference_m_s": 1.9125811646201856
+    }
+  ],
+  "comparison_note": "Mesh sensitivity only; no Richardson extrapolation or proven convergence order."
+}

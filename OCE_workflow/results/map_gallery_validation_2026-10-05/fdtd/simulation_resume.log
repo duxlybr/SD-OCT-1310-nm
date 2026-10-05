@@ -1,0 +1,26 @@
+Resuming completed cases: ['lamb_a0_homogeneous_12kPa', 'lamb_a0_inclusion_24kPa']
+rayleigh_homogeneous_12kPa Discretizando la geometr�a
+rayleigh_homogeneous_12kPa {'backend': 'CPU (NumPy)', 'celda_mm': 0.18, 'restricciones_celda': {'usuario': 0.18}, 'malla': [93, 54, 33], 'celdas_M': 0.165726, 'dt_max_us': 4.387479372888809, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.019663631916046143, 'fuentes': '540 nodos fuente en 1 grupo(s); F pico = 1.859e+06 N/m�', 'registro': (41, 30, 4), 'pml': {'x': (7, 7), 'y': (7, 7), 'z': (0, 7)}}
+rayleigh_homogeneous_12kPa FDTD arm�nico: 2 periodos, cambio inf % (6 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 4 periodos, cambio 96.47 % (11 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 6 periodos, cambio 77.75 % (17 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 8 periodos, cambio 54.24 % (23 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 10 periodos, cambio 15.10 % (29 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 12 periodos, cambio 1.13 % (35 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 14 periodos, cambio 1.15 % (41 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 16 periodos, cambio 0.77 % (46 s)
+rayleigh_homogeneous_12kPa FDTD arm�nico: 18 periodos, cambio 0.18 % (52 s)
+rayleigh_homogeneous_12kPa DONE 3 52.15277499999502
+rayleigh_inclusion_24kPa Discretizando la geometr�a
+rayleigh_inclusion_24kPa {'backend': 'CPU (NumPy)', 'celda_mm': 0.18, 'restricciones_celda': {'usuario': 0.18}, 'malla': [93, 54, 33], 'celdas_M': 0.165726, 'dt_max_us': 3.102416416885777, 'c_fluido_sim': 28.472835143995113, 'memoria_GB': 0.019663631916046143, 'fuentes': '540 nodos fuente en 1 grupo(s); F pico = 1.859e+06 N/m�', 'registro': (41, 30, 4), 'pml': {'x': (7, 7), 'y': (7, 7), 'z': (0, 7)}}
+rayleigh_inclusion_24kPa FDTD arm�nico: 2 periodos, cambio inf % (7 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 4 periodos, cambio 96.45 % (15 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 6 periodos, cambio 77.25 % (22 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 8 periodos, cambio 47.87 % (29 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 10 periodos, cambio 10.98 % (37 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 12 periodos, cambio 0.95 % (44 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 14 periodos, cambio 0.75 % (53 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 16 periodos, cambio 0.54 % (60 s)
+rayleigh_inclusion_24kPa FDTD arm�nico: 18 periodos, cambio 0.10 % (68 s)
+rayleigh_inclusion_24kPa DONE 4 68.30922860000283
+FDTD_GALLERY_EXPORT_FINISHED

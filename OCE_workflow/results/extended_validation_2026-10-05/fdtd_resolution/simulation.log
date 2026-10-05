@@ -1,0 +1,53 @@
+fdtd_cell_0.20mm_courant_0.85 Discretizando la geometr�a
+fdtd_cell_0.20mm_courant_0.85 {'backend': 'CPU (NumPy)', 'celda_mm': 0.2, 'restricciones_celda': {'usuario': 0.2}, 'malla': [58, 30, 30], 'celdas_M': 0.0522, 'dt_max_us': 4.8749770809875645, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.006416141986846924, 'fuentes': '360 nodos fuente en 1 grupo(s); F pico = 1.647e+06 N/m�', 'registro': (25, 16, 5), 'pml': {'x': (6, 6), 'y': (6, 6), 'z': (0, 6)}}
+fdtd_cell_0.20mm_courant_0.85 FDTD 20.0 % (t = 1.60 ms, quedan ~5 s)
+fdtd_cell_0.20mm_courant_0.85 FDTD 45.0 % (t = 3.60 ms, quedan ~4 s)
+fdtd_cell_0.20mm_courant_0.85 FDTD 75.0 % (t = 6.00 ms, quedan ~2 s)
+fdtd_cell_0.20mm_courant_0.85 FDTD 100.0 % (t = 8.00 ms, quedan ~0 s)
+fdtd_cell_0.20mm_courant_0.85 FINISHED 6.4114008999895304
+fdtd_cell_0.15mm_courant_0.85 Discretizando la geometr�a
+fdtd_cell_0.15mm_courant_0.85 {'backend': 'CPU (NumPy)', 'celda_mm': 0.15, 'restricciones_celda': {'usuario': 0.15}, 'malla': [77, 40, 39], 'celdas_M': 0.12012, 'dt_max_us': 3.656232810740673, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.014772176742553711, 'fuentes': '680 nodos fuente en 1 grupo(s); F pico = 2.293e+06 N/m�', 'registro': (32, 21, 6), 'pml': {'x': (8, 8), 'y': (8, 8), 'z': (0, 8)}}
+fdtd_cell_0.15mm_courant_0.85 FDTD 20.0 % (t = 1.60 ms, quedan ~14 s)
+fdtd_cell_0.15mm_courant_0.85 FDTD 45.0 % (t = 3.60 ms, quedan ~10 s)
+fdtd_cell_0.15mm_courant_0.85 FDTD 75.0 % (t = 6.00 ms, quedan ~4 s)
+fdtd_cell_0.15mm_courant_0.85 FDTD 100.0 % (t = 8.00 ms, quedan ~0 s)
+fdtd_cell_0.15mm_courant_0.85 FINISHED 17.63008090000949
+fdtd_cell_0.10mm_courant_0.85 Discretizando la geometr�a
+fdtd_cell_0.10mm_courant_0.85 {'backend': 'CPU (NumPy)', 'celda_mm': 0.1, 'restricciones_celda': {'usuario': 0.1}, 'malla': [115, 59, 56], 'celdas_M': 0.37996, 'dt_max_us': 2.4374885404937823, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.046826958656311035, 'fuentes': '1475 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m�', 'registro': (47, 30, 7), 'pml': {'x': (12, 12), 'y': (12, 12), 'z': (0, 12)}}
+fdtd_cell_0.10mm_courant_0.85 FDTD 20.0 % (t = 1.60 ms, quedan ~179 s)
+fdtd_cell_0.10mm_courant_0.85 FDTD 45.0 % (t = 3.60 ms, quedan ~122 s)
+fdtd_cell_0.10mm_courant_0.85 FDTD 75.0 % (t = 6.00 ms, quedan ~56 s)
+fdtd_cell_0.10mm_courant_0.85 FDTD 100.0 % (t = 8.00 ms, quedan ~0 s)
+fdtd_cell_0.10mm_courant_0.85 FINISHED 221.25772769999458
+fdtd_cell_0.15mm_courant_0.50 Discretizando la geometr�a
+fdtd_cell_0.15mm_courant_0.50 {'backend': 'CPU (NumPy)', 'celda_mm': 0.15, 'restricciones_celda': {'usuario': 0.15}, 'malla': [77, 40, 39], 'celdas_M': 0.12012, 'dt_max_us': 2.1507251827886313, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.014772176742553711, 'fuentes': '680 nodos fuente en 1 grupo(s); F pico = 2.293e+06 N/m�', 'registro': (32, 21, 6), 'pml': {'x': (8, 8), 'y': (8, 8), 'z': (0, 8)}}
+fdtd_cell_0.15mm_courant_0.50 FDTD 20.0 % (t = 1.60 ms, quedan ~27 s)
+fdtd_cell_0.15mm_courant_0.50 FDTD 45.0 % (t = 3.60 ms, quedan ~18 s)
+fdtd_cell_0.15mm_courant_0.50 FDTD 75.0 % (t = 6.00 ms, quedan ~8 s)
+fdtd_cell_0.15mm_courant_0.50 FDTD 100.0 % (t = 8.00 ms, quedan ~0 s)
+fdtd_cell_0.15mm_courant_0.50 FINISHED 32.035591699997894
+fdtd_cell_0.20mm_courant_0.85 old_phase_gradient: -2.4916385394633944% bias, 100.0% coverage
+fdtd_cell_0.20mm_courant_0.85 old_lfe: 3.066505788084257% bias, 100.0% coverage
+fdtd_cell_0.20mm_courant_0.85 old_reverberant: 8.030557920138376% bias, 100.0% coverage
+fdtd_cell_0.20mm_courant_0.85 old_reverberant_3d: -9.126185437653241% bias, 100.0% coverage
+fdtd_cell_0.20mm_courant_0.85 old_reverberant_normalized: 5.889375906560776% bias, 100.0% coverage
+fdtd_cell_0.20mm_courant_0.85 old_reverberant_3d_normalized: -7.313828651940895% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.85 old_phase_gradient: -3.6420137088441544% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.85 old_lfe: -0.44113041926613417% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.85 old_reverberant: 1.9789804021899542% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.85 old_reverberant_3d: -9.126185437653241% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.85 old_reverberant_normalized: 0.9936198696214418% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.85 old_reverberant_3d_normalized: -11.26722523261292% bias, 100.0% coverage
+fdtd_cell_0.10mm_courant_0.85 old_phase_gradient: -0.6451482738331686% bias, 100.0% coverage
+fdtd_cell_0.10mm_courant_0.85 old_lfe: -0.21778093630384138% bias, 100.0% coverage
+fdtd_cell_0.10mm_courant_0.85 old_reverberant: 2.958513220929518% bias, 100.0% coverage
+fdtd_cell_0.10mm_courant_0.85 old_reverberant_3d: -8.253320427855968% bias, 100.0% coverage
+fdtd_cell_0.10mm_courant_0.85 old_reverberant_normalized: 2.426413312707352% bias, 100.0% coverage
+fdtd_cell_0.10mm_courant_0.85 old_reverberant_3d_normalized: -9.992839943547956% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.50 old_phase_gradient: -3.639804645605683% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.50 old_lfe: -0.43693035182094286% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.50 old_reverberant: 1.9789804021899542% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.50 old_reverberant_3d: -9.126185437653241% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.50 old_reverberant_normalized: 0.9903133393635576% bias, 100.0% coverage
+fdtd_cell_0.15mm_courant_0.50 old_reverberant_3d_normalized: -11.27018801532294% bias, 100.0% coverage
+FDTD_RESOLUTION_EXPORT_PASS

@@ -1,0 +1,8 @@
+source_seed_20261007 completed; map coverage 24.68 %
+          case_name              region       truth_pixels    accepted_pixels    coverage_pct    speed_median_m_s    speed_bias_pct    speed_median_abs_error_pct    young_median_kpa    young_bias_pct    young_median_abs_error_pct
+    ______________________    ____________    ____________    _______________    ____________    ________________    ______________    __________________________    ________________    ______________    __________________________
+
+    "source_seed_20261007"    "core"                81               81                100            2.8087            -0.86329                 1.0234                   23.587             -1.7191                 2.0572
+    "source_seed_20261007"    "background"        2128             2127             99.953              1.98             -1.1651                 1.2861                   11.722             -2.3167                 2.5577
+    "source_seed_20261007"    "interface"         4684             4679             99.893             2.056            -0.30129                 2.6896                   12.639            -0.60168                 5.4015
+    "source_seed_20261007"    "farfield"          6893             6887             99.913            2.0168            -0.77958                 1.9664                   12.162             -1.5531                 3.9143

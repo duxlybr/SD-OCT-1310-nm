@@ -1,0 +1,15 @@
+lamb_a0_homogeneous_12kPa Discretizando la geometr�a
+lamb_a0_homogeneous_12kPa {'backend': 'CPU (NumPy)', 'celda_mm': 0.1, 'restricciones_celda': {'usuario': 0.1}, 'malla': [165, 95, 12], 'celdas_M': 0.1881, 'dt_max_us': 2.4374885404937823, 'c_fluido_sim': 20.133334809925593, 'memoria_GB': 0.021576881408691406, 'fuentes': '1805 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m�', 'registro': (73, 52, 5), 'pml': {'x': (12, 12), 'y': (12, 12), 'z': (0, 0)}}
+lamb_a0_homogeneous_12kPa FDTD arm�nico: 2 periodos, cambio inf % (16 s)
+lamb_a0_homogeneous_12kPa FDTD arm�nico: 4 periodos, cambio 0.00 % (32 s)
+lamb_a0_homogeneous_12kPa FDTD arm�nico: 6 periodos, cambio 0.00 % (48 s)
+lamb_a0_homogeneous_12kPa FDTD arm�nico: 8 periodos, cambio 0.00 % (65 s)
+lamb_a0_homogeneous_12kPa FDTD arm�nico: 10 periodos, cambio 0.00 % (81 s)
+lamb_a0_homogeneous_12kPa FDTD arm�nico: 12 periodos, cambio 0.00 % (97 s)
+lamb_a0_homogeneous_12kPa DONE 1 96.79285540001001
+lamb_a0_inclusion_24kPa Discretizando la geometr�a
+lamb_a0_inclusion_24kPa {'backend': 'CPU (NumPy)', 'celda_mm': 0.1, 'restricciones_celda': {'usuario': 0.1}, 'malla': [165, 95, 12], 'celdas_M': 0.1881, 'dt_max_us': 1.7235646760476542, 'c_fluido_sim': 28.472835143995113, 'memoria_GB': 0.021576881408691406, 'fuentes': '1805 nodos fuente en 1 grupo(s); F pico = 3.44e+06 N/m�', 'registro': (73, 52, 5), 'pml': {'x': (12, 12), 'y': (12, 12), 'z': (0, 0)}}
+lamb_a0_inclusion_24kPa FDTD arm�nico: 2 periodos, cambio inf % (21 s)
+lamb_a0_inclusion_24kPa FDTD arm�nico: 4 periodos, cambio 0.00 % (41 s)
+lamb_a0_inclusion_24kPa FDTD arm�nico: 6 periodos, cambio 0.00 % (63 s)
+lamb_a0_inclusion_24kPa FDTD arm�nico: 8 periodos, cambio 0.00 % (85 s)
