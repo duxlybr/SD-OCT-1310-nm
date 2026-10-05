@@ -202,6 +202,8 @@ class _WriterWorker:
         self._mb_bscan: NDArray[np.uint16] | None = None
         self._mb_bscan_index = -1
         self._mb_sweep_index: int | None = None
+        self._ring: NDArray[np.uint16] | None = None  # BM rings: arcs of one ring repetition
+        self._ring_key: tuple[int, int | None] | None = None
         self._crosshair_x: NDArray[np.uint16] | None = None
         self._crosshair_key: tuple[int, int | None] | None = None
         self._preview = _PreviewWorker(event_sink, hardware) if preview_enabled else None
@@ -285,7 +287,21 @@ class _WriterWorker:
         min_interval = 1.0 / self.hardware.preview_rate_hz
         candidate: NDArray[np.uint16] | None = None
         complete_sweep = self.scan.mode is AcquisitionMode.BM
-        if self.scan.mode is AcquisitionMode.BM:
+        rings = self.scan.pattern is ScanPattern.RINGS
+        if self.scan.mode is AcquisitionMode.BM and rings:
+            # Ring b arrives as b+1 arc frames: show it assembled into one image.
+            key = (segment.bscan_index, segment.repetition_index)
+            if self._ring is None or self._ring_key != key:
+                self._ring = np.zeros(
+                    (self.scan.alines_in_bscan(segment.bscan_index), self.hardware.spectral_samples),
+                    dtype=np.uint16,
+                )
+                self._ring_key = key
+            start = (segment.sweep_index or 0) * self.scan.alines
+            self._ring[start : start + data.shape[0]] = data
+            candidate = self._ring[: start + data.shape[0]]
+            complete_sweep = start + data.shape[0] == self._ring.shape[0]
+        elif self.scan.mode is AcquisitionMode.BM:
             candidate = data
         elif self.scan.is_stationary:
             candidate = data
@@ -294,10 +310,11 @@ class _WriterWorker:
             if (
                 self._mb_bscan is None
                 or self._mb_bscan_index != segment.bscan_index
-                or self._mb_sweep_index != segment.sweep_index
+                or (not rings and self._mb_sweep_index != segment.sweep_index)
             ):
                 self._mb_bscan = np.zeros(
-                    (self.scan.alines, self.hardware.spectral_samples), dtype=np.uint16
+                    (self.scan.alines_in_bscan(segment.bscan_index), self.hardware.spectral_samples),
+                    dtype=np.uint16,
                 )
                 self._mb_bscan_index = segment.bscan_index
                 self._mb_sweep_index = segment.sweep_index
@@ -306,17 +323,20 @@ class _WriterWorker:
             linear_reverse = (
                 self.scan.pattern is ScanPattern.LINEAR and segment.bscan_index % 2 == 1
             )
+            # Ring arcs are consecutive pieces of one ring.
+            offset = (segment.sweep_index or 0) * self.scan.alines if rings else 0
+            position = offset + segment.aline_index
             lateral_index = (
                 self.scan.alines - 1 - segment.aline_index
-                if linear_reverse else segment.aline_index
+                if linear_reverse else position
             )
             self._mb_bscan[lateral_index] = averaged
-            last_position = segment.aline_index == self.scan.alines - 1
+            last_position = position == self._mb_bscan.shape[0] - 1
             complete_sweep = last_position
             if last_position or now - self._last_preview >= min_interval:
                 candidate = (
                     self._mb_bscan
-                    if linear_reverse else self._mb_bscan[: segment.aline_index + 1]
+                    if linear_reverse else self._mb_bscan[: position + 1]
                 )
         if candidate is None:
             return
@@ -352,7 +372,8 @@ class _WriterWorker:
                 _PreviewPacket(
                     data=preview_data,
                     bscan_index=segment.bscan_index,
-                    sweep_index=segment.sweep_index,
+                    # The GUI reads sweep_index as the crosshair X/Y sweep.
+                    sweep_index=None if rings else segment.sweep_index,
                     remove_dc=self.preview_remove_dc(),
                     window=self.preview_window(),
                     depth_start_bin=depth_start_bin,
