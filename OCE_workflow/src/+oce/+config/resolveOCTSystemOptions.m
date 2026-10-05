@@ -1,9 +1,17 @@
-function resolved = resolveOCTSystemOptions(options, preparedProfile)
+function resolved = resolveOCTSystemOptions(options, preparedProfile, ...
+        acquisitionHeader)
 %RESOLVEOCTSYSTEMOPTIONS Validate and resolve editable OCT-system parameters.
-% Binary format is deliberately not an input to this resolver.
+% resolved = resolveOCTSystemOptions(options, preparedProfile, acquisitionHeader)
+% Binary format is deliberately not an input to this resolver. When the
+% optional normalized acquisition header records the camera line rate
+% (a_scan_rate_hz), that measured rate replaces the profile's nominal
+% a_scan_rate (kHz) with a_scan_rate_source="acquisition_header".
 
     if nargin < 2
         preparedProfile = "";
+    end
+    if nargin < 3
+        acquisitionHeader = struct();
     end
 
     validate_options(options);
@@ -17,6 +25,13 @@ function resolved = resolveOCTSystemOptions(options, preparedProfile)
     aScanRate = positive_scalar(options.a_scan_rate, 'a_scan_rate');
     aScanRateSource = text_scalar( ...
         options.a_scan_rate_source, 'a_scan_rate_source');
+    if isstruct(acquisitionHeader) && isscalar(acquisitionHeader) && ...
+            isfield(acquisitionHeader, 'a_scan_rate_hz') && ...
+            ~isnan(acquisitionHeader.a_scan_rate_hz)
+        aScanRate = positive_scalar(acquisitionHeader.a_scan_rate_hz, ...
+            'acquisition_header.a_scan_rate_hz') / 1000;
+        aScanRateSource = "acquisition_header";
+    end
     depthCalibration = validate_depth_calibration(options.depth_sampling_calibration);
     spectralSampling = validate_spectral_sampling(options.spectral_sampling);
     spectralPreprocessing = validate_spectral_preprocessing( ...

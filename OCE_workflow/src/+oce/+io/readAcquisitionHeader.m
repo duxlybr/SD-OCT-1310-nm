@@ -1,7 +1,11 @@
 function scanInfo = readAcquisitionHeader(filename, filepath)
 %READACQUISITIONHEADER Read and normalize one OCT/OCE binary header.
 % Supported binary families converge on the same canonical acquisition
-% dimensions. Raw samples are not loaded.
+% dimensions. Raw samples are not loaded. OCTOCE (GUI) MB files also report,
+% per stored line, bscan_length_mm, bscan_angle_deg and
+% bscan_storage_reversed; a_scan_rate_hz (camera line rate); and excitation,
+% read from the header 'generator' section when the GUI controlled it.
+% Crosshair B-scans are stored as consecutive X and Y lines (No_3Dscans = 2B).
 
     if nargin < 1 || isempty(filename)
         error('OCE:IO:InvalidAcquisitionHeader', ...
@@ -109,30 +113,37 @@ function scanInfo = build_octoce_raw_v1_scan_info(fileID, fullPath)
         scan, 'm_repetitions', 'scan.m_repetitions', fullPath);
     samplesPerBmode = json_positive_integer( ...
         scan, 'alines', 'scan.alines', fullPath);
-    bmodeCount = json_positive_integer( ...
+    scanBmodeCount = json_positive_integer( ...
         scan, 'bscans', 'scan.bscans', fullPath);
     xWidthMm = json_nonnegative_scalar( ...
         scan, 'x_length_mm', 'scan.x_length_mm', fullPath);
     yWidthMm = json_nonnegative_scalar( ...
         scan, 'y_length_mm', 'scan.y_length_mm', fullPath);
-    pattern = json_text_scalar(scan, 'pattern', 'scan.pattern', fullPath);
+    pattern = lower(json_text_scalar( ...
+        scan, 'pattern', 'scan.pattern', fullPath));
     createdUtc = json_text_scalar( ...
         source, 'created_utc', 'created_utc', fullPath);
 
-    plannedShape = source.planned_shape;
-    if ~isnumeric(plannedShape) || numel(plannedShape) ~= 4 || ...
-            any(~isfinite(plannedShape), 'all')
-        error('OCE:IO:InvalidAcquisitionHeader', ...
-            'OCTOCE planned_shape must contain four finite values in: %s', ...
-            fullPath);
+    % Crosshair stores [B, sweep_xy, A, M, pixel]: in C order its X and Y
+    % sweeps are consecutive stored lines, so 2*B lines share the MB layout.
+    sweepCount = 1 + double(pattern == "crosshair");
+    if sweepCount == 2
+        expectedShape = [scanBmodeCount, 2, samplesPerBmode, ...
+            temporalCount, spectralCount];
+    else
+        expectedShape = [scanBmodeCount, samplesPerBmode, temporalCount, ...
+            spectralCount];
     end
-    plannedShape = double(plannedShape(:).');
-    expectedShape = [bmodeCount, samplesPerBmode, temporalCount, spectralCount];
-    if ~isequal(plannedShape, expectedShape)
+    plannedShape = source.planned_shape;
+    if ~isnumeric(plannedShape) || ...
+            numel(plannedShape) ~= numel(expectedShape) || ...
+            any(~isfinite(plannedShape), 'all') || ...
+            ~isequal(double(plannedShape(:).'), expectedShape)
         error('OCE:IO:InvalidAcquisitionHeader', ...
             ['OCTOCE planned_shape does not match scan/hardware metadata ' ...
              'in: %s'], fullPath);
     end
+    bmodeCount = scanBmodeCount * sweepCount;
 
     payloadBytes = fileBytes - payloadOffset;
     if payloadBytes < 0 || mod(payloadBytes, 2) ~= 0
@@ -161,46 +172,181 @@ function scanInfo = build_octoce_raw_v1_scan_info(fileID, fullPath)
         'Ver_scan_length_mm', yWidthMm, ...
         'binary_format', binaryFormat);
 
-    scanInfo.bscan_length_mm = octoce_bscan_lengths( ...
-        scan, pattern, bmodeCount, xWidthMm, yWidthMm, fullPath);
-    if isfield(scan, 'raster_bidirectional')
-        bidirectional = scan.raster_bidirectional;
-        if ~islogical(bidirectional) || ~isscalar(bidirectional)
-            error('OCE:IO:InvalidAcquisitionHeader', ...
-                'OCTOCE field scan.raster_bidirectional must be boolean in: %s', ...
-                fullPath);
-        end
-        scanInfo.raster_bidirectional = bidirectional;
-    end
+    rasterBidirectional = json_optional_logical(scan, ...
+        'raster_bidirectional', 'scan.raster_bidirectional', fullPath);
+    % Linear files written before this marker existed are unidirectional.
+    linearBidirectional = json_optional_logical(scan, ...
+        'linear_bidirectional', 'scan.linear_bidirectional', fullPath);
+    lines = octoce_bscan_lines(scan, pattern, scanBmodeCount, ...
+        xWidthMm, yWidthMm, rasterBidirectional, linearBidirectional, ...
+        fullPath);
+    scanInfo.bscan_length_mm = lines.length_mm;
+    scanInfo.bscan_angle_deg = lines.angle_deg;
+    scanInfo.bscan_storage_reversed = lines.storage_reversed;
+    scanInfo.raster_bidirectional = rasterBidirectional;
+    scanInfo.a_scan_rate_hz = octoce_line_rate(hardware, fullPath);
+    scanInfo.excitation = read_generator_header(source, fullPath);
 end
 
-function lengths = octoce_bscan_lengths(scan, pattern, bmodeCount, ...
-        xWidthMm, yWidthMm, fullPath)
-    % Physical length of each stored B-scan under the OCTOCE scan planner:
-    % raster lines run along x; linear lines follow their orientation;
-    % meridian b spans the ellipse diameter at theta = pi*b/bscans.
-    switch lower(pattern)
+function lines = octoce_bscan_lines(scan, pattern, scanBmodeCount, ...
+        xWidthMm, yWidthMm, rasterBidirectional, linearBidirectional, ...
+        fullPath)
+    % One entry per stored line of the OCTOCE scan planner (octoce/scan.py):
+    % its length, the direction of increasing stored A-line index (deg from
+    % +x, counterclockwise) and whether MB storage runs it backwards.
+    % Raster lines run along +x; linear lines along +x or +y; meridian b
+    % spans the x/y ellipse at theta = pi*b/bscans; crosshair stores an X
+    % then a Y sweep per B-scan. MB keeps positions in acquisition order, so
+    % odd bidirectional raster lines and odd linear lines (when marked
+    % linear_bidirectional) are stored from their positive end.
+    oddLine = mod(0:scanBmodeCount - 1, 2) == 1;
+    reversed = false(1, scanBmodeCount);
+    switch pattern
         case "raster"
-            lengths = repmat(xWidthMm, 1, bmodeCount);
+            lengths = repmat(xWidthMm, 1, scanBmodeCount);
+            angles = zeros(1, scanBmodeCount);
+            reversed = rasterBidirectional & oddLine;
         case "linear"
             orientation = lower(json_text_scalar( ...
                 scan, 'orientation', 'scan.orientation', fullPath));
             switch orientation
                 case "horizontal"
-                    lengths = repmat(xWidthMm, 1, bmodeCount);
+                    lengths = repmat(xWidthMm, 1, scanBmodeCount);
+                    angles = zeros(1, scanBmodeCount);
                 case "vertical"
-                    lengths = repmat(yWidthMm, 1, bmodeCount);
+                    lengths = repmat(yWidthMm, 1, scanBmodeCount);
+                    angles = repmat(90, 1, scanBmodeCount);
                 otherwise
                     error('OCE:IO:InvalidAcquisitionHeader', ...
                         'Unsupported OCTOCE scan.orientation "%s" in: %s', ...
                         orientation, fullPath);
             end
+            reversed = linearBidirectional & oddLine;
         case "meridians"
-            theta = pi * (0:bmodeCount - 1) / bmodeCount;
+            theta = pi * (0:scanBmodeCount - 1) / scanBmodeCount;
             lengths = hypot(xWidthMm * cos(theta), yWidthMm * sin(theta));
+            angles = 180 * (0:scanBmodeCount - 1) / scanBmodeCount;
+            if xWidthMm ~= yWidthMm
+                % An x/y ellipse tilts each diameter away from theta.
+                angles = mod(atan2d(yWidthMm * sin(theta), ...
+                    xWidthMm * cos(theta)), 180);
+            end
+        case "crosshair"
+            lengths = repmat([xWidthMm yWidthMm], 1, scanBmodeCount);
+            angles = repmat([0 90], 1, scanBmodeCount);
+            reversed = false(1, 2 * scanBmodeCount);
+        case {"rings", "spiral"}
+            % Closed polar turns have no straight-line length or direction.
+            lengths = NaN(1, scanBmodeCount);
+            angles = NaN(1, scanBmodeCount);
         otherwise
-            % No single-line length is defined (e.g. crosshair sweeps).
-            lengths = NaN(1, bmodeCount);
+            error('OCE:IO:InvalidAcquisitionHeader', ...
+                'Unsupported OCTOCE scan.pattern "%s" in: %s', ...
+                pattern, fullPath);
+    end
+    lines = struct('length_mm', lengths, 'angle_deg', angles, ...
+        'storage_reversed', reversed);
+end
+
+function rateHz = octoce_line_rate(hardware, fullPath)
+    % The camera line period is the MB time-sample interval at each position.
+    if isfield(hardware, 'effective_line_rate_hz')
+        rateHz = json_numeric_scalar(hardware, 'effective_line_rate_hz', ...
+            'hardware.effective_line_rate_hz', fullPath);
+    elseif isfield(hardware, 'cc1_period_us')
+        rateHz = 1e6 / json_numeric_scalar(hardware, 'cc1_period_us', ...
+            'hardware.cc1_period_us', fullPath);
+    else
+        rateHz = NaN;
+        return;
+    end
+    if ~(rateHz > 0) || ~isfinite(rateHz)
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE A-line rate must be positive and finite in: %s', fullPath);
+    end
+end
+
+function value = json_optional_logical(source, name, label, fullPath)
+    value = false;
+    if ~isfield(source, name)
+        return;
+    end
+    value = source.(name);
+    if ~islogical(value) || ~isscalar(value)
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE field %s must be boolean in: %s', label, fullPath);
+    end
+end
+
+function excitation = read_generator_header(source, fullPath)
+    % The DG4162 GUI records the applied generator in the .bin header section
+    % 'generator'. CH2 is the burst that modulates the CH1 carrier: its
+    % frequency is the OCE excitation frequency.
+    excitation = struct('available', false, 'source', "", ...
+        'frequency_hz', NaN, 'burst_cycles', NaN, 'waveform', "", ...
+        'trigger_delay_ms', NaN, 'carrier_frequency_hz', NaN, ...
+        'carrier_amplitude_vpp', NaN, 'contact', "");
+    if ~isfield(source, 'generator') || isempty(source.generator)
+        return;
+    end
+    generator = source.generator;
+    if ~isstruct(generator) || ~isscalar(generator) || ...
+            ~isfield(generator, 'settings') || ~isstruct(generator.settings)
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE generator section lacks settings in: %s', fullPath);
+    end
+    settings = generator.settings;
+    % state is read back from the instrument after programming it, so it is
+    % the applied excitation whenever the GUI recorded it.
+    applied = settings;
+    if isfield(generator, 'state') && isstruct(generator.state)
+        applied = generator.state;
+    end
+    excitation.available = true;
+    excitation.source = "acquisition_header.generator";
+    excitation.frequency_hz = generator_number(applied, ...
+        'ch2_frequency_hz', fullPath, true);
+    excitation.burst_cycles = generator_number(applied, ...
+        'ch2_burst_cycles', fullPath, true);
+    if excitation.burst_cycles ~= round(excitation.burst_cycles)
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE generator ch2_burst_cycles must be an integer in: %s', ...
+            fullPath);
+    end
+    excitation.trigger_delay_ms = generator_number(applied, ...
+        'ch2_delay_ms', fullPath, false);
+    excitation.carrier_amplitude_vpp = generator_number(applied, ...
+        'ch1_vpp', fullPath, false);
+    excitation.carrier_frequency_hz = generator_number(applied, ...
+        'ch1_frequency_hz', fullPath, false);
+    excitation.waveform = generator_text(settings, 'ch2_waveform');
+    excitation.contact = generator_text(settings, 'excitation');
+end
+
+function value = generator_number(source, name, fullPath, required)
+    value = NaN;
+    if ~isfield(source, name)
+        if required
+            error('OCE:IO:InvalidAcquisitionHeader', ...
+                'OCTOCE generator section is missing %s in: %s', name, fullPath);
+        end
+        return;
+    end
+    value = source.(name);
+    if ~isnumeric(value) || ~isscalar(value) || ~isfinite(value) || ...
+            (required && value <= 0)
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            'OCTOCE generator field %s must be a finite number in: %s', ...
+            name, fullPath);
+    end
+    value = double(value);
+end
+
+function value = generator_text(source, name)
+    value = "";
+    if isfield(source, name) && (ischar(source.(name)) || ...
+            (isstring(source.(name)) && isscalar(source.(name))))
+        value = string(source.(name));
     end
 end
 
@@ -217,9 +363,28 @@ function validate_octoce_raw_v1_source(source, payloadOffset, fullPath)
             'Unsupported OCTOCE raw acquisition format in: %s', fullPath);
     end
 
+    require_json_fields(source.scan, ...
+        {'alines', 'bscans', 'm_repetitions', 'pattern', ...
+         'x_length_mm', 'y_length_mm'}, 'scan', fullPath);
+    % OCE processing needs MB storage: the M repetitions of one position are
+    % contiguous and synchronized to that position's excitation trigger.
     axisOrder = reshape(string(source.axis_order), 1, []);
-    expectedAxisOrder = ["bscan", "aline", "m_repetition", "pixel"];
+    if lower(json_text_scalar(source.scan, 'pattern', 'scan.pattern', ...
+            fullPath)) == "crosshair"
+        expectedAxisOrder = ["bscan", "sweep_xy", "aline", ...
+            "m_repetition", "pixel"];
+    else
+        expectedAxisOrder = ["bscan", "aline", "m_repetition", "pixel"];
+    end
     if ~isequal(axisOrder, expectedAxisOrder)
+        repetitionAxis = find(axisOrder == "m_repetition", 1);
+        alineAxis = find(axisOrder == "aline", 1);
+        if ~isempty(repetitionAxis) && ~isempty(alineAxis) && ...
+                repetitionAxis < alineAxis
+            error('OCE:IO:UnsupportedAcquisitionMode', ...
+                ['OCTOCE BM-mode (OCT) acquisitions are not OCE data; ' ...
+                 'acquire in MB mode: %s'], fullPath);
+        end
         error('OCE:IO:InvalidAcquisitionHeader', ...
             'Unsupported OCTOCE axis_order in: %s', fullPath);
     end
@@ -238,9 +403,6 @@ function validate_octoce_raw_v1_source(source, payloadOffset, fullPath)
 
     require_json_fields(source.hardware, {'spectral_samples'}, ...
         'hardware', fullPath);
-    require_json_fields(source.scan, ...
-        {'alines', 'bscans', 'm_repetitions', 'pattern', ...
-         'x_length_mm', 'y_length_mm'}, 'scan', fullPath);
 end
 
 function value = read_uint32_le(fileID, offset, label, fullPath)

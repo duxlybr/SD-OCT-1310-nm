@@ -2,6 +2,9 @@ function [acquisition_parameters, outputMatPath, measurement] = prepareAcquisiti
 %PREPAREACQUISITIONPARAMETERS Create a resolved acquisition artifact.
 % Persistence is disabled unless SaveParameters=true is explicit.
 % The optional third output reuses the raw measurement already read here.
+% ScanGeometry "automatic" takes the geometry from the header scan pattern;
+% the artifact records the resolved geometry. Previews use the header A-line
+% rate when the header records one.
 
     if nargin < 1 || isempty(filename)
         error('filename is required.');
@@ -38,9 +41,11 @@ function [acquisition_parameters, outputMatPath, measurement] = prepareAcquisiti
     rawDescriptor = measurement.raw_descriptor;
     geometry = oce.acquisition.buildAcquisitionGeometry( ...
         rawDescriptor, scanGeometry);
+    % "automatic" resolves from the header scan pattern; persist the result.
+    scanGeometry = geometry.scan_geometry;
 
     octSystem = oce.config.resolveOCTSystemOptions( ...
-        p.Results.OCTSystemOptions);
+        p.Results.OCTSystemOptions, "", rawDescriptor);
     spectralContext = oce.acquisition.prepareSpectralSamples( ...
         measurement.rawdata, octSystem);
 
@@ -165,7 +170,7 @@ function geometry = normalize_geometry(value)
             'Preparation scan geometry must be a text scalar.');
     end
     geometry = lower(strtrim(string(value)));
-    if ~ismember(geometry, ["angular_bmodes", "raster"])
+    if ~ismember(geometry, ["automatic", "angular_bmodes", "raster", "polar"])
         error('OCE:Acquisition:ScanGeometryMismatch', ...
             'Preparation received unsupported scan geometry "%s".', geometry);
     end

@@ -1,14 +1,17 @@
 %#ok<*UNRCH>
 % Intentional: editable false-by-default section toggles appear unreachable to Code Analyzer.
 %% 0. INITIALIZATION
-% Stepwise processing of one raster acquisition up to filtered surface motion
-% and its en-face (XY) wave-propagation video. Run sections in order. After
-% changing an upstream setting, rerun that section and every downstream one.
+% Stepwise processing of one area-scan acquisition (raster, rings or spiral)
+% up to filtered surface motion and its en-face (XY) wave-propagation video.
+% Run sections in order. After changing an upstream setting, rerun that
+% section and every downstream one.
 %
-% Raster positions are acquired in MB mode with one excitation trigger per
+% Positions are acquired in MB mode with one excitation trigger per
 % position, so equal time samples across positions form one en-face frame.
-% k-f dispersion analysis is not available for raster geometry: its directional
-% windows assume angular B-modes centered on the excitation.
+% Bidirectional rasters are stored forward by the raw reader; ring and spiral
+% positions are interpolated onto an x/y grid for display.
+% k-f dispersion analysis is not available for these geometries: its
+% directional windows assume angular B-modes centered on the excitation.
 %
 % --- USER OPTIONS ---
 manual_show_progress = true;  % true | false
@@ -41,12 +44,12 @@ assert(startsWith(string(which('oce.acquisition.buildAcquisitionGeometry')), ...
     repository_root);
 
 %% 1. ACQUISITION SELECTION
-% Select one standalone raster .bin acquisition.
+% Select one standalone raster, rings or spiral .bin acquisition.
 %
 % --- EXECUTION ---
 [selected_file, selected_path] = uigetfile( ...
     {'*.bin', 'OCE binary acquisitions (*.bin)'}, ...
-    'Select raster OCE acquisition');
+    'Select raster, rings or spiral OCE acquisition');
 if isequal(selected_file, 0)
     error('OCE:Workflow:AcquisitionSelectionCancelled', ...
         'No acquisition file was selected.');
@@ -57,13 +60,15 @@ filename = string(selected_file);
 
 %% 2. ACQUISITION PARAMETER PREPARATION
 % The raw file is read once (uint16 digitizer counts) and reused below.
-% The depth preview concatenates every B-scan of the raster.
+% The depth preview concatenates every B-scan (raster line or polar turn).
+% The A-line rate and the scan pattern come from the file header.
 %
 % --- USER OPTIONS ---
 % oct_system_profile: "swept_source_1300" | "spectral_domain_1040" | "spectral_domain_1310"
 oct_system_profile = "spectral_domain_1310";
 acquisition_mode = "mb_mode";
-scan_geometry = "raster";
+% scan_geometry: "automatic" (from the header) | "raster" | "polar".
+scan_geometry = "automatic";
 
 % Crop selection: "interactive" | "manual_indices".
 % The complex reconstruction holds lateral x depth x time complex doubles;
@@ -80,10 +85,29 @@ crop_options.time = struct( ...
     'end_index_inclusive', []);  % [] = last M-repetition
 
 % --- EXECUTION ---
+% The header defines the scan; check it before reading the raw samples.
+acquisition_header = oce.io.readAcquisitionHeader(filename, bin_directory);
+header_geometry = oce.acquisition.buildAcquisitionGeometry( ...
+    acquisition_header, scan_geometry);
+scan_geometry = header_geometry.scan_geometry;
+line_rate_khz = NaN;  % NaN: not in the header, the profile rate is used
+if isfield(acquisition_header, 'a_scan_rate_hz')
+    line_rate_khz = acquisition_header.a_scan_rate_hz / 1000;
+end
+fprintf(['%s\n  %s pattern: %d stored lines x %d A-lines x %d M-repetitions, ' ...
+    '%.4g kHz A-line rate -> %s geometry\n'], filename, ...
+    string(acquisition_header.type), acquisition_header.No_3Dscans, ...
+    acquisition_header.Bframes_in_3Dscan, acquisition_header.Alines_in_Bframe, ...
+    line_rate_khz, scan_geometry);
+if ~ismember(scan_geometry, ["raster", "polar"])
+    error('OCE:Workflow:NotAnAreaScan', ...
+        ['%s is a %s scan with %s geometry; it has no en-face plane. ' ...
+         'Use run_acquisition_stepwise.m.'], filename, ...
+        string(acquisition_header.type), scan_geometry);
+end
 if crop_options.time.selection == "manual_indices" && ...
         isempty(crop_options.time.end_index_inclusive)
-    header = oce.io.readAcquisitionHeader(filename, bin_directory);
-    crop_options.time.end_index_inclusive = header.Alines_in_Bframe;
+    crop_options.time.end_index_inclusive = acquisition_header.Alines_in_Bframe;
 end
 oct_system_options = oce.config.getOCTSystemOptions(oct_system_profile);
 [acquisition_parameters, ~, measurement] = ...
@@ -102,7 +126,9 @@ oct_system_options = oce.config.getOCTSystemOptions(oct_system_profile);
 sample_type = "phantom";
 % excitation_type: "quasi_harmonic" | "pulse" (pulse uses frequency_Hz = NaN).
 excitation_type = "quasi_harmonic";
-frequency_Hz = 500;
+% frequency_Hz: [] = CH2 frequency that the GUI recorded in the .bin header
+% | a value in Hz for files acquired without generator control.
+frequency_Hz = [];
 
 % --- EXECUTION ---
 acquisition_metadata = struct( ...
@@ -123,13 +149,26 @@ processing_inputs = oce.acquisition.prepareSingleFileInputs( ...
 config_for_run = oce.config.buildProcessingConfigForAcquisition( ...
     processing_inputs);
 % Every output of this acquisition goes to Results/<acquisition name>/,
-% the same per-file folder the automatic pipeline uses.
-results_directory = string(oce.pipeline.resolveOutputDirectory( ...
-    processing_inputs));
+% the same per-file folder the automatic pipeline uses, and every saved file
+% name starts with <acquisition name>_.
+[results_directory, file_prefix] = oce.pipeline.resolveOutputDirectory( ...
+    processing_inputs);
+results_directory = string(results_directory);
+if isfield(acquisition_header, 'excitation') && ...
+        acquisition_header.excitation.available
+    generator = acquisition_header.excitation;
+    fprintf(['  Generator (.bin header): CH2 %s %g Hz, %d burst cycle(s), ' ...
+        'CH1 %g mVpp (%s)\n'], generator.waveform, generator.frequency_hz, ...
+        generator.burst_cycles, 1000 * generator.carrier_amplitude_vpp, ...
+        generator.contact);
+end
+fprintf('  Processing frequency: %g Hz (%s excitation)\n', ...
+    processing_inputs.acquisition_row.frequency_Hz, excitation_type);
 
 %% 4. RECONSTRUCTION
 % Raster geometry: one B-mode is one B-scan along x; B-modes step along y
-% (acquisition_state.geometry.raster).
+% (acquisition_state.geometry.raster). Polar geometry: one B-mode is one ring
+% or spiral turn (acquisition_state.geometry.polar).
 %
 % --- USER OPTIONS ---
 release_raw_spectra = true;  % free raw memory once reconstruction exists
@@ -166,7 +205,8 @@ if export_structural_enface
         'DepthRangeIndices', structural_depth_range);
     structural_enface_artifacts = oce.plotting.saveStructuralEnface( ...
         structural_enface, results_directory, ...
-        'DisplayLimitsDb', structural_display_limits_db);
+        'DisplayLimitsDb', structural_display_limits_db, ...
+        'FilePrefix', file_prefix);
     fprintf('Structural en-face written to:\n%s\n', ...
         structural_enface_artifacts(end));
 end
@@ -310,6 +350,7 @@ if generate_enface_motion_video
         enface_video_options, results_directory, ...
         'CLimMode', enface_clim_mode, 'CLim', enface_clim, ...
         'MedianWindow', enface_median_window, ...
-        'ShowProgress', manual_show_progress);
+        'ShowProgress', manual_show_progress, ...
+        'FilePrefix', file_prefix);
     fprintf('En-face video written to:\n%s\n', enface_video_path);
 end

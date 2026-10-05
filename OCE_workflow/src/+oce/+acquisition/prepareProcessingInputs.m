@@ -4,7 +4,8 @@ function inputs = prepareProcessingInputs(experimentRoot, subExperiment, queryVa
 % Input: experiment identity and an acquisition query.
 % Output: validated paths plus persisted system, acquisition, and processing
 % parameter contracts. Side effects are limited to non-blocking warnings when
-% optional Experimental Log dimensions disagree with the normalized raw header.
+% optional Experimental Log dimensions, or a quasi-harmonic frequency_Hz,
+% disagree with the normalized raw header (including its generator section).
 % The acquisition package owns data preparation; output-producing functions
 % create directories when needed.
 %
@@ -92,6 +93,8 @@ function inputs = prepareProcessingInputs(experimentRoot, subExperiment, queryVa
     acquisitionHeader = oce.io.readAcquisitionHeader(filename, dataDir);
     warn_on_dimension_metadata_mismatch( ...
         acquisition_row, acquisitionHeader, filename);
+    warn_on_excitation_metadata_mismatch( ...
+        acquisition_row, acquisitionHeader, filename);
     [processing_config, processingConfigFile] = load_processing_config_if_available( ...
         experimentRoot, subExperiment, p.Results.RequireProcessingConfig);
 
@@ -146,6 +149,30 @@ function warn_on_dimension_metadata_mismatch(row, header, filename)
             ['Acquisition dimension metadata differs from the normalized raw ' ...
              'header for "%s". Raw-header dimensions will be used for ' ...
              'processing. %s'], filename, strjoin(details, '; '));
+    end
+end
+
+function warn_on_excitation_metadata_mismatch(row, header, filename)
+    % The Experimental Log remains the batch frequency contract.
+    if ~isfield(header, 'excitation') || ~header.excitation.available || ...
+            lower(strtrim(string(row.excitation_type))) == "pulse"
+        return;
+    end
+    raw = row.frequency_Hz;
+    if iscell(raw) && isscalar(raw)
+        raw = raw{1};
+    end
+    if isnumeric(raw)
+        value = double(raw(1));
+    else
+        value = str2double(string(raw(1)));
+    end
+    if value ~= header.excitation.frequency_hz
+        warning('OCE:Acquisition:MetadataHeaderMismatch', ...
+            ['frequency_Hz differs from the generator recorded in "%s": ' ...
+             'log=%g Hz, generator=%g Hz. The Experimental Log value is ' ...
+             'used for processing.'], filename, value, ...
+            header.excitation.frequency_hz);
     end
 end
 

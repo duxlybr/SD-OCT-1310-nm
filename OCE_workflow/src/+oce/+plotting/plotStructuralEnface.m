@@ -25,7 +25,11 @@ function fig = plotStructuralEnface(enface, varargin)
 
     fig = figure('Name', 'Structural en-face');
     ax = axes(fig);
-    imagesc(ax, enface.x_axis_mm, enface.y_axis_mm, enface.log_values);
+    imageHandle = imagesc(ax, enface.x_axis_mm, enface.y_axis_mm, ...
+        enface.log_values);
+    % Grid points outside a polar scan are NaN and shown as background.
+    imageHandle.AlphaData = double(isfinite(enface.log_values));
+    ax.Color = [0.6 0.6 0.6];
     ax.YDir = 'normal';
     axis(ax, 'image');
     colormap(ax, gray(256));

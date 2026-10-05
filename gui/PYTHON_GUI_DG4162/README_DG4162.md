@@ -65,8 +65,8 @@ amplitud y offset):
      apaga OUTPUT1 y lo verifica (si no puede, no inicia); durante el loop el
      controlador rechaza cualquier intento de encenderlo y el vigía lo apaga en
      ≤ 2 s si se enciende desde el panel. Se desbloquea al detenerlo.
-   - **Error al adquirir:** se eliminan el `.bin` fallido, su `_dg4162.json` y
-     la foto/video USB, y se repite la adquisición con el mismo nombre. Se
+   - **Error al adquirir:** se eliminan el `.bin` fallido y la foto/video USB,
+     y se repite la adquisición con el mismo nombre. Se
      admiten como máximo 3 reintentos. *Detener* cancela un reintento
      pendiente. En una secuencia, si fallan los reintentos, la secuencia se
      detiene.
@@ -83,8 +83,10 @@ amplitud y offset):
        solo en modo con contacto confirmado). Protege, por ejemplo, tras
        encender el generador, que arranca con CH1 a 5 Vpp.
      - Cada vez que una regla actúa queda registrado en la consola.
-   - Junto a cada `.bin` se guarda `<nombre>_dg4162.json` con los valores
-     programados y el estado leído del equipo.
+   - El header JSON de cada `.bin` guarda la sección `generator` con los
+     valores programados (`settings`), el estado leído del equipo (`state`) y,
+     en una secuencia, su fila de Excel (`sequence`). No se escribe ningún
+     archivo aparte.
 4. **Límite de voltaje de CH1.**
    - *Sin contacto:* máximo 1 Vpp (límite del amplificador). Por encima, la
      adquisición queda bloqueada.

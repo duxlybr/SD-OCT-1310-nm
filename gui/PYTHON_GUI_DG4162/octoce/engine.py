@@ -400,6 +400,9 @@ class AcquisitionEngine:
         # Optional callable run once by the next start(), in the acquisition
         # thread, after the backend is armed and right before acquiring.
         self.before_acquire: Callable[[], None] | None = None
+        # Optional top-level header sections (e.g. the excitation generator)
+        # written into the .bin by the next start() that saves a file.
+        self.header_metadata: dict[str, Any] | None = None
 
     @property
     def state(self) -> EngineState:
@@ -490,11 +493,13 @@ class AcquisitionEngine:
             self._check_disk_space(output, estimate_payload_bytes(scan, hardware))
         selected_backend = backend or SimulatedBackend()
         before_acquire, self.before_acquire = self.before_acquire, None
+        header_metadata, self.header_metadata = self.header_metadata, None
         self._stop_event = threading.Event()
         self._set_state(EngineState.ARMING)
         self._thread = threading.Thread(
             target=self._run,
-            args=(scan, hardware, planner, output, selected_backend, continuous, before_acquire),
+            args=(scan, hardware, planner, output, selected_backend, continuous, before_acquire,
+                  header_metadata),
             name="octoce-acquisition",
             daemon=True,
         )
@@ -533,6 +538,7 @@ class AcquisitionEngine:
         backend: AcquisitionBackend,
         continuous: bool,
         before_acquire: Callable[[], None] | None = None,
+        header_metadata: dict[str, Any] | None = None,
     ) -> None:
         writer: OctBinWriter | None = None
         consumer: _WriterWorker | None = None
@@ -552,6 +558,7 @@ class AcquisitionEngine:
                     hardware,
                     backend=backend.name,
                     trajectory_sha256=planner.trajectory_digest(),
+                    extra_sections=header_metadata,
                 )
                 writer = OctBinWriter(output, header).open()
             consumer = _WriterWorker(

@@ -11,10 +11,13 @@ function oceResult = buildScientificResult(processingInputs, configForRun, ...
         item.target_selection.selected_phase_speed_m_per_s, ...
         analysis.directions), [], 1);
     scanAxisCount = analysis.scan_axis_count;
-    sourceIndices = oce.dispersion.orderBidirectionalAngles(scanAxisCount);
+    bmodeDirectionsDeg = [];
+    if isfield(analysis, 'bmode_direction_deg')
+        bmodeDirectionsDeg = analysis.bmode_direction_deg;
+    end
+    [sourceIndices, anglesDeg] = oce.dispersion.orderBidirectionalAngles( ...
+        scanAxisCount, bmodeDirectionsDeg);
     sourceIndices = sourceIndices(:);
-    anglesDeg = (0:180 / scanAxisCount: ...
-        180 / scanAxisCount * (2 * scanAxisCount - 1))';
     angularPhaseSpeed = directionalPhaseSpeed(sourceIndices);
     angularThicknessMm = directionalThicknessMm(sourceIndices);
     [phaseMean, phaseStd, phaseRange] = ...

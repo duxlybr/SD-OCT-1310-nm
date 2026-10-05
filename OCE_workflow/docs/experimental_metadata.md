@@ -35,11 +35,14 @@ Maintained executable scan geometries:
 ```text
 angular_bmodes
 raster
+polar
 ```
 
-`raster` is executable through reconstruction, borders, surface phase and
-temporal filtering, and feeds the en-face motion video. k-f dispersion windows
-and the persisted scientific result remain `angular_bmodes` products.
+`raster` and `polar` are executable through reconstruction, borders, surface
+phase and temporal filtering, and feed the en-face motion video. k-f dispersion
+windows and the persisted scientific result remain `angular_bmodes` products.
+Stepwise preparation also accepts `automatic`, which records the geometry
+resolved from the OCTOCE header scan pattern.
 
 Maintained OCT profiles include:
 
@@ -89,16 +92,35 @@ for B-mode, scan axis and propagation direction; generic segments are not called
 
 `raster` means consecutive B-scans along x stepped along y, each position
 acquired in `mb_mode` with its own excitation trigger. One B-mode is one B-scan.
-Bidirectional (serpentine) rasters are rejected rather than silently reordered.
+Bidirectional (serpentine) rasters are accepted because the raw reader returns
+their odd lines in forward order.
 
-The OCTOCE reader records the physical length of every stored B-scan in
-`bscan_length_mm`, following the acquisition scan planner: raster lines span
-`x_length_mm`; linear lines span `x_length_mm` (horizontal) or `y_length_mm`
-(vertical); meridian `b` spans the ellipse diameter at `theta = pi*b/bscans`.
-Geometry uses that length for the local lateral axis and rejects B-scans of
-unequal length (elliptical meridians with more than one scan axis). Historical
-headers without this field keep `Ver_scan_length_mm` as the B-mode length.
-Positions start at 0 mm on the first acquired A-line and B-scan.
+`polar` means closed turns around the scan center: concentric rings
+(`rho = (b+1)/B`, `theta = 2*pi*a/A`) or one Archimedean spiral
+(`k = b*A + a`, `rho = k/(A*B-1)`, `theta = 2*pi*k/A`), with
+`x = rho*Lx/2*cos(theta)` and `y = rho*Ly/2*sin(theta)`. One B-mode is one turn.
+
+The OCTOCE reader follows the acquisition scan planner and records, per stored
+line: `bscan_length_mm` (raster lines span `x_length_mm`; linear lines span
+`x_length_mm` or `y_length_mm`; meridian `b` spans the ellipse diameter at
+`theta = pi*b/bscans`; crosshair stores an X then a Y sweep per B-scan),
+`bscan_angle_deg` (direction of increasing A-line index) and
+`bscan_storage_reversed` (MB lines stored from their positive end: odd lines of a
+bidirectional raster, and of a linear scan marked `linear_bidirectional`).
+Angular geometry uses one local lateral axis and rejects B-scans of unequal
+length (elliptical meridians, or a crosshair with `x_length_mm ~= y_length_mm`).
+Historical headers without these fields keep `Ver_scan_length_mm` as the B-mode
+length and the maintained angular ordering. Raster positions start at 0 mm on
+the first acquired A-line and B-scan; polar positions are centered on the scan
+center.
+
+The OCTOCE header also records the camera line rate (`a_scan_rate_hz`), which
+sets the MB time-sample interval. When the DG4162 GUI controls the generator, the
+header section `generator` records the programmed settings and the instrument
+read-back state; the reader exposes them as `excitation` (`frequency_hz` is the
+CH2 burst frequency, the OCE excitation frequency). Standalone processing takes `frequency_Hz` from it when the user
+leaves `frequency_Hz = []`; the Experimental Log remains the batch frequency
+contract.
 
 ## Acquisition-parameter relationship
 
