@@ -12,6 +12,7 @@ from unittest.mock import patch
 from octoce.config import AcquisitionMode, ScanPattern
 from octoce.engine import EngineEvent, EngineState
 from octoce.dg4162 import (
+    BaseSetup,
     DG4162Controller,
     DG4162Error,
     Excitation,
@@ -29,7 +30,9 @@ BASE_REGISTERS: dict[str, object] = {
     ":SOUR1:FUNC": "SIN", ":SOUR1:FREQ": 954900.0, ":SOUR1:VOLT": 0.5,
     ":SOUR1:VOLT:UNIT": "VPP", ":SOUR1:VOLT:OFFS": -0.0007, ":SOUR1:MOD": "ON",
     ":SOUR1:MOD:TYP": "AM", ":SOUR1:MOD:AM:SOUR": "EXT", ":SOUR1:MOD:AM:DEPT": 100.0,
-    ":SOUR1:BURS": "OFF",
+    ":SOUR1:BURS": "OFF", ":SOUR1:BURS:MODE": "TRIG", ":SOUR1:BURS:NCYC": 1.0,
+    ":SOUR1:BURS:TRIG:SOUR": "INT", ":SOUR1:BURS:TRIG:SLOP": "POS", ":SOUR1:BURS:TDEL": 0.0,
+    ":SOUR1:BURS:PHAS": 0.0,
     ":SOUR2:FUNC": "PULSE", ":SOUR2:FREQ": 1000.0, ":SOUR2:VOLT": 1.0,
     ":SOUR2:VOLT:OFFS": 0.452, ":SOUR2:MOD": "OFF", ":SOUR2:PULS:DCYC": 50.0,
     ":SOUR2:BURS": "ON", ":SOUR2:BURS:MODE": "TRIG",
@@ -188,6 +191,51 @@ class ControllerTests(unittest.TestCase):
             controller.set_ch1_vpp(5.5, limit_vpp=5.0)
         self.assertEqual(instrument.setting_writes, [])
         self.assertAlmostEqual(instrument.state[":SOUR1:VOLT"], 0.5)
+
+    def test_contact_excitation_is_a_ch1_sine_burst_from_zero(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        settings = GeneratorSettings(3.0, 1200.0, "PULS", 2.5, Excitation.CONTACT, 7)
+        corrections = controller.ensure_base(BaseSetup(), Excitation.CONTACT)
+        self.assertTrue(any("CH1 burst activo" in c for c in corrections))
+        state = controller.apply(settings)
+        s = instrument.state
+        self.assertEqual((s[":OUTP1"], s[":OUTP1:IMP"], s[":SOUR1:MOD"], s[":SOUR1:BURS"]),
+                         ("OFF", "INFINITY", "OFF", "ON"))  # no carrier, High-Z levels
+        self.assertEqual((s[":SOUR1:BURS:MODE"], s[":SOUR1:BURS:TRIG:SOUR"], s[":SOUR1:BURS:TRIG:SLOP"]),
+                         ("TRIG", "EXT", "POS"))
+        self.assertEqual(s[":SOUR1:BURS:PHAS"], 270.0)  # starts and idles at the low level
+        self.assertEqual((s[":SOUR1:FREQ"], s[":SOUR1:BURS:NCYC"], s[":SOUR1:BURS:TDEL"]), (1200.0, 7.0, 0.0025))
+        self.assertTrue(state.contact)
+        self.assertAlmostEqual(state.ch1_low_v, 0.0)
+        self.assertAlmostEqual(state.ch1_high_v, 3.0)
+        # CH2 mirrors the timing so the recorded state still describes the excitation.
+        self.assertEqual((state.ch2_frequency_hz, state.ch2_burst_cycles), (1200.0, 7))
+        self.assertIn("Con contacto", state.summary())
+        with self.assertRaises(DG4162Error):
+            controller.read_base()  # the contact state is not a non-contact base
+        controller.ensure_base(BaseSetup())
+        state = controller.apply(BaseSetup().default_settings())
+        self.assertFalse(state.contact)
+        self.assertEqual((s[":OUTP1:IMP"], s[":SOUR1:MOD"], s[":SOUR1:BURS"], s[":SOUR1:FREQ"]),
+                         ("50", "ON", "OFF", 954900.0))
+
+    def test_contact_high_level_is_limited_to_5_v(self) -> None:
+        with self.assertRaisesRegex(ValueError, "nivel alto"):
+            GeneratorSettings(5.5, 1000.0, excitation=Excitation.CONTACT).validate()
+        self.assertTrue(GeneratorSettings(5.0, 1000.0, excitation=Excitation.CONTACT).validate())
+
+    def test_output1_refuses_a_peak_level_above_the_limit(self) -> None:
+        controller, instrument = fake_controller()
+        controller.connect()
+        instrument.state[":SOUR1:VOLT"] = 0.8
+        instrument.state[":SOUR1:VOLT:OFFS"] = 0.4  # 0.8 Vpp peaking at 0.8 V: within 1 V
+        controller.set_output(1, True)
+        controller.set_output(1, False)
+        instrument.state[":SOUR1:VOLT:OFFS"] = 2.0  # peaks at 2.4 V with the 1 V limit
+        with self.assertRaisesRegex(DG4162Error, "nivel de CH1"):
+            controller.set_output(1, True)
+        self.assertEqual(instrument.state[":OUTP1"], "OFF")
 
     def test_instrument_error_is_raised(self) -> None:
         controller, _instrument = fake_controller()
@@ -464,7 +512,10 @@ class SequenceTests(unittest.TestCase):
             path = write_template(Path(directory) / "plantilla.xlsx")
             jobs, errors = build_jobs(read_rows(path), DEFAULTS)
         self.assertEqual(errors, [])
-        self.assertEqual(len(jobs), 5)  # 3 + 1 + 1
+        self.assertEqual(len(jobs), 6)  # 3 + 1 + 1 + 1 (contact example)
+        contact = jobs[-1].generator
+        self.assertIs(contact.excitation, Excitation.CONTACT)
+        self.assertEqual((contact.ch1_vpp, contact.ch2_burst_cycles), (3.0, 5))
         first = jobs[0]
         self.assertEqual((first.row, first.repetition, first.repetitions), (2, 1, 3))
         self.assertIs(first.mode, AcquisitionMode.MB)
@@ -472,7 +523,7 @@ class SequenceTests(unittest.TestCase):
         self.assertAlmostEqual(first.generator.ch1_vpp, 0.3)
         self.assertEqual(first.generator.ch2_waveform, "PULS")
         self.assertEqual(first.wait_s, 10.0)
-        self.assertEqual(jobs[-1].name, "referencia_OCT")
+        self.assertEqual(jobs[-2].name, "referencia_OCT")
 
     def test_polar_pattern_names(self) -> None:
         rows = [(2, {"patron": name}) for name in ("Anillos", "anillos concéntricos", "Espiral", "spiral")]
@@ -510,7 +561,7 @@ class SequenceTests(unittest.TestCase):
         self.assertEqual((jobs[0].alines, jobs[0].bscans, jobs[0].mode), (10, 64, AcquisitionMode.MB))
         self.assertEqual(len(errors), 3)
         self.assertTrue(errors[0].startswith("Fila 3") and "1 Vpp" in errors[0])
-        self.assertIn("5 Vpp", errors[1])
+        self.assertIn("5 V", errors[1])
         self.assertIn("repeticiones", errors[1])
         self.assertIn("Diente de sierra", errors[2])
 
@@ -622,6 +673,24 @@ class DG4162GuiTests(unittest.TestCase):
         ask.assert_called_once()
         start.assert_not_called()
         self.assertEqual(self.instrument.setting_writes, writes_before)  # nothing written
+
+    def test_contact_panel_labels_and_copy_from_instrument(self) -> None:
+        app = self.app
+        title, unit, _entry = app._gen_fields["ch1"]
+        app.excitation_var.set("Con contacto")
+        self.assertEqual((title.cget("text"), unit.cget("text")), ("CH1 nivel alto (bajo = 0 V)", "mV"))
+        self.assertEqual(app._gen_fields["cycles"][0].cget("text"), "CH1 ciclos por burst")
+        self.assertEqual(str(app._gen_fields["wave"][2].cget("state")), "disabled")
+        app.excitation_var.set("Sin contacto")
+        self.assertEqual(title.cget("text"), "CH1 amplitud (portadora)")
+        self.assertEqual(str(app._gen_fields["wave"][2].cget("state")), "readonly")
+        # Copy a contact configuration back from the instrument.
+        self.controller.ensure_base(app.base_setup, Excitation.CONTACT)
+        self.controller.apply(GeneratorSettings(2.0, 800.0, "PULS", 1.0, Excitation.CONTACT, 4))
+        app._load_from_generator()
+        self.assertEqual((app.excitation_var.get(), app.ch1_mvpp_var.get(), app.ch2_freq_var.get(),
+                          app.ch2_cycles_var.get(), app.ch2_delay_var.get()),
+                         ("Con contacto", "2000", "800", "4", "1"))
 
     def fake_engine(self, outcomes: list[str]):
         """engine.start replacement: writes the file and reports the next outcome."""

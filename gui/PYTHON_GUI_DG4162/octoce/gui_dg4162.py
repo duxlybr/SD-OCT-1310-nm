@@ -207,7 +207,8 @@ class _SequenceWindow:
                 index + 1, job.row, f"{job.repetition}/{job.repetitions}", MODE_PREFIX[job.mode],
                 _PATTERN_LABEL[job.pattern].split(" ")[0],
                 job.alines, job.bscans, job.m_repetitions, job.sync_points,
-                f"{g.ch1_vpp * 1000:g}", f"{g.ch2_frequency_hz:g}", waveform_label(g.ch2_waveform),
+                f"{g.ch1_vpp * 1000:g}", f"{g.ch2_frequency_hz:g}",
+                "Seno CH1" if g.excitation is Excitation.CONTACT else waveform_label(g.ch2_waveform),
                 f"{g.ch2_delay_ms:g}", g.ch2_burst_cycles, f"{job.wait_s:g}",
                 _duration(model.predict(minimums[index])), "", str(path),
             ))
@@ -419,8 +420,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             variable.trace_add("write", lambda *_args: self._update_target())
         for variable in (self.ch1_mvpp_var, self.excitation_var):
             variable.trace_add("write", lambda *_args: self._update_voltage_warning())
+        self.excitation_var.trace_add("write", lambda *_args: self._update_excitation_fields())
         self._update_target()
         self._update_voltage_warning()
+        self._update_excitation_fields()
         if self._base_error:
             self._append_log(self._base_error)
         self.generator.on_safety = lambda message: self.event_queue.put(
@@ -497,9 +500,11 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         ).grid(row=1, column=0, columnspan=2, sticky="w")
         inner_row = 2
 
-        def field(label: str, variable: tk.StringVar, suffix: str = "", values: list[str] | None = None) -> None:
+        def field(label: str, variable: tk.StringVar, suffix: str = "", values: list[str] | None = None,
+                  key: str | None = None) -> None:
             nonlocal inner_row
-            ttk.Label(section, text=label, style="Card.TLabel").grid(row=inner_row, column=0, sticky="w", pady=3)
+            title = ttk.Label(section, text=label, style="Card.TLabel")
+            title.grid(row=inner_row, column=0, sticky="w", pady=3)
             holder = ttk.Frame(section, style="Card.TFrame")
             holder.grid(row=inner_row, column=1, sticky="ew", padx=(12, 0), pady=3)
             holder.columnconfigure(0, weight=1)
@@ -508,17 +513,21 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             else:
                 widget = ttk.Combobox(holder, textvariable=variable, values=values, state="readonly", width=16)
             widget.grid(row=0, column=0, sticky="ew")
+            unit = ttk.Label(holder, text=suffix, style="Muted.TLabel")
             if suffix:
-                ttk.Label(holder, text=suffix, style="Muted.TLabel").grid(row=0, column=1, padx=(6, 0))
+                unit.grid(row=0, column=1, padx=(6, 0))
+            if key is not None:
+                self._gen_fields[key] = (title, unit, widget)
             inner_row += 1
 
+        self._gen_fields: dict[str, tuple[ttk.Label, ttk.Label, ttk.Widget]] = {}
         field("Excitación", self.excitation_var,
               values=[Excitation.NON_CONTACT.value, Excitation.CONTACT.value])
-        field("CH1 amplitud", self.ch1_mvpp_var, "mVpp")
-        field("CH2 frecuencia", self.ch2_freq_var, "Hz")
-        field("CH2 forma de onda", self.ch2_wave_var, values=list(CH2_WAVEFORMS))
-        field("CH2 retardo burst", self.ch2_delay_var, "ms")
-        field("CH2 ciclos por burst", self.ch2_cycles_var, "ciclos")
+        field("CH1 amplitud", self.ch1_mvpp_var, "mVpp", key="ch1")
+        field("CH2 frecuencia", self.ch2_freq_var, "Hz", key="freq")
+        field("CH2 forma de onda", self.ch2_wave_var, values=list(CH2_WAVEFORMS), key="wave")
+        field("CH2 retardo burst", self.ch2_delay_var, "ms", key="delay")
+        field("CH2 ciclos por burst", self.ch2_cycles_var, "ciclos", key="cycles")
         ttk.Label(section, textvariable=self.gen_warning_var, style="Warning.TLabel", wraplength=330,
                   justify="left").grid(row=inner_row, column=0, columnspan=2, sticky="w")
         buttons = ttk.Frame(section, style="Card.TFrame")
@@ -625,6 +634,35 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             excitation=Excitation.parse(self.excitation_var.get()),
         )
 
+    # Field labels per excitation: (title, unit) or, for the waveform, title only.
+    _FIELD_LABELS = {
+        Excitation.NON_CONTACT: {
+            "ch1": ("CH1 amplitud (portadora)", "mVpp"), "freq": ("CH2 frecuencia", "Hz"),
+            "wave": ("CH2 forma de onda", ""), "delay": ("CH2 retardo burst", "ms"),
+            "cycles": ("CH2 ciclos por burst", "ciclos"),
+        },
+        Excitation.CONTACT: {
+            "ch1": ("CH1 nivel alto (bajo = 0 V)", "mV"), "freq": ("CH1 frecuencia del seno", "Hz"),
+            "wave": ("CH2 forma de onda (no se usa)", ""), "delay": ("CH1 retardo burst", "ms"),
+            "cycles": ("CH1 ciclos por burst", "ciclos"),
+        },
+    }
+
+    def _update_excitation_fields(self) -> None:
+        """Contact: CH1 is a sine burst (no carrier); the CH2 waveform is not used."""
+        if not getattr(self, "_gen_fields", None):
+            return
+        try:
+            excitation = Excitation.parse(self.excitation_var.get())
+        except ValueError:
+            return
+        for key, (title, unit) in self._FIELD_LABELS[excitation].items():
+            title_label, unit_label, widget = self._gen_fields[key]
+            title_label.configure(text=title)
+            unit_label.configure(text=unit)
+        self._gen_fields["wave"][2].configure(
+            state="disabled" if excitation is Excitation.CONTACT else "readonly")
+
     def _update_voltage_warning(self) -> None:
         try:
             excitation = Excitation.parse(self.excitation_var.get())
@@ -632,24 +670,40 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         except ValueError:
             self.gen_warning_var.set("CH1: valor no válido.")
             return
+        contact = excitation is Excitation.CONTACT
         if vpp > excitation.limit_vpp:
             self.gen_warning_var.set(
+                f"⛔ CH1 nivel alto supera {excitation.limit_vpp:g} V (con contacto): la adquisición quedará bloqueada."
+                if contact else
                 f"⛔ CH1 supera {excitation.limit_vpp:g} Vpp ({excitation.value.lower()}): "
                 "la adquisición quedará bloqueada."
             )
         elif vpp > WARNING_CH1_VPP:
-            self.gen_warning_var.set("⚠ CH1 > 1 Vpp: se pedirá confirmación antes de adquirir.")
+            self.gen_warning_var.set(
+                "⚠ CH1 nivel alto > 1 V: se pedirá confirmación antes de adquirir." if contact
+                else "⚠ CH1 > 1 Vpp: se pedirá confirmación antes de adquirir."
+            )
         else:
             self.gen_warning_var.set("")
 
     def _confirm_high_voltage(self, settings: GeneratorSettings, *, detail: str = "") -> bool:
+        if settings.excitation is Excitation.CONTACT:
+            text = (f"CH1 = seno de 0 a {settings.ch1_vpp * 1000:g} mV: supera 1 V "
+                    f"(excitación con contacto, máximo {settings.excitation.limit_vpp:g} V).")
+        else:
+            text = (f"CH1 = {settings.ch1_vpp * 1000:g} mVpp supera 1 Vpp "
+                    f"(excitación {settings.excitation.value.lower()}, límite {settings.excitation.limit_vpp:g} Vpp).")
         return messagebox.askyesno(
-            "CH1 por encima de 1 Vpp",
-            f"CH1 = {settings.ch1_vpp * 1000:g} mVpp supera 1 Vpp "
-            f"(excitación {settings.excitation.value.lower()}, límite {settings.excitation.limit_vpp:g} Vpp)."
-            f"{detail}\n\nConfirme que el amplificador y el transductor admiten esta amplitud. ¿Continuar?",
+            "CH1 por encima de 1 V",
+            f"{text}{detail}\n\nConfirme que el amplificador y el transductor admiten esta amplitud. ¿Continuar?",
             icon="warning",
         )
+
+    def _panel_excitation(self) -> Excitation:
+        try:
+            return Excitation.parse(self.excitation_var.get())
+        except ValueError:
+            return Excitation.NON_CONTACT
 
     def _generator_busy(self) -> bool:
         if self.engine.is_active or self._sequence_active:
@@ -714,12 +768,12 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             self._append_log(f"DG4162 ({reason}): adquisición en curso; la configuración se verifica al iniciar la próxima.")
             return False
         try:
-            corrections = self.generator.ensure_base(self.base_setup)
             try:
                 settings = self._generator_settings()
                 needs_confirmation = settings.validate()
             except ValueError:
                 settings, needs_confirmation = None, True
+            corrections = self.generator.ensure_base(self.base_setup, self._panel_excitation())
             if settings is not None and not needs_confirmation:
                 state = self.generator.apply(settings)
             else:
@@ -796,11 +850,19 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             self._sync_link()
             messagebox.showerror("DG4162", str(exc))
             return
-        self.ch1_mvpp_var.set(f"{state.ch1_vpp * 1000:g}")
-        self.ch2_freq_var.set(f"{state.ch2_frequency_hz:g}")
+        if state.contact:  # CH1 sine burst: its high level, frequency and burst
+            self.excitation_var.set(Excitation.CONTACT.value)
+            self.ch1_mvpp_var.set(f"{round(state.ch1_high_v * 1000, 3):g}")
+            self.ch2_freq_var.set(f"{state.ch1_frequency_hz:g}")
+            self.ch2_delay_var.set(f"{state.ch1_delay_ms:g}")
+            self.ch2_cycles_var.set(str(state.ch1_burst_cycles))
+        else:
+            self.excitation_var.set(Excitation.NON_CONTACT.value)
+            self.ch1_mvpp_var.set(f"{state.ch1_vpp * 1000:g}")
+            self.ch2_freq_var.set(f"{state.ch2_frequency_hz:g}")
+            self.ch2_delay_var.set(f"{state.ch2_delay_ms:g}")
+            self.ch2_cycles_var.set(str(state.ch2_burst_cycles))
         self.ch2_wave_var.set(waveform_label(state.ch2_function))
-        self.ch2_delay_var.set(f"{state.ch2_delay_ms:g}")
-        self.ch2_cycles_var.set(str(state.ch2_burst_cycles))
         self._append_log("Campos del generador copiados desde el DG4162.")
 
     def _apply_generator_now(self) -> None:
@@ -812,7 +874,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 return
             if not self._connect_generator(interactive=True):
                 return
-            corrections = self.generator.ensure_base(self.base_setup)
+            corrections = self.generator.ensure_base(self.base_setup, settings.excitation)
             if corrections:
                 self._append_log("DG4162: configuración base corregida · " + " · ".join(corrections))
             state = self.generator.apply(settings)
@@ -936,7 +998,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             super()._before_oct_start(output)
             return
         self.generator.connect()
-        corrections = self.generator.ensure_base(self.base_setup)
+        corrections = self.generator.ensure_base(self.base_setup, settings.excitation)
         if corrections:
             self._append_log("DG4162: configuración base corregida antes de adquirir · " + " · ".join(corrections))
         state = self.generator.apply(settings)
@@ -948,12 +1010,19 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._applied_state = replace(state, output1=True, output2=True)
         self.gen_status_var.set(self._applied_state.summary())
         purpose = "alineación" if self._run_kind == "alignment" else "adquisición"
-        self._append_log(
-            f"DG4162: CH1 {settings.ch1_vpp * 1000:g} mVpp · CH2 {waveform_label(settings.ch2_waveform)} "
-            f"{settings.ch2_frequency_hz:g} Hz · retardo {settings.ch2_delay_ms:g} ms · "
-            f"{settings.ch2_burst_cycles} ciclo(s) · "
-            f"OUTPUT1 ON para {purpose}."
-        )
+        if settings.excitation is Excitation.CONTACT:
+            excitation_text = (
+                f"con contacto · CH1 seno {settings.ch2_frequency_hz:g} Hz de 0 a "
+                f"{settings.ch1_vpp * 1000:g} mV · retardo {settings.ch2_delay_ms:g} ms · "
+                f"{settings.ch2_burst_cycles} ciclo(s)"
+            )
+        else:
+            excitation_text = (
+                f"CH1 {settings.ch1_vpp * 1000:g} mVpp · CH2 {waveform_label(settings.ch2_waveform)} "
+                f"{settings.ch2_frequency_hz:g} Hz · retardo {settings.ch2_delay_ms:g} ms · "
+                f"{settings.ch2_burst_cycles} ciclo(s)"
+            )
+        self._append_log(f"DG4162: {excitation_text} · OUTPUT1 ON para {purpose}.")
 
         def verify_excitation() -> None:  # acquisition thread, hardware armed
             if self.generator.start_excitation():
@@ -970,7 +1039,12 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         job = self._current_job if self._sequence_active else None
         return {
             "model": "RIGOL DG4162",
-            "role": "OCE excitation: CH1 carrier AM-modulated by the CH2 burst triggered by PFI13",
+            "role": (
+                "OCE contact excitation: CH1 sine burst from 0 V to ch1_vpp (its high level), "
+                "triggered by PFI13 on EXT; CH2 mirrors the timing and does not modulate CH1"
+                if settings.excitation is Excitation.CONTACT else
+                "OCE excitation: CH1 carrier AM-modulated by the CH2 burst triggered by PFI13"
+            ),
             "settings": settings.as_dict(),
             "state": self._applied_state.as_dict() if self._applied_state else None,
             "sequence": None if job is None else {
