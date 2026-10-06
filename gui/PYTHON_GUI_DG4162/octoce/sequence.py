@@ -24,12 +24,16 @@ COLUMNS: tuple[tuple[str, str, str], ...] = (
     ("longitud_x_mm", "Longitud X", "mm"),
     ("longitud_y_mm", "Longitud Y", "mm"),
     ("bframes_delay_us", "BFramesDelay", "µs"),
-    ("excitacion", "Sin contacto: CH1 ≤ 1 Vpp · Con contacto: CH1 ≤ 5 Vpp", "Sin contacto, Con contacto"),
-    ("ch1_mVpp", "Amplitud de CH1 (portadora)", "mVpp; >1000 pide confirmación"),
-    ("ch2_frecuencia_Hz", "Frecuencia de la moduladora (CH2)", "Hz"),
-    ("ch2_forma_onda", "Forma de onda de la moduladora (CH2)", ", ".join(CH2_WAVEFORMS)),
-    ("ch2_retardo_ms", "Retardo del burst de CH2 tras el trigger", "ms (por defecto 2)"),
-    ("ch2_ciclos", "Ciclos por burst de CH2", "entero ≥ 1 (por defecto 1)"),
+    ("excitacion",
+     "Sin contacto: portadora CH1 con AM de la moduladora CH2 (≤ 1 Vpp) · "
+     "Con contacto: sin portadora, seno en CH1 de 0 V a su nivel alto (≤ 5 V), burst por trigger EXT",
+     "Sin contacto, Con contacto"),
+    ("ch1_mVpp", "Sin contacto: amplitud de la portadora CH1 · Con contacto: nivel alto del seno de CH1 (bajo = 0 V)",
+     "mV (sin contacto ≤ 1000 mVpp; con contacto ≤ 5000 mV); > 1000 pide confirmación"),
+    ("ch2_frecuencia_Hz", "Frecuencia de excitación: moduladora CH2 (sin contacto) o seno de CH1 (con contacto)", "Hz"),
+    ("ch2_forma_onda", "Forma de onda de la moduladora CH2 (con contacto no se usa)", ", ".join(CH2_WAVEFORMS)),
+    ("ch2_retardo_ms", "Retardo del burst tras el trigger (CH2 sin contacto, CH1 con contacto)", "ms (por defecto 2)"),
+    ("ch2_ciclos", "Ciclos por burst (CH2 sin contacto, CH1 con contacto)", "entero ≥ 1 (por defecto 1)"),
     ("repeticiones", "Veces que se repite esta fila", "entero ≥ 1 (vacío = 1)"),
     ("espera_s", "Espera después de cada adquisición de la fila", "s (vacío = 0)"),
     ("nombre_archivo", "Vacío = nombre por defecto; si existe se añade _1, _2…", "texto sin extensión"),
@@ -47,6 +51,9 @@ EXAMPLE_ROWS: tuple[tuple[Any, ...], ...] = (
      "Sin contacto", 500, 2000, "Pulso", 2, 3, 1, 10, "", "", "Otra frecuencia y 3 ciclos"),
     ("OCT", "Raster", "Horizontal", 512, 64, 1, 50, 5.0, 5.0, 0.0,
      "Sin contacto", 500, 1000, "Pulso", 2, 1, 1, 0, "referencia_OCT", "", "Nombre propio"),
+    ("OCE", "Lineal", "Horizontal", 100, 1, 400, 200, 5.0, 0.0, 0.0,
+     "Con contacto", 3000, 1000, "", 2, 5, 1, 10, "", "",
+     "Con contacto: seno CH1 de 0 a 3 V, 1 kHz, 5 ciclos"),
 )
 
 _PATTERNS = {
@@ -382,6 +389,8 @@ def write_template(path: str | Path) -> Path:
         "Celdas vacías en las columnas modo … ch2_ciclos toman el valor actual de la GUI.",
         "La GUI valida todas las filas (incluido el límite de voltaje) antes de empezar.",
         "OUTPUT1 se enciende al iniciar cada adquisición y se apaga al terminar; OUTPUT2 queda encendido.",
+        "Con contacto no hay portadora: CH1 da un seno de 0 V a ch1_mVpp (≤ 5000 mV, carga High-Z), "
+        "ch2_ciclos ciclos por trigger EXT con ch2_retardo_ms de retardo; ch2_forma_onda se ignora.",
         "La espera se cuenta desde el final de una adquisición hasta el inicio de la siguiente.",
     ):
         info.append([line])

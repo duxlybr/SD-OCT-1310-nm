@@ -272,15 +272,30 @@ utilizada en el laboratorio antes de adquirir datos definitivos.
   La comprobación física acotada `python -m diagnostics.diagnose_linear_bidirectional`
   completó ida/retorno horizontal y vertical, cuatro buffers consecutivos,
   cero pérdidas y cuatro pulsos PFI13.
-- **Anillos concéntricos** (análogo polar del raster): cada B-scan es una
-  vuelta completa.
+- **Anillos concéntricos** (análogo polar del raster), con muestreo uniforme
+  del disco: cada anillo lleva un número de A-lines proporcional a su radio,
+  así que la separación en arco es la misma en todos (menos puntos en el
+  centro, más hacia afuera).
   - **B** = número de anillos, a radios `(b+1)/B · L/2`. El paso radial es
     uniforme e igual a la distancia del centro al primer anillo; el anillo
     exterior mide exactamente `L/2`.
-  - **A** = A-lines por vuelta, a ángulos iguales `2π·a/A`. Cada vuelta empieza
-    en +X y gira en sentido antihorario; el punto de cierre no se repite.
-  - **M** = repeticiones de cada anillo (BM) o de cada posición (MB).
-  - **SS** = puntos sync del salto entre vueltas (BM) o entre posiciones (MB).
+  - **A** = A-lines del anillo interior. El anillo b lleva `(b+1)·A`, repartidas
+    a ángulos iguales que empiezan en +X y giran en sentido antihorario; el
+    exterior lleva `B·A`. Por repetición son `A·B(B+1)/2` A-lines y la
+    separación en arco es `2π·(L/2)/(B·A)`. Con `A ≈ 2π ≈ 6` esa separación
+    iguala el paso radial.
+  - **M** = repeticiones de cada anillo completo (BM) o de cada posición (MB).
+  - **SS** = puntos sync antes de cada arco (BM) o de cada posición (MB).
+  - **Por qué arcos:** la cámara NI-IMAQ adquiere frames de altura fija (A
+    líneas en BM), así que el anillo b se adquiere como `b+1` arcos
+    consecutivos de A líneas, cada uno con su trigger de cámara y su pulso
+    PFI13. Entre arcos hay una transición sync muy corta: el galvo frena y
+    vuelve a arrancar, igual que al inicio de cada línea raster.
+  - Como los anillos tienen distinta longitud, el archivo se guarda plano en
+    orden de adquisición:
+    - BM: shape `[sweep, A, pixel]`, en orden anillo → M → arco;
+    - MB: shape `[posición, M, pixel]`, en orden anillo → arco → A.
+  - El preview muestra cada anillo completo, con el ángulo θ en el eje lateral.
   - Longitud X/Y = diámetros. Si son distintos, los anillos son elipses.
 - **Espiral** (Arquímedes, a velocidad angular constante): un único recorrido
   continuo del centro (primera A-line) al borde `L/2` (última A-line).
@@ -292,10 +307,10 @@ utilizada en el laboratorio antes de adquirir datos definitivos.
     en el resumen del plan. A frecuencias altas el galvo atrasa la fase y reduce
     el radio real; no hay compensación.
 - En anillos y espiral, el eje lateral del preview es el ángulo θ (el cursor lo
-  muestra en grados). El shape es el del raster (`[B, M, A]` en BM y
+  muestra en grados). La espiral usa el shape del raster (`[B, M, A]` en BM y
   `[B, A, M]` en MB). El header incluye `scan.polar_geometry` con la fórmula
   exacta de cada posición:
-  - anillos: `ρ = (b+1)/B`, `θ = 2π·a/A`;
+  - anillos: `N_b = (b+1)·A`, `p = arco·A + a`, `ρ = (b+1)/B`, `θ = 2π·p/N_b`;
   - espiral: `k = b·A + a`, `ρ = k/(A·B−1)`, `θ = 2π·k/A`;
   - en ambos casos, `x = cx + ρ·Lx/2·cos θ` y `y = cy + ρ·Ly/2·sin θ`.
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from octoce.backends.base import AcquisitionResult
 from octoce.backends.ni_hardware import NIHardwareBackend
 from octoce.backends.base import AcquisitionResult
 from octoce.config import AcquisitionMode, HardwareConfig, Orientation, ScanParameters, ScanPattern
-from octoce.engine import AcquisitionEngine, EngineState
+from octoce.engine import AcquisitionEngine, EngineEvent, EngineState
 from octoce.processing import (
     SPECTRAL_WINDOWS,
     normalize_preview,
@@ -463,6 +464,8 @@ class EngineTests(unittest.TestCase):
             (ScanPattern.MERIDIANS, Orientation.HORIZONTAL),
             (ScanPattern.LINEAR, Orientation.HORIZONTAL),
             (ScanPattern.LINEAR, Orientation.VERTICAL),
+            (ScanPattern.RINGS, Orientation.HORIZONTAL),
+            (ScanPattern.SPIRAL, Orientation.HORIZONTAL),
         ]
         hardware = HardwareConfig(
             spectral_samples=32,
@@ -508,6 +511,31 @@ class EngineTests(unittest.TestCase):
                             (*scan.logical_shape_without_pixels, hardware.spectral_samples),
                         )
                         del logical
+
+    def test_ring_preview_assembles_the_whole_ring(self) -> None:
+        hardware = HardwareConfig(spectral_samples=32, line_rate_hz=10_000.0,
+                                  preview_rate_hz=200.0, oce_enabled=False)
+        for mode in AcquisitionMode:
+            with self.subTest(mode=mode.value):
+                events: list[EngineEvent] = []
+                scan = ScanParameters(alines=5, bscans=3, m_repetitions=2, sync_points=2,
+                                      x_length_mm=2.0, y_length_mm=2.0, mode=mode,
+                                      pattern=ScanPattern.RINGS)
+                engine = AcquisitionEngine(events.append)
+                engine.start(scan, hardware, output_path=None,
+                             backend=SimulatedBackend(realtime_factor=100.0))
+                engine.join(5.0)
+                self.assertEqual(engine.state, EngineState.COMPLETED)
+                deadline = time.monotonic() + 5.0
+                while time.monotonic() < deadline and not any(e.kind == "preview" for e in events):
+                    time.sleep(0.02)
+                time.sleep(0.2)
+                previews = [e.payload for e in events if e.kind == "preview"]
+                self.assertTrue(previews)
+                last = previews[-1]
+                self.assertEqual(last["bscan_index"], 2)
+                self.assertIsNone(last["sweep_index"])  # not a crosshair sweep
+                self.assertEqual(int(np.max(last["aline_indexes"])), 14)  # outer ring: 3 arcs x 5
 
 
 if __name__ == "__main__":

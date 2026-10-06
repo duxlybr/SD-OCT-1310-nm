@@ -27,7 +27,7 @@ class ScanPattern(str, Enum):
     MERIDIANS = "meridians"
     LINEAR = "linear"
     # Polar patterns: one B-scan is one full turn of A positions.
-    RINGS = "rings"  # concentric rings: the polar analogue of a raster
+    RINGS = "rings"  # concentric rings, A-lines per ring proportional to its radius
     SPIRAL = "spiral"  # Archimedean spiral, one turn per B-scan
 
 
@@ -107,11 +107,34 @@ class ScanParameters:
 
     @property
     def expected_alines(self) -> int:
-        return self.alines * self.bscans * self.m_repetitions * self.sweeps_per_bscan
+        return self.alines * self.m_repetitions * self.total_sweeps
 
     @property
     def sweeps_per_bscan(self) -> int:
+        """Sweeps of a B-scan for the uniform patterns (rings: see sweeps_in_bscan)."""
         return 2 if self.pattern is ScanPattern.CROSSHAIR else 1
+
+    def sweeps_in_bscan(self, bscan_index: int) -> int:
+        """Sweeps of A positions (one camera frame each in BM) in B-scan ``bscan_index``.
+
+        Ring b has b+1 arcs, i.e. (b+1)·A A-lines: proportional to its radius,
+        so the arc spacing is the same on every ring.
+        """
+        if self.pattern is ScanPattern.RINGS:
+            return bscan_index + 1
+        return self.sweeps_per_bscan
+
+    def alines_in_bscan(self, bscan_index: int) -> int:
+        """Lateral positions of one B-scan (a crosshair sweep counts on its own)."""
+        if self.pattern is ScanPattern.RINGS:
+            return self.alines * self.sweeps_in_bscan(bscan_index)
+        return self.alines
+
+    @property
+    def total_sweeps(self) -> int:
+        if self.pattern is ScanPattern.RINGS:
+            return self.bscans * (self.bscans + 1) // 2
+        return self.bscans * self.sweeps_per_bscan
 
     @property
     def lines_per_segment(self) -> int:
@@ -120,18 +143,24 @@ class ScanParameters:
     @property
     def total_segments(self) -> int:
         if self.mode is AcquisitionMode.BM:
-            return self.bscans * self.m_repetitions * self.sweeps_per_bscan
-        return self.bscans * self.alines * self.sweeps_per_bscan
+            return self.m_repetitions * self.total_sweeps
+        return self.alines * self.total_sweeps
 
     @property
     def oce_trigger_segments(self) -> int:
-        if self.mode is AcquisitionMode.MB:
-            return self.total_segments
-        # A crosshair X+Y pair is one logical B-scan, so BM triggers on X only.
-        return self.bscans * self.m_repetitions
+        if self.mode is AcquisitionMode.BM and self.pattern is ScanPattern.CROSSHAIR:
+            # A crosshair X+Y pair is one logical B-scan, so BM triggers on X only.
+            return self.bscans * self.m_repetitions
+        return self.total_segments
 
     @property
     def axis_order(self) -> tuple[str, ...]:
+        if self.pattern is ScanPattern.RINGS:
+            # Ring b has b+1 arcs: ragged, so it is stored flat in acquisition
+            # order (BM: ring, M, arc, A · MB: ring, arc, A, M).
+            if self.mode is AcquisitionMode.BM:
+                return ("sweep", "aline", "pixel")
+            return ("position", "m_repetition", "pixel")
         if self.pattern is ScanPattern.CROSSHAIR:
             if self.mode is AcquisitionMode.BM:
                 return ("bscan", "m_repetition", "sweep_xy", "aline", "pixel")
@@ -142,6 +171,8 @@ class ScanParameters:
 
     @property
     def logical_shape_without_pixels(self) -> tuple[int, ...]:
+        if self.pattern is ScanPattern.RINGS:
+            return (self.total_segments, self.lines_per_segment)
         if self.pattern is ScanPattern.CROSSHAIR:
             if self.mode is AcquisitionMode.BM:
                 return (self.bscans, self.m_repetitions, 2, self.alines)
@@ -167,7 +198,11 @@ def polar_geometry(pattern: ScanPattern) -> str:
     """Position of A-line a (0..A-1) of B-scan b (0..B-1), stored in file headers."""
     common = "x = cx + rho*Lx/2*cos(theta), y = cy + rho*Ly/2*sin(theta)"
     if pattern is ScanPattern.RINGS:
-        return f"{common}; rho = (b+1)/B, theta = 2*pi*a/A (counterclockwise)"
+        return (
+            f"{common}; ring b holds N_b = (b+1)*A A-lines as b+1 arcs of A (constant arc spacing); "
+            "p = arc*A + a, rho = (b+1)/B, theta = 2*pi*p/N_b (counterclockwise from +X); "
+            "stored order BM: ring, M, arc, A-line; MB: ring, arc, A position, M"
+        )
     return f"{common}; k = b*A + a, rho = k/(A*B-1), theta = 2*pi*k/A (counterclockwise, outward)"
 
 

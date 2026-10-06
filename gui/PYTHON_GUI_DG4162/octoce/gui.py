@@ -153,8 +153,10 @@ def _polar_note(scan: ScanParameters, hardware: HardwareConfig) -> str:
     step_deg = 360.0 / scan.alines
     if scan.pattern is ScanPattern.RINGS:
         note = (
-            f"Anillos: {scan.bscans} anillo(s) cada {radius / scan.bscans:.3f} mm hasta r = {radius:.3f} mm, "
-            f"{scan.alines} A-lines por vuelta ({step_deg:.2f}°)"
+            f"Anillos: {scan.bscans} anillo(s) cada {radius / scan.bscans:.3f} mm hasta r = {radius:.3f} mm; "
+            f"A-lines por anillo ∝ radio: {scan.alines} en el interior … {scan.alines * scan.bscans} en el "
+            f"exterior ({scan.total_sweeps * scan.alines:,} por repetición), separación en arco constante "
+            f"{2 * np.pi * radius / (scan.bscans * scan.alines) * 1000:.1f} µm"
         )
     else:
         pitch = radius * scan.alines / max(1, scan.alines * scan.bscans - 1)
@@ -162,7 +164,9 @@ def _polar_note(scan: ScanParameters, hardware: HardwareConfig) -> str:
             f"Espiral: {scan.bscans} vuelta(s) del centro a r = {radius:.3f} mm, paso {pitch:.3f} mm/vuelta, "
             f"{scan.alines} A-lines por vuelta ({step_deg:.2f}°)"
         )
-    if scan.mode is AcquisitionMode.BM:
+    if scan.mode is AcquisitionMode.BM and scan.pattern is ScanPattern.RINGS:
+        note += f", giro máx. {hardware.effective_line_rate_hz / scan.alines:.1f} vueltas/s (anillo interior)"
+    elif scan.mode is AcquisitionMode.BM:
         note += f", giro {hardware.effective_line_rate_hz / scan.alines:.1f} vueltas/s"
     return note + ". "
 
@@ -195,6 +199,7 @@ class OCTOCEApp:
         self._preview_aline_indexes = np.empty(0, dtype=np.int64)
         self._preview_source_spectra: np.ndarray | None = None
         self._preview_sweep_index: int | None = None
+        self._preview_bscan_index: int | None = None
         self._active_scan: ScanParameters | None = None
         self._active_hardware: HardwareConfig | None = None
         self._trajectory_current_xy: tuple[float, float] | None = None
@@ -923,8 +928,6 @@ class OCTOCEApp:
             sampled = line[::step]
             if not np.array_equal(sampled[-1], line[-1]):
                 sampled = np.vstack((sampled, line[-1]))
-            if scan.pattern is ScanPattern.RINGS:
-                sampled = np.vstack((sampled, line[0]))  # draw the ring closed
             points = [coordinate for xy in sampled for coordinate in project(float(xy[0]), float(xy[1]))]
             color = "#2477d4" if scan.pattern is not ScanPattern.CROSSHAIR or index == 0 else "#e39a32"
             if len(points) >= 4:
@@ -1378,6 +1381,7 @@ class OCTOCEApp:
             )
             self.eta_var.set(f"{timing_label}  ·  {p['throughput_mib_s']:.2f} MiB/s")
         elif event.kind == "preview":
+            self._preview_bscan_index = p.get("bscan_index")
             self._show_preview(
                 np.asarray(p["intensity_db"], dtype=np.float32),
                 np.asarray(p["phase_rad"], dtype=np.float32),
@@ -1893,8 +1897,11 @@ class OCTOCEApp:
         total = max(2, self._active_scan.alines if self._active_scan is not None else self._preview_db.shape[1])
         z_label = f"Z bin {z_original}"
         if self._active_scan is not None and self._active_scan.pattern in POLAR_PATTERNS:
-            # A equal angles per turn, starting at +X and turning counterclockwise.
-            angle = 360.0 * aline_original / self._active_scan.alines
+            # Equal angles per turn, starting at +X and turning counterclockwise;
+            # ring b holds (b+1)·A A-lines.
+            scan = self._active_scan
+            bscan = min(int(self._preview_bscan_index or 0), scan.bscans - 1)
+            angle = 360.0 * aline_original / scan.alines_in_bscan(bscan)
             lateral_label = f"{axis} {angle:.1f}° · A{aline_original + 1}"
         else:
             position_mm = ((aline_original / (total - 1)) - 0.5) * length_mm
