@@ -1,12 +1,18 @@
 """SCPI control of the RIGOL DG4162 generator used for OCE excitation.
 
-OCE setup (defaults in :class:`BaseSetup`):
+OCE setup, non-contact excitation (defaults in :class:`BaseSetup`):
 
 * CH1: 954.9 kHz sine (transducer resonance), offset -0.7 mV DC, AM always
   on from the EXT input (100 %), 50 Ω load. Its amplitude (Vpp) sets the
   excitation; OUTPUT1 is only on during acquisitions.
 * CH2: modulating pulse (1 kHz, 1 Vpp, offset 0.452 V, High-Z) in burst mode,
   N cycles per external trigger (PFI13) with a trigger delay. OUTPUT2 stays on.
+
+Contact excitation needs no carrier: CH1 itself is a sine burst at the
+excitation frequency, low level 0 V and high level ≤ 5 V (High-Z load
+setting), N cycles per external trigger with the same delay; no modulation. CH2 keeps running with
+the same frequency/cycles/delay (it no longer modulates CH1), so its state
+still describes the excitation timing.
 
 All SCPI traffic goes through :class:`DG4162Controller`, which checks
 ``:SYST:ERR?`` after each write and verifies the written values by reading them
@@ -63,12 +69,14 @@ class DG4162Error(RuntimeError):
 
 
 class Excitation(str, Enum):
-    NON_CONTACT = "Sin contacto"
-    CONTACT = "Con contacto"
+    NON_CONTACT = "Sin contacto"  # CH1 carrier, AM-modulated by the CH2 burst
+    CONTACT = "Con contacto"  # CH1 sine burst from 0 V to its high level
 
     @property
     def limit_vpp(self) -> float:
         # Without contact the amplifier accepts at most 1 Vpp at its input.
+        # With contact the sine goes from 0 V to at most 5 V (low level 0, so
+        # its Vpp equals its high level).
         return 1.0 if self is Excitation.NON_CONTACT else 5.0
 
     @classmethod
@@ -86,11 +94,21 @@ def check_ch1_vpp(vpp: float, excitation: Excitation) -> bool:
     if not isfinite(vpp) or vpp <= 0:
         raise ValueError("La amplitud de CH1 debe ser un número mayor que 0 Vpp.")
     if vpp > excitation.limit_vpp + 1e-12:
+        if excitation is Excitation.CONTACT:
+            raise ValueError(
+                f"CH1 nivel alto = {vpp * 1000:g} mV supera el máximo de {excitation.limit_vpp:g} V "
+                "para excitación con contacto."
+            )
         raise ValueError(
             f"CH1 = {vpp * 1000:g} mVpp supera el límite de {excitation.limit_vpp:g} Vpp "
             f"para excitación {excitation.value.lower()}."
         )
     return vpp > WARNING_CH1_VPP + 1e-12
+
+
+# Contact excitation: the burst starts (and ends) at 270°, the minimum of the
+# sine, so every cycle goes 0 V → high → 0 V and the output idles at 0 V.
+CONTACT_BURST_PHASE_DEG = 270.0
 
 
 def waveform_scpi(label_or_scpi: str) -> str:
@@ -121,7 +139,12 @@ def _normalize_function(answer: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class GeneratorSettings:
-    """Values the GUI controls for one acquisition."""
+    """Values the GUI controls for one acquisition.
+
+    With contact excitation ``ch1_vpp`` is the high level of the CH1 sine (its
+    low level is 0 V) and the ``ch2_*`` frequency, delay and cycles are those of
+    the CH1 burst; the CH2 waveform is not used.
+    """
 
     ch1_vpp: float
     ch2_frequency_hz: float
@@ -171,8 +194,33 @@ class GeneratorState:
     ch2_burst_trigger: str
     ch2_delay_ms: float
     ch2_burst_cycles: int
+    ch1_burst: bool = False
+    ch1_burst_cycles: int = 1
+    ch1_delay_ms: float = 0.0
+
+    @property
+    def contact(self) -> bool:
+        """CH1 set up as the contact sine burst (no carrier modulation)."""
+        return self.ch1_burst and not self.ch1_modulation
+
+    @property
+    def ch1_high_v(self) -> float:
+        return self.ch1_offset_v + self.ch1_vpp / 2.0
+
+    @property
+    def ch1_low_v(self) -> float:
+        return self.ch1_offset_v - self.ch1_vpp / 2.0
 
     def summary(self) -> str:
+        if self.contact:
+            return (
+                f"Con contacto · CH1 seno {self.ch1_frequency_hz:g} Hz · "
+                f"bajo {self.ch1_low_v * 1000:.4g} mV · alto {self.ch1_high_v * 1000:.4g} mV · "
+                f"burst EXT {self.ch1_burst_cycles} ciclo{'s' if self.ch1_burst_cycles != 1 else ''} · "
+                f"retardo {self.ch1_delay_ms:g} ms · OUT1 {'ON' if self.output1 else 'OFF'}\n"
+                f"CH2 (sin uso) {waveform_label(self.ch2_function)} {self.ch2_frequency_hz:g} Hz · "
+                f"OUT2 {'ON' if self.output2 else 'OFF'}"
+            )
         return (
             f"CH1 {self.ch1_function} {self.ch1_frequency_hz / 1000:g} kHz · "
             f"{self.ch1_vpp * 1000:g} mVpp · "
@@ -195,7 +243,8 @@ class BaseSetup:
 
     Fixed parts: CH1 sine, 50 Ω load, AM on from the EXT input, no burst; CH2
     High-Z, no modulation, pulse duty 50 %, burst triggered by EXT (PFI13) on
-    the rising edge. The values
+    the rising edge. (With contact excitation the CH1 part is replaced by the
+    sine burst, see :meth:`DG4162Controller.ensure_base`.) The values
     below are editable in the GUI and saved in ``gui/config/dg4162_base.json``.
     ``ch1_vpp`` and the ``ch2_*`` waveform/frequency/delay are the defaults of
     the acquisition panel and the state left when the GUI closes.
@@ -529,6 +578,9 @@ class DG4162Controller:
                 ch2_burst_trigger=self._query(":SOUR2:BURS:TRIG:SOUR?"),
                 ch2_delay_ms=self._query_float(":SOUR2:BURS:TDEL?") * 1000.0,
                 ch2_burst_cycles=int(round(self._query_float(":SOUR2:BURS:NCYC?"))),
+                ch1_burst=self._query_bool(":SOUR1:BURS?"),
+                ch1_burst_cycles=int(round(self._query_float(":SOUR1:BURS:NCYC?"))),
+                ch1_delay_ms=self._query_float(":SOUR1:BURS:TDEL?") * 1000.0,
             )
 
     def _ch1_vpp(self) -> float:
@@ -555,6 +607,13 @@ class DG4162Controller:
                     raise DG4162Error(
                         f"OUTPUT1 no se enciende: CH1 = {vpp * 1000:g} mVpp supera el límite de "
                         f"{self.output1_limit_vpp:g} Vpp."
+                    )
+                # The contact sine has a DC offset: its peak level is bounded too.
+                peak = abs(self._query_float(":SOUR1:VOLT:OFFS?")) + vpp / 2.0
+                if peak > self.output1_limit_vpp + 1e-6:
+                    raise DG4162Error(
+                        f"OUTPUT1 no se enciende: el nivel de CH1 llega a {peak * 1000:g} mV y supera "
+                        f"{self.output1_limit_vpp:g} V."
                     )
             command = f":OUTP{channel} {'ON' if enabled else 'OFF'}"
             self.write(command)
@@ -623,21 +682,64 @@ class DG4162Controller:
             if readback != int(cycles):
                 raise DG4162Error(f"Ciclos de CH2 quedaron en {readback} (solicitado {int(cycles)}).")
 
+    def _set_number(self, label: str, query: str, command: str, value: float, *,
+                    scale: float = 1.0, rel: float = 1e-4, abs_tol: float = 1e-9) -> None:
+        """Write ``command`` unless ``query`` (× scale) already reads ``value``; verify it."""
+        if _approx(self._query_float(query) * scale, value, rel=1e-9, abs_tol=abs_tol):
+            return
+        self.write(command)
+        readback = self._query_float(query) * scale
+        if not _approx(readback, value, rel=rel, abs_tol=abs_tol):
+            raise DG4162Error(f"{label} quedó en {readback:g} (solicitado {value:g}).")
+
+    def set_ch1_contact_sine(self, settings: GeneratorSettings) -> None:
+        """Contact excitation: CH1 sine burst, low level 0 V, high level ``ch1_vpp``.
+
+        Amplitude before offset keeps |offset| + Vpp/2 within the 5 V output
+        range at every step.
+        """
+        high = settings.ch1_vpp
+        check_ch1_vpp(high, Excitation.CONTACT)
+        with self._lock:
+            self._set_number("CH1 frecuencia (Hz)", ":SOUR1:FREQ?",
+                             f":SOUR1:FREQ {settings.ch2_frequency_hz:.9g}", settings.ch2_frequency_hz)
+            self._ch1_vpp()  # refuses a unit other than VPP
+            self._set_number("CH1 amplitud (Vpp)", ":SOUR1:VOLT?", f":SOUR1:VOLT {high:.6g}", high, rel=1e-3)
+            self._set_number("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", f":SOUR1:VOLT:OFFS {high / 2:.6g}",
+                             high / 2, rel=1e-3, abs_tol=1e-6)
+            self._set_number("CH1 ciclos por burst", ":SOUR1:BURS:NCYC?",
+                             f":SOUR1:BURS:NCYC {int(settings.ch2_burst_cycles)}", settings.ch2_burst_cycles)
+            self._set_number("CH1 retardo burst (ms)", ":SOUR1:BURS:TDEL?",
+                             f":SOUR1:BURS:TDEL {settings.ch2_delay_ms / 1000.0:.9g}", settings.ch2_delay_ms,
+                             scale=1000.0, rel=1e-3, abs_tol=1e-6)
+
     def apply(self, settings: GeneratorSettings) -> GeneratorState:
-        """Program CH1/CH2 with OUTPUT1 off and return the verified state."""
+        """Program CH1/CH2 with OUTPUT1 off and return the verified state.
+
+        Call :meth:`ensure_base` with the same excitation first: it sets the
+        fixed part of CH1 (carrier with AM, or sine burst for contact).
+        """
         settings.validate()
         with self._lock:
             self.set_output(1, False)
+            # CH2 also carries the timing with contact excitation (it no longer
+            # modulates CH1), so its state keeps describing the excitation.
             self.set_ch2_waveform(settings.ch2_waveform)
             self.set_ch2_frequency(settings.ch2_frequency_hz)
             self.set_ch2_delay_ms(settings.ch2_delay_ms)
             self.set_ch2_burst_cycles(settings.ch2_burst_cycles)
-            self.set_ch1_vpp(settings.ch1_vpp, limit_vpp=settings.excitation.limit_vpp)
+            if settings.excitation is Excitation.CONTACT:
+                self.set_ch1_contact_sine(settings)
+            else:
+                self.set_ch1_vpp(settings.ch1_vpp, limit_vpp=settings.excitation.limit_vpp)
             return self.read_state()
 
-    def ensure_base(self, base: BaseSetup) -> list[str]:
+    def ensure_base(self, base: BaseSetup, excitation: Excitation = Excitation.NON_CONTACT) -> list[str]:
         """Check the OCE base configuration and correct what differs.
 
+        CH1 follows ``excitation``: carrier with AM from EXT (non-contact) or a
+        sine burst triggered by EXT starting at its minimum, without modulation
+        (contact; frequency, levels, cycles and delay are set by :meth:`apply`).
         OUTPUT1 is switched off first. Returns the corrections made (empty when
         the generator already matched); every write is verified by reading back.
         """
@@ -668,18 +770,31 @@ class DG4162Controller:
                     raise DG4162Error(f"{label}: quedó en {after} (esperado {expected}).")
                 corrections.append(f"{label}: {current} → {after}")
 
-            check("CH1 carga", ":OUTP1:IMP?", 50, ":OUTP1:IMP 50")
             check("CH1 forma de onda", ":SOUR1:FUNC?", "SIN", ":SOUR1:FUNC SIN")
-            check("CH1 frecuencia (Hz)", ":SOUR1:FREQ?", base.ch1_frequency_hz,
-                  f":SOUR1:FREQ {base.ch1_frequency_hz:.9g}")
-            check("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", base.ch1_offset_v,
-                  f":SOUR1:VOLT:OFFS {base.ch1_offset_v:.6g}")
-            check("CH1 tipo de modulación", ":SOUR1:MOD:TYP?", "AM", ":SOUR1:MOD:TYP AM")
-            check("CH1 fuente AM", ":SOUR1:MOD:AM:SOUR?", "EXT", ":SOUR1:MOD:AM:SOUR EXT")
-            check("CH1 profundidad AM (%)", ":SOUR1:MOD:AM:DEPT?", base.am_depth_percent,
-                  f":SOUR1:MOD:AM:DEPT {base.am_depth_percent:.6g}")
-            check("CH1 AM activa", ":SOUR1:MOD?", "ON", ":SOUR1:MOD ON")
-            check("CH1 burst", ":SOUR1:BURS?", "OFF", ":SOUR1:BURS OFF")
+            if excitation is Excitation.CONTACT:
+                # High-Z: the levels shown (0 V … high) are the real ones on a
+                # high-impedance load. With 50 Ω selected they would double.
+                check("CH1 carga", ":OUTP1:IMP?", "INF", ":OUTP1:IMP INF")
+                # Burst and modulation exclude each other: modulation off first.
+                check("CH1 modulación", ":SOUR1:MOD?", "OFF", ":SOUR1:MOD OFF")
+                check("CH1 modo burst", ":SOUR1:BURS:MODE?", "TRIG", ":SOUR1:BURS:MODE TRIG")
+                check("CH1 disparo burst", ":SOUR1:BURS:TRIG:SOUR?", "EXT", ":SOUR1:BURS:TRIG:SOUR EXT")
+                check("CH1 flanco de disparo", ":SOUR1:BURS:TRIG:SLOP?", "POS", ":SOUR1:BURS:TRIG:SLOP POS")
+                check("CH1 fase inicial del burst (°)", ":SOUR1:BURS:PHAS?", CONTACT_BURST_PHASE_DEG,
+                      f":SOUR1:BURS:PHAS {CONTACT_BURST_PHASE_DEG:g}")
+                check("CH1 burst activo", ":SOUR1:BURS?", "ON", ":SOUR1:BURS ON")
+            else:
+                check("CH1 carga", ":OUTP1:IMP?", 50, ":OUTP1:IMP 50")
+                check("CH1 burst", ":SOUR1:BURS?", "OFF", ":SOUR1:BURS OFF")
+                check("CH1 frecuencia (Hz)", ":SOUR1:FREQ?", base.ch1_frequency_hz,
+                      f":SOUR1:FREQ {base.ch1_frequency_hz:.9g}")
+                check("CH1 offset (V)", ":SOUR1:VOLT:OFFS?", base.ch1_offset_v,
+                      f":SOUR1:VOLT:OFFS {base.ch1_offset_v:.6g}")
+                check("CH1 tipo de modulación", ":SOUR1:MOD:TYP?", "AM", ":SOUR1:MOD:TYP AM")
+                check("CH1 fuente AM", ":SOUR1:MOD:AM:SOUR?", "EXT", ":SOUR1:MOD:AM:SOUR EXT")
+                check("CH1 profundidad AM (%)", ":SOUR1:MOD:AM:DEPT?", base.am_depth_percent,
+                      f":SOUR1:MOD:AM:DEPT {base.am_depth_percent:.6g}")
+                check("CH1 AM activa", ":SOUR1:MOD?", "ON", ":SOUR1:MOD ON")
             check("CH2 carga", ":OUTP2:IMP?", "INF", ":OUTP2:IMP INF")
             check("CH2 modulación", ":SOUR2:MOD?", "OFF", ":SOUR2:MOD OFF")
             check("CH2 ciclo de trabajo del pulso (%)", ":SOUR2:PULS:DCYC?", 50.0, ":SOUR2:PULS:DCYC 50")
@@ -696,6 +811,11 @@ class DG4162Controller:
         """Current instrument values as a BaseSetup (to adopt them as defaults)."""
         with self._lock:
             state = self.read_state()
+            if state.contact:
+                raise DG4162Error(
+                    "El generador está en modo con contacto (CH1 sin portadora): aplique "
+                    "'Sin contacto' antes de tomar la configuración base."
+                )
             return BaseSetup(
                 ch1_frequency_hz=state.ch1_frequency_hz,
                 ch1_offset_v=state.ch1_offset_v,

@@ -20,6 +20,23 @@ No abra el generador desde Ultra Sigma mientras la GUI está abierta.
 | CH1 | Senoidal 954.9 kHz (resonancia del transductor), 500 mVpp, offset −0.7 mV DC, **AM siempre activa con fuente EXT** (100 %), carga 50 Ω, sin burst |
 | CH2 | Pulso 1 kHz (ciclo 50 %), 1 Vpp, offset 0.452 V, High-Z, sin modulación, burst disparado por EXT (flanco +), 1 ciclo, retardo 2 ms |
 
+Esa es la configuración **sin contacto**: portadora en CH1 modulada en AM por
+el burst de CH2. **Con contacto no hay portadora**:
+
+| Canal | Configuración con contacto |
+|-------|----------------------------|
+| CH1 | Seno a la frecuencia de excitación, **bajo 0 V y alto ≤ 5 V** (offset = alto/2), carga **High-Z**, sin modulación, burst disparado por **EXT** (flanco +), N ciclos, retardo, fase inicial 270° |
+| CH2 | Igual que la base, con la misma frecuencia, ciclos y retardo. Ya no modula CH1, pero su estado sigue describiendo la temporización |
+
+- **Fase 270°:** cada ciclo va 0 V → alto → 0 V y, entre bursts, la salida
+  queda en 0 V.
+- **Carga High-Z:** los niveles que muestra el equipo son los reales sobre una
+  carga de alta impedancia. Con 50 Ω seleccionado se duplicarían.
+- **Cableado:** PFI13 debe llegar a la entrada de trigger externo de CH1.
+- **Cambio de modo:** la GUI cambia CH1 de un modo a otro con OUTPUT1 apagado,
+  según la excitación del panel o de la fila de Excel. Al cerrar la GUI queda
+  la configuración sin contacto.
+
 Al detectar el generador, y antes de cada adquisición o de *Aplicar ahora*, la GUI verifica esta configuración base y corrige lo que no coincida (registrado en la consola). La frecuencia de resonancia, el offset y la profundidad AM de CH1, la amplitud/offset de CH2, los ciclos por burst y los valores por defecto del panel se editan en *Configuración del generador…* (`gui/config/dg4162_base.json`; el botón *Valores por defecto* los restablece y
 *Tomar del generador* adopta lo que esté cargado en el equipo). Al cerrar la GUI se apaga OUTPUT1, OUTPUT2 queda encendido y queda programada esta configuración.
 
@@ -80,7 +97,8 @@ amplitud y offset):
        comunicación lo vuelve a encender en ≤ 2 s si se apaga (panel o
        cambio de parámetros).
      - OUTPUT1 nunca se enciende con CH1 por encima del límite (1 Vpp; 5 Vpp
-       solo en modo con contacto confirmado). Protege, por ejemplo, tras
+       solo en modo con contacto confirmado), ni con un nivel pico
+       (|offset| + Vpp/2) por encima de ese límite. Protege, por ejemplo, tras
        encender el generador, que arranca con CH1 a 5 Vpp.
      - Cada vez que una regla actúa queda registrado en la consola.
    - El header JSON de cada `.bin` guarda la sección `generator` con los
@@ -90,14 +108,23 @@ amplitud y offset):
 4. **Límite de voltaje de CH1.**
    - *Sin contacto:* máximo 1 Vpp (límite del amplificador). Por encima, la
      adquisición queda bloqueada.
-   - *Con contacto:* máximo 5 Vpp. Por encima de 1 Vpp se pide confirmación
+   - *Con contacto:* el campo de CH1 es el **nivel alto** del seno (el bajo es
+     0 V), con un máximo de 5 V. Por encima de 1 V se pide confirmación
      explícita.
+   - En modo con contacto el panel cambia sus etiquetas: frecuencia, retardo y
+     ciclos pasan a ser los del burst de CH1. La forma de onda de CH2 se
+     desactiva porque no se usa. *Copiar del equipo* reconoce el modo con
+     contacto y copia el nivel alto, la frecuencia, los ciclos y el retardo de
+     CH1.
 5. **Secuencia desde Excel.**
    - **Crear plantilla…** genera un `.xlsx` con ejemplos, listas desplegables
      y una hoja de instrucciones.
    - Cada fila es una adquisición, con columnas para:
      - modo, patrón, A, B, M y SS;
-     - excitación, mVpp de CH1, y Hz, forma de onda y retardo de CH2;
+     - excitación, mVpp de CH1, y Hz, forma de onda, retardo y ciclos de CH2.
+       Con contacto, `ch1_mVpp` es el nivel alto del seno (≤ 5000 mV) y Hz,
+       retardo y ciclos son los del burst de CH1; `ch2_forma_onda` se ignora.
+       La plantilla incluye un ejemplo con contacto;
      - repeticiones, espera y nombre.
    - Las celdas vacías toman el valor actual de la GUI.
    - **Cargar y validar** revisa todas las filas, incluido el límite de voltaje,
