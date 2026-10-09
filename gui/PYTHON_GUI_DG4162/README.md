@@ -116,12 +116,23 @@ los galvos en movimiento, y confirme la imagen y el `.bin`.
   aparece a la derecha un zoom de 20 píxeles de profundidad centrado en Z.
 - Se aceptan longitudes `X=0`, `Y=0` para adquisición estacionaria. El botón
   **Alineación continua** adquiere MB en el centro con M=1000 hasta pulsar
-  Detener, sin archivo ni puntos sync. PFI12 y PFI13 usan contadores continuos
-  sincronizados por hardware: a 50 klps solicitados, ambos disparan a 50 Hz y
-  PFI13 permanece alto 2 ms (10 % del periodo). Para que NI-IMAQ pueda cerrar
-  cada frame antes del siguiente trigger, la cámara se configura solo en esta
-  alineación a 52,632 klps efectivos; cada bloque de 1000 A-lines ocupa 19 ms
-  y deja 1 ms libre. La GUI muestra ambas tasas en el log. La adquisición normal
+  Detener, sin archivo ni puntos sync.
+  - PFI12 y PFI13 usan contadores continuos sincronizados por hardware.
+  - **Tasa de la alineación** (campo bajo el botón): cuántos bloques, y por lo
+    tanto cuántos pulsos PFI13 (uno por burst del transductor), se emiten por
+    segundo.
+    - Por defecto son **25 Hz**, la mitad de los 50 Hz fijos anteriores, para
+      que el transductor ultrasónico no se sobrecaliente.
+    - Rango permitido: de 1 Hz al máximo del hardware (50 Hz a 50 klps). El
+      mínimo sube si el timeout de NI-IMAQ es menor que 2 s, porque el período
+      debe caber en la mitad de ese timeout.
+    - Un valor fuera de rango no inicia la alineación.
+  - PFI13 permanece alto el 10 % del período (4 ms a 25 Hz).
+  - **Cámara:** la tasa no cambia su frecuencia de línea. Para que NI-IMAQ
+    pueda cerrar cada frame antes del siguiente trigger, la cámara se configura
+    solo en esta alineación a 52,632 klps efectivos. Cada bloque de 1000
+    A-lines ocupa 19 ms; el resto del período queda libre.
+  - La GUI muestra ambas tasas en el log. La adquisición normal
   conserva su frecuencia configurada; MB/BM finitos con sync>0 usan lotes de
   hasta 64 sweeps, y MB estacionario con sync=0 también puede usar lotes.
 - **Crosshair continuo** repite indefinidamente un B-scan lógico BM de

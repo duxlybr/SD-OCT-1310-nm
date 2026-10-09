@@ -86,10 +86,22 @@ class GuiSmokeTests(unittest.TestCase):
             self.assertEqual(scan.oce_trigger_segments, 1)
             self.assertTrue(hardware.oce_enabled)
             self.assertGreater(hardware.effective_line_rate_hz, 50_000.0)
-            self.assertAlmostEqual(start.call_args.kwargs["backend"]._alignment_block_rate_hz, 50.0)
+            # Default: half the former 50 Hz; the camera keeps its line rate.
+            self.assertAlmostEqual(start.call_args.kwargs["backend"]._alignment_block_rate_hz, 25.0)
+            self.assertIn("1–50 Hz", app.alignment_limits_var.get())
             self.assertTrue(start.call_args.kwargs["continuous"])
             self.assertIsNone(start.call_args.kwargs["output_path"])
             self.assertIn("PFI13", confirm.call_args.args[1])
+            for rate, accepted in (("50", True), ("0.5", False), ("60", False), ("abc", False)):
+                with self.subTest(rate=rate):
+                    app.alignment_rate_var.set(rate)
+                    with patch("octoce.gui.messagebox.askyesno", return_value=True), \
+                            patch("octoce.gui.messagebox.showerror") as error, \
+                            patch.object(app.engine, "start") as start:
+                        app._start_alignment()
+                    self.assertEqual(start.called, accepted)
+                    self.assertEqual(error.called, not accepted)
+                    app._alignment_active = False
         finally:
             root.update_idletasks()
             root.destroy()

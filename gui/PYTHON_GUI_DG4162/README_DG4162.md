@@ -111,7 +111,9 @@ amplitud y offset):
      siga encendido. OUTPUT1 se apaga al terminar, al detener o ante un error.
      OUTPUT2 queda siempre encendido, también tras cerrar la GUI.
    - La alineación continua MB verifica OUTPUT1 y lo enciende si está
-     apagado; lo apaga al detenerla.
+     apagado; lo apaga al detenerla. Cada bloque dispara un burst del
+     transductor. Su tasa se elige en *Tasa de la alineación*: por defecto
+     25 Hz, permitido de 1 a 50 Hz. Ver `README.md`.
    - **Crosshair continuo: OUTPUT1 estrictamente apagado.** Al iniciarlo la GUI
      apaga OUTPUT1 y lo verifica (si no puede, no inicia); durante el loop el
      controlador rechaza cualquier intento de encenderlo y el vigía lo apaga en

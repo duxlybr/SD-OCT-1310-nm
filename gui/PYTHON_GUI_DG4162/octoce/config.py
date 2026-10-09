@@ -501,15 +501,24 @@ def estimate_payload_bytes(scan: ScanParameters, hardware: HardwareConfig) -> in
     return scan.expected_alines * hardware.spectral_samples * 2
 
 
+# Continuous alignment: every block of A-lines fires PFI13, i.e. one
+# ultrasound burst. Its rate is chosen in the GUI (the camera line rate and the
+# block size do not change); the default is half the former fixed 50 Hz so the
+# transducer does not overheat.
+ALIGNMENT_DEFAULT_RATE_HZ = 25.0
+ALIGNMENT_MIN_RATE_HZ = 1.0
+
+
 def stationary_alignment_timing(
-    hardware: HardwareConfig, alines_per_block: int = 1000
+    hardware: HardwareConfig, alines_per_block: int = 1000, rate_hz: float | None = None
 ) -> tuple[HardwareConfig, float]:
     """Reserve 5% camera/frame-grabber idle time while keeping MB trigger cadence.
 
     At 50 klps, 1000 lines consume the entire 20 ms period and NI-IMAQ can
     ignore frame triggers while finishing the preceding buffer.  The alignment
-    camera is clocked slightly faster (52.5 klps requested at the default),
-    while PFI12/PFI13 remain at the original 50 Hz target.
+    camera is clocked slightly faster (52.5 klps requested at the default).
+    PFI12/PFI13 run at ``rate_hz`` (validated by :func:`alignment_rate_limits`)
+    or, when it is None, at the fastest block rate: 50 Hz at the default.
     """
     if alines_per_block < 1:
         raise ValueError("El bloque de alineación debe contener A-lines.")
@@ -519,7 +528,31 @@ def stationary_alignment_timing(
         requested_block_rate_hz,
         capture.effective_line_rate_hz / (alines_per_block * 1.05),
     )
+    if rate_hz is not None:
+        low, high = alignment_rate_limits(hardware, alines_per_block)
+        if not (isfinite(rate_hz) and low - 1e-9 <= rate_hz <= high + 1e-9):
+            raise ValueError(
+                f"La tasa de alineación continua debe estar entre {low:g} y {high:.4g} Hz."
+            )
+        block_rate_hz = min(rate_hz, block_rate_hz)
     return capture, block_rate_hz
+
+
+def alignment_rate_limits(hardware: HardwareConfig, alines_per_block: int = 1000) -> tuple[float, float]:
+    """Allowed continuous-alignment block rates (Hz) with this hardware.
+
+    Maximum: the fastest rate at which the camera completes each block with
+    5% idle time. Minimum: 1 Hz, and always a period well inside the NI-IMAQ
+    frame timeout (the first frame waits one extra period).
+    """
+    _capture, high = stationary_alignment_timing(hardware, alines_per_block)
+    low = max(ALIGNMENT_MIN_RATE_HZ, 2.0 / (hardware.frame_timeout_ms / 1000.0))
+    return min(low, high), high
+
+
+def default_alignment_rate_hz(hardware: HardwareConfig, alines_per_block: int = 1000) -> float:
+    low, high = alignment_rate_limits(hardware, alines_per_block)
+    return min(max(ALIGNMENT_DEFAULT_RATE_HZ, low), high)
 
 
 def optimized_scan_period_ticks(
