@@ -7,6 +7,8 @@ import numpy as np
 
 from octoce.config import (
     AcquisitionMode, ConfigurationError, HardwareConfig, Orientation, ScanParameters, ScanPattern,
+    alignment_rate_limits,
+    default_alignment_rate_hz,
     stationary_alignment_timing,
 )
 from octoce.scan import ScanPlanner, quintic_transition
@@ -67,6 +69,21 @@ class ScanPlannerTests(unittest.TestCase):
             0.0009,
         )
         self.assertEqual(original.line_rate_hz, 50_000.0)
+
+    def test_alignment_rate_default_and_limits(self) -> None:
+        hardware = HardwareConfig()
+        self.assertEqual(alignment_rate_limits(hardware), (1.0, 50.0))
+        self.assertEqual(default_alignment_rate_hz(hardware), 25.0)
+        capture, rate = stationary_alignment_timing(hardware, 1000, 25.0)
+        self.assertEqual(rate, 25.0)
+        # The camera line rate does not depend on the chosen block rate.
+        self.assertEqual(capture.effective_line_rate_hz,
+                         stationary_alignment_timing(hardware, 1000)[0].effective_line_rate_hz)
+        for rate in (0.5, 50.5, float("nan")):
+            with self.assertRaises(ValueError):
+                stationary_alignment_timing(hardware, 1000, rate)
+        # A short NI-IMAQ timeout raises the minimum: the period must fit inside it.
+        self.assertEqual(alignment_rate_limits(replace(hardware, frame_timeout_ms=500))[0], 4.0)
 
     def test_bm_order_and_shape(self) -> None:
         scan = ScanParameters(
