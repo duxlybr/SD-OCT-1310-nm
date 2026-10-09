@@ -70,6 +70,91 @@ function test_local_speed_estimators(~)
     assert_young_models();
     assert_bmode_support_diagnostics();
     assert_multi_excitation_consensus();
+    assert_phase_derivative_2d();
+    assert_raw_unwrap_before_estimation();
+end
+
+function assert_phase_derivative_2d()
+    f=1000; c=2; x=(0:76)*80e-6; z=(0:40)*60e-6; t=(0:59)*50e-6;
+    [X,Z]=meshgrid(x,z); theta=35; k=2*pi*f/c;
+    field=exp(-1i*k*(X*cosd(theta)+Z*sind(theta)));
+    data=struct('motion',real(field.*reshape(exp(1i*2*pi*f*t),1,1,[])), ...
+        'x_m',x,'row_m',z,'t_s',t,'valid_mask',true(size(X)),'plane_type',"bmode");
+    options=struct('method',"phase_derivative_2d",'frequency_hz',f, ...
+        'window_x_mm',.8,'window_row_mm',.6,'pd_geometry',"in_plane", ...
+        'speed_range_m_s',[.8 5],'min_coherence',.7,'unwrap_method',"sequential");
+    % A known oblique bulk plane wave requires both spatial derivatives.
+    full=oce.dispersion.estimateLocalSpeedMap(data,options);
+    assert(nnz(full.valid_mask)>1500);
+    assert(max(abs(full.speed_m_s(full.valid_mask)/c-1))<1e-9);
+    assert(max(abs(full.diagnostics.phase_derivative_row_rad_m(full.valid_mask)+k*sind(theta)))<1e-6);
+    options.pd_geometry="lateral";
+    projected=oce.dispersion.estimateLocalSpeedMap(data,options);
+    assert(max(abs(projected.speed_m_s(projected.valid_mask)/(c/cosd(theta))-1))<1e-9);
+    assert(all(projected.diagnostics.phase_derivative_row_rad_m(projected.valid_mask)==0));
+    % A curved phase front with amplitude variation tests the derivative at
+    % the window centre, independently of the plane-wave implementation.
+    options.pd_geometry="in_plane"; data.plane_type="enface";
+    ax=1.1e5; az=.8e5;
+    phase=-k*X-.3*k*Z-ax*X.^2-az*Z.^2;
+    field=(1+300*X+250*Z).*exp(1i*phase);
+    data.motion=real(field.*reshape(exp(1i*2*pi*f*t),1,1,[]));
+    truth=2*pi*f./hypot(k+2*ax*X,.3*k+2*az*Z);
+    curved=oce.dispersion.estimateLocalSpeedMap(data,options);
+    assert(nnz(curved.valid_mask)>1500);
+    assert(max(abs(curved.speed_m_s(curved.valid_mask)./truth(curved.valid_mask)-1))<1e-8);
+    % Wrong unwrap branches must remain visible in unwrapped residuals; no
+    % missing measurement is filled by modal unwrapping or display smoothing.
+    data.valid_mask(18:22,35:39)=false; options.smoothing_mm=.1;
+    holed=oce.dispersion.estimateLocalSpeedMap(data,options);
+    assert(all(isnan(holed.speed_m_s(~data.valid_mask))));
+    assert(all(isnan(holed.diagnostics.unwrapped_modal_phase_rad(~data.valid_mask))));
+    assert(all(isnan(holed.display_speed_m_s(~holed.valid_mask))));
+    % A missing vertical stripe separates two unknown unwrap pistons. The
+    % opposite component cannot provide support to a near-stripe estimate.
+    split=data; split.valid_mask(:)=true; split.valid_mask(:,39)=false;
+    split.motion=real(exp(-1i*k*X).*reshape(exp(1i*2*pi*f*t),1,1,[]));
+    options.min_support_fraction=.8;
+    separated=oce.dispersion.estimateLocalSpeedMap(split,options);
+    assert(~any(separated.valid_mask(:,38)) && ~any(separated.valid_mask(:,40)));
+    assert(nnz(separated.valid_mask)>1000);
+    assert(max(abs(separated.speed_m_s(separated.valid_mask)/c-1))<1e-9);
+    options.pd_geometry="depth";
+    assert_identifier('OCE:LocalSpeed:InvalidOptions',@()oce.dispersion.estimateLocalSpeedMap(data,options));
+end
+
+function assert_raw_unwrap_before_estimation()
+    rng(142,'twister'); f=1000; c=2.3; x=(0:56)*80e-6; z=(0:6)*20e-6;
+    t=(0:69)*25e-6; [X,Z]=meshgrid(x,z); %#ok<ASGLU>
+    offset=2*pi*rand(size(X))-pi;
+    phase=3.8*cos(-2*pi*f/c*X+reshape(2*pi*f*t,1,1,[]))+offset;
+    data=struct('raw_phase_rad',angle(exp(1i*phase)), ...
+        'x_m',x,'row_m',z,'t_s',t,'valid_mask',true(size(X)),'plane_type',"bmode");
+    options=struct('method',"phase_derivative_2d",'frequency_hz',f, ...
+        'window_x_mm',.8,'window_row_mm',0,'speed_range_m_s',[.8 5], ...
+        'min_coherence',.7,'unwrap_iterations',5,'raw_unwrap_dimensions',3);
+    % Optical wrapping is deliberately severe, but temporal adjacent phase
+    % steps are resolved. Static scatterer phase differs at every pixel.
+    for method=["sequential","least_squares_dct","tie_dct"]
+        options.unwrap_method=method;
+        result=oce.dispersion.estimateLocalSpeedMap(data,options);
+        assert(nnz(result.valid_mask)>250);
+        assert(median(abs(result.speed_m_s(result.valid_mask)/c-1))<1e-7);
+        assert(result.diagnostics.raw_unwrap.performed);
+        assert(result.diagnostics.raw_unwrap.method==method);
+        assert(result.diagnostics.processing_order(1)=="raw unwrap when supplied");
+        if method=="tie_dct"
+            assert(result.diagnostics.raw_unwrap.iterations_executed==5);
+            assert(result.diagnostics.modal_unwrap.iterations_executed==5);
+        end
+    end
+    % A raw input cannot silently compete with an existing processed signal.
+    bad=data; bad.motion=phase;
+    assert_identifier('OCE:LocalSpeed:InvalidData',@()oce.dispersion.estimateLocalSpeedMap(bad,options));
+    options.unwrap_iterations=2.5;
+    assert_identifier('OCE:LocalSpeed:InvalidOptions',@()oce.dispersion.estimateLocalSpeedMap(data,options));
+    options.unwrap_iterations=0;
+    assert_identifier('OCE:LocalSpeed:InvalidOptions',@()oce.dispersion.estimateLocalSpeedMap(data,options));
 end
 
 function assert_bmode_support_diagnostics()

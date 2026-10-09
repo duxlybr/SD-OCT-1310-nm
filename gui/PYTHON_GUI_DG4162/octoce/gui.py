@@ -19,6 +19,7 @@ from .config import (
     AcquisitionMode,
     ConfigurationError,
     HardwareConfig,
+    LSM04_FOV_MM,
     OCE_TRIGGER_DUTY_CYCLE,
     Orientation,
     POLAR_PATTERNS,
@@ -33,6 +34,7 @@ from .engine import AcquisitionEngine, EngineEvent, EngineState
 from .processing import DEFAULT_SPECTRAL_WINDOW, SPECTRAL_WINDOWS, normalize_preview, preview_complex
 from .scan import ScanPlanner
 from .paths import ACQUISITIONS_DIR
+from .galvo_settings import GalvoOffsets
 
 
 PATTERN_LABELS = {
@@ -185,6 +187,12 @@ class OCTOCEApp:
         self.event_queue: queue.Queue[EngineEvent] = queue.Queue()
         self.engine = AcquisitionEngine(self.event_queue.put)
         self.hardware = HardwareConfig()
+        self._galvo_defaults_error = ""
+        try:
+            self._galvo_defaults = GalvoOffsets.load()
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            self._galvo_defaults = GalvoOffsets()
+            self._galvo_defaults_error = f"No se cargaron los offsets predeterminados: {exc}. Se usa 0,0."
         self._closing = False
         self._trajectory_after: str | None = None
         self._events_after: str | None = None
@@ -221,6 +229,8 @@ class OCTOCEApp:
         self._build_ui()
         self._bind_plan_updates()
         self._refresh_plan()
+        if self._galvo_defaults_error:
+            self._append_log(self._galvo_defaults_error)
         self._events_after = self.root.after(50, self._poll_events)
 
     def _build_style(self) -> None:
@@ -263,6 +273,8 @@ class OCTOCEApp:
         self.bframes_delay_var = tk.StringVar(value="0.0")
         self.x_length_var = tk.StringVar(value="5.0")
         self.y_length_var = tk.StringVar(value="5.0")
+        self.offset_x_var = tk.StringVar(value=f"{self._galvo_defaults.x_mm:g}")
+        self.offset_y_var = tk.StringVar(value=f"{self._galvo_defaults.y_mm:g}")
         self.k_start_var = tk.StringVar(value=str(self.hardware.k_start_nm))
         self.k_end_var = tk.StringVar(value=str(self.hardware.k_end_nm))
         self.d2_var = tk.StringVar(value=str(self.hardware.dispersion_d2_rad))
@@ -410,6 +422,17 @@ class OCTOCEApp:
         entry("BFramesDelay", self.bframes_delay_var, "µs")
         entry("Longitud X", self.x_length_var, "mm")
         entry("Longitud Y", self.y_length_var, "mm")
+        self.offset_x_entry = entry("Offset X · centro", self.offset_x_var, "mm")
+        self.offset_y_entry = entry("Offset Y · centro", self.offset_y_var, "mm")
+        offset_actions = ttk.Frame(plan, style="Card.TFrame")
+        offset_actions.grid(row=rows[plan], column=0, columnspan=2, sticky="ew", pady=4)
+        ttk.Button(offset_actions, text="Guardar offsets iniciales", command=self._save_galvo_offsets).pack(side="left")
+        ttk.Button(offset_actions, text="Volver a 0,0", command=self._zero_galvo_offsets).pack(side="right")
+        rows[plan] += 1
+        ttk.Label(plan, text="LSM04: FOV 14,1 × 14,1 mm. Offset + medio recorrido ≤ 7,05 mm.\n"
+                  "También se aplica en alineación y crosshair continuo.", style="Muted.TLabel",
+                  wraplength=330).grid(row=rows[plan], column=0, columnspan=2, sticky="w", pady=(0, 5))
+        rows[plan] += 1
         # λ range and dispersion live in the hardware dialog.
         ttk.Button(plan, text="Configuración de hardware…", command=self._open_hardware_dialog).grid(
             row=rows[plan], column=0, columnspan=2, sticky="ew", pady=(8, 2)
@@ -470,7 +493,7 @@ class OCTOCEApp:
         self.stop_button.grid(row=0, column=1, sticky="ew", padx=(5, 0))
         self.align_button = ttk.Button(
             parent,
-            text="Alineación continua · centro (MB × 1000)",
+            text="Alineación continua · punto con offset (MB × 1000)",
             command=self._start_alignment,
         )
         self.align_button.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
@@ -791,6 +814,8 @@ class OCTOCEApp:
             self.bframes_delay_var,
             self.x_length_var,
             self.y_length_var,
+            self.offset_x_var,
+            self.offset_y_var,
             self.k_start_var,
             self.k_end_var,
             self.d2_var,
@@ -805,6 +830,7 @@ class OCTOCEApp:
         self._trajectory_after = self.root.after(180, self._refresh_plan)
 
     def _configs(self) -> tuple[ScanParameters, HardwareConfig]:
+        offsets = self._galvo_offsets()
         scan = ScanParameters(
             alines=int(self.alines_var.get()),
             bscans=int(self.bscans_var.get()),
@@ -813,6 +839,8 @@ class OCTOCEApp:
             bframes_delay_us=float(self.bframes_delay_var.get().replace(",", ".")),
             x_length_mm=float(self.x_length_var.get().replace(",", ".")),
             y_length_mm=float(self.y_length_var.get().replace(",", ".")),
+            center_x_mm=offsets.x_mm,
+            center_y_mm=offsets.y_mm,
             mode=MODE_LABELS[self.mode_var.get()],
             pattern=PATTERN_LABELS[self.pattern_var.get()],
             orientation=ORIENTATION_LABELS[self.orientation_var.get()],
@@ -827,6 +855,30 @@ class OCTOCEApp:
         )
         hardware.validate(scan)
         return scan, hardware
+
+    def _galvo_offsets(self) -> GalvoOffsets:
+        offsets = GalvoOffsets(
+            float(self.offset_x_var.get().replace(",", ".")),
+            float(self.offset_y_var.get().replace(",", ".")),
+        )
+        offsets.validate()
+        return offsets
+
+    def _save_galvo_offsets(self) -> None:
+        try:
+            offsets = self._galvo_offsets()
+            # Check the saved point against the optical, AO and angular limits.
+            self.hardware.validate(ScanParameters(alines=1, x_length_mm=0, y_length_mm=0,
+                                   center_x_mm=offsets.x_mm, center_y_mm=offsets.y_mm))
+            offsets.save()
+            self._galvo_defaults = offsets
+            self._append_log(f"Offsets iniciales guardados: X={offsets.x_mm:+.4f}, Y={offsets.y_mm:+.4f} mm.")
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Offsets no guardados", str(exc), parent=self.root)
+
+    def _zero_galvo_offsets(self) -> None:
+        self.offset_x_var.set("0")
+        self.offset_y_var.set("0")
 
     def _refresh_plan(self) -> None:
         self._trajectory_after = None
@@ -851,6 +903,7 @@ class OCTOCEApp:
             active_sweep_ms = scan.lines_per_segment / hardware.effective_line_rate_hz * 1000.0
             self.summary_var.set(
                 f"{scan.expected_alines:,} A-lines  ·  {_human_bytes(size)}\n"
+                f"Centro X/Y: {scan.center_x_mm:+.4f} / {scan.center_y_mm:+.4f} mm\n"
                 f"Vpp X/Y: {vx:.4f} / {vy:.4f} V  ·  "
                 f"{hardware.effective_line_rate_hz / 1000:.3f} klps efectivos  ·  "
                 f"barrido activo {active_sweep_ms:.2f} ms  ·  mínimo {_duration(duration_s)}"
@@ -905,10 +958,9 @@ class OCTOCEApp:
         left, right, top, bottom = 52, 24, 30, 38
         plot_w = max(1, width - left - right)
         plot_h = max(1, height - top - bottom)
-        half_x = max(scan.x_length_mm / 2.0, 0.5)
-        half_y = max(scan.y_length_mm / 2.0, 0.5)
-        x_lo, x_hi = scan.center_x_mm - half_x, scan.center_x_mm + half_x
-        y_lo, y_hi = scan.center_y_mm - half_y, scan.center_y_mm + half_y
+        # Keep the lens field fixed so a translated scan visibly moves off-axis.
+        x_lo = y_lo = -LSM04_FOV_MM / 2
+        x_hi = y_hi = LSM04_FOV_MM / 2
         if sync_paths:
             all_sync = np.vstack([path for _sequence, path in sync_paths])
             x_lo, x_hi = min(x_lo, float(all_sync[:, 0].min())), max(x_hi, float(all_sync[:, 0].max()))
@@ -926,6 +978,10 @@ class OCTOCEApp:
             )
 
         canvas.create_rectangle(left, top, left + plot_w, top + plot_h, outline="#a8b5c6")
+        zx, zy = project(0, 0)
+        canvas.create_line(zx, top, zx, top + plot_h, fill="#c5ceda", dash=(3, 3))
+        canvas.create_line(left, zy, left + plot_w, zy, fill="#c5ceda", dash=(3, 3))
+        canvas.create_text(left, 8, anchor="nw", text="FOV LSM04 · 14,1 × 14,1 mm", fill="#506078")
         cx, cy = project(scan.center_x_mm, scan.center_y_mm)
         canvas.create_line(cx, top, cx, top + plot_h, fill="#e3e9f0", dash=(3, 3))
         canvas.create_line(left, cy, left + plot_w, cy, fill="#e3e9f0", dash=(3, 3))
@@ -1029,6 +1085,22 @@ class OCTOCEApp:
     def _on_oct_start_failed(self) -> None:
         """Release auxiliary capture if OCT did not start."""
 
+    def _confirm_simulation(self) -> bool:
+        if self.backend_var.get() == "Hardware NI":
+            return True
+        if self.backend_var.get() != "Simulación":
+            raise ValueError("Seleccione Hardware NI o Simulación.")
+        if getattr(self, "_sequence_active", False) and getattr(self, "_simulation_sequence_approved", False):
+            return True
+        return messagebox.askyesno(
+            "ADVERTENCIA · Adquisición en simulación",
+            "Está seleccionado SIMULACIÓN. Se generarán datos sintéticos; "
+            "la cámara OCT no adquirirá la muestra.\n\n"
+            "Para una adquisición real, cancele y seleccione Hardware NI. "
+            "¿Desea continuar en simulación?",
+            icon="warning", default="no", parent=self.root,
+        )
+
     def _before_root_destroy(self) -> None:
         """Release cached NI-IMAQ before closing Tk."""
         NIHardwareBackend.release_warm_camera()
@@ -1043,6 +1115,8 @@ class OCTOCEApp:
             self._last_depth_range = depth_range
             output = self._resolve_output_path() if self.save_var.get() else None
             real = self.backend_var.get() == "Hardware NI"
+            if not self._confirm_simulation():
+                return False
             if real:
                 optimized_chunk = NIHardwareBackend().supports_mb_chunks(scan) and NIHardwareBackend.mb_chunk_size(scan, hardware) > 0
                 if optimized_chunk:
@@ -1067,8 +1141,9 @@ class OCTOCEApp:
                 )
                 message = (
                     "Se habilitarán AO0/AO1 y los triggers PFI12/PFI13.\n\n"
-                    f"X: ±{scan.x_length_mm / 2:.3f} mm  ({scan.x_length_mm * hardware.x_v_per_mm:.4f} Vpp)\n"
-                    f"Y: ±{scan.y_length_mm / 2:.3f} mm  ({scan.y_length_mm * hardware.y_v_per_mm:.4f} Vpp)\n"
+                    f"Centro X/Y: {scan.center_x_mm:+.4f} / {scan.center_y_mm:+.4f} mm\n"
+                    f"X: {scan.bounds_mm[0]:+.4f} a {scan.bounds_mm[1]:+.4f} mm\n"
+                    f"Y: {scan.bounds_mm[2]:+.4f} a {scan.bounds_mm[3]:+.4f} mm\n"
                     f"Frecuencia efectiva: {hardware.effective_line_rate_hz:,.1f} A-lines/s\n"
                     f"OCE: {'habilitado' if hardware.oce_enabled else 'deshabilitado'}\n"
                     f"{trigger_description}\n"
@@ -1136,6 +1211,7 @@ class OCTOCEApp:
                 raise RuntimeError("Detenga la adquisición actual antes de alinear.")
             depth_range = self._parse_depth_range()
             self._last_depth_range = depth_range
+            offsets = self._galvo_offsets()
             scan = ScanParameters(
                 alines=1,
                 bscans=1,
@@ -1145,6 +1221,8 @@ class OCTOCEApp:
                 y_length_mm=0.0,
                 mode=AcquisitionMode.MB,
                 pattern=ScanPattern.LINEAR,
+                center_x_mm=offsets.x_mm,
+                center_y_mm=offsets.y_mm,
             )
             hardware = replace(
                 self.hardware,
@@ -1169,6 +1247,8 @@ class OCTOCEApp:
             scan.validate()
             hardware.validate(scan)
             real = self.backend_var.get() == "Hardware NI"
+            if not self._confirm_simulation():
+                return
             if real:
                 if not hardware.oce_enabled:
                     raise RuntimeError(
@@ -1177,7 +1257,9 @@ class OCTOCEApp:
                     )
                 if not messagebox.askyesno(
                     "Alineación continua",
-                    "AO0/AO1 se mantendrán en 0 V (centro). Se adquirirán grupos MB de "
+                    f"Punto XY=({offsets.x_mm:+.4f}, {offsets.y_mm:+.4f}) mm. "
+                    f"AO0/AO1={offsets.x_mm * hardware.x_v_per_mm:+.4f} / "
+                    f"{offsets.y_mm * hardware.y_v_per_mm:+.4f} V. Se adquirirán grupos MB de "
                     "1000 A-lines indefinidamente, sin guardar ni puntos sync. PFI12 y "
                     f"PFI13 se temporizarán por hardware cada {1000 / alignment_rate_hz:.2f} ms; PFI13 "
                     f"tendrá 10 % de ciclo útil. La cámara usará {hardware.effective_line_rate_hz / 1000:.3f} klps "
@@ -1197,7 +1279,7 @@ class OCTOCEApp:
             self._trajectory_current_xy = None
             self._trajectory_position_label = ""
             self._active_hardware = hardware
-            self._clear_preview("Alineación: esperando 1000 A-lines del centro…")
+            self._clear_preview("Alineación: esperando 1000 A-lines del punto con offset…")
             self.alignment_zoom_canvas.grid()
             self.alignment_zoom_canvas.create_text(
                 12, 12, anchor="nw", fill="#d7e9ff",
@@ -1209,7 +1291,7 @@ class OCTOCEApp:
             self.progress_var.set(0.0)
             self.progress_text_var.set("Alineación continua · 0 A-lines")
             self._append_log(
-                "Alineación continua MB en (0,0), M=1000, sin archivo; "
+                f"Alineación continua MB en ({offsets.x_mm:+.4f},{offsets.y_mm:+.4f}) mm, M=1000, sin archivo; "
                 f"PFI12/PFI13 a {alignment_rate_hz:.3f} Hz por hardware; "
                 f"cámara a {hardware.effective_line_rate_hz / 1000:.3f} klps para dejar margen entre frames; "
                 "PFI13 10 % de ciclo útil; "
@@ -1232,6 +1314,7 @@ class OCTOCEApp:
                 raise RuntimeError("Detenga la adquisición actual antes de iniciar el loop.")
             depth_range = self._parse_depth_range()
             self._last_depth_range = depth_range
+            offsets = self._galvo_offsets()
             scan = ScanParameters(
                 alines=500,
                 bscans=1,
@@ -1241,6 +1324,8 @@ class OCTOCEApp:
                 y_length_mm=10.0,
                 mode=AcquisitionMode.BM,
                 pattern=ScanPattern.CROSSHAIR,
+                center_x_mm=offsets.x_mm,
+                center_y_mm=offsets.y_mm,
             )
             hardware = replace(
                 self.hardware,
@@ -1252,11 +1337,14 @@ class OCTOCEApp:
             )
             scan.validate()
             hardware.validate(scan)
+            if not self._confirm_simulation():
+                return
             if self.backend_var.get() == "Hardware NI":
                 if not messagebox.askyesno(
                     "Crosshair continuo",
                     "Se repetirá indefinidamente un B-scan lógico de 500 A-lines en X "
                     "y 500 en Y sobre 10×10 mm, BM con M=1, sin guardar ni PFI13/OCE. "
+                    f"Centro XY=({offsets.x_mm:+.4f},{offsets.y_mm:+.4f}) mm. "
                     "Use Detener para parquear los galvos. ¿Iniciar?",
                     icon="warning",
                 ):
@@ -1277,7 +1365,8 @@ class OCTOCEApp:
             self.engine.set_preview_window(self.window_var.get())
             self.engine.set_preview_depth_range(*depth_range)
             self._append_log(
-                "Crosshair continuo BM: 500 X + 500 Y, 10×10 mm, M=1, sin archivo ni OCE."
+                "Crosshair continuo BM: 500 X + 500 Y, 10×10 mm, M=1, sin archivo ni OCE; "
+                f"centro XY=({offsets.x_mm:+.4f},{offsets.y_mm:+.4f}) mm."
             )
             self._before_oct_start(None)
             self.engine.start(scan, hardware, output_path=None, backend=backend, continuous=True)
@@ -1914,7 +2003,9 @@ class OCTOCEApp:
         aline_original = int(selected_indexes[lateral_index]) if lateral_index < selected_indexes.size else lateral_index
         if self._alignment_active:
             z_label = f"Z bin {z_original}"
-            lateral_label = f"Centro (0,0) · M{aline_original + 1}"
+            scan = self._active_scan
+            cx, cy = (scan.center_x_mm, scan.center_y_mm) if scan is not None else (0.0, 0.0)
+            lateral_label = f"XY ({cx:+.4f},{cy:+.4f}) mm · M{aline_original + 1}"
             self.z_cursor_text_var.set(z_label)
             self.lateral_cursor_text_var.set(lateral_label)
             return z_label, lateral_label
@@ -1930,6 +2021,11 @@ class OCTOCEApp:
             lateral_label = f"{axis} {angle:.1f}° · A{aline_original + 1}"
         else:
             position_mm = ((aline_original / (total - 1)) - 0.5) * length_mm
+            if self._active_scan is not None:
+                if axis == "X":
+                    position_mm += self._active_scan.center_x_mm
+                elif axis == "Y":
+                    position_mm += self._active_scan.center_y_mm
             lateral_label = f"{axis} {position_mm:+.3f} mm · A{aline_original + 1}"
         self.z_cursor_text_var.set(z_label)
         self.lateral_cursor_text_var.set(lateral_label)

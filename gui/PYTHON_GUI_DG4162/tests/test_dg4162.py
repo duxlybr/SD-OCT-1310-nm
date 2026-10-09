@@ -468,6 +468,14 @@ class ControllerTests(unittest.TestCase):
 
 
 class NamingTests(unittest.TestCase):
+    def test_refresh_generated_prefix_preserves_specimen_suffix_and_custom_name(self) -> None:
+        from octoce.naming import refresh_parameter_stem
+        current = "OCE_150A_2B_400M_150SS_500mVpp_700Hz"
+        old = "OCT_100A_1B_100M_50SS_300mVpp_1000Hz"
+        self.assertEqual(refresh_parameter_stem(old + "_p3_r1.bin", current), current + "_p3_r1")
+        self.assertEqual(refresh_parameter_stem("", current), current)
+        self.assertEqual(refresh_parameter_stem("muestra_control.bin", current), "muestra_control")
+
     def test_default_name_format(self) -> None:
         self.assertEqual(
             default_stem(AcquisitionMode.MB, 100, 100, 400, 200, ch1_vpp=0.3, ch2_frequency_hz=2000),
@@ -580,7 +588,48 @@ class SequenceTests(unittest.TestCase):
 
 @unittest.skipUnless(os.name == "nt", "Smoke visual de Tkinter para Windows")
 class DG4162GuiTests(unittest.TestCase):
+    def test_simulation_warning_cannot_be_bypassed_by_confirm_false(self) -> None:
+        app = self.app
+        writes = list(self.instrument.setting_writes)
+        with patch("octoce.gui.messagebox.askyesno", return_value=False) as ask, \
+                patch.object(app.engine, "start") as start:
+            self.assertFalse(app._start(confirm=False))
+            self.assertIn("simulación", ask.call_args.args[0])
+            self.assertEqual(ask.call_args.kwargs["default"], "no")
+            start.assert_not_called()
+        self.assertEqual(self.instrument.setting_writes, writes)
+        self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+
+    def test_non_pulse_excitation_decline_prevents_outputs_and_acquisition(self) -> None:
+        app = self.app
+        app.ch2_wave_var.set("Gaussiana")
+        writes = list(self.instrument.setting_writes)
+        with patch("octoce.gui_dg4162.messagebox.askyesno", return_value=False) as ask, \
+                patch.object(app.engine, "start") as start:
+            self.assertFalse(app._start(confirm=False))
+            self.assertIn("Pulso", ask.call_args.args[0])
+            self.assertIn("Gaussiana", ask.call_args.args[1])
+            start.assert_not_called()
+        self.assertEqual(self.instrument.setting_writes, writes)
+        self.assertEqual(self.instrument.state[":OUTP1"], "OFF")
+
+    def test_suggested_name_refreshes_parameters_at_start_preserving_suffix(self) -> None:
+        app = self.app
+        app._use_suggested_name()
+        app.name_var.set(app.name_var.get() + "_muestra1")
+        app.alines_var.set("5")
+        app.ch1_mvpp_var.set("500")
+        app.ch2_freq_var.set("700")
+        with patch.object(app.engine, "start") as start:
+            self.assertTrue(app._start())
+            path = start.call_args.kwargs["output_path"]
+        self.assertEqual(path.name, "OCE_5A_1B_3M_2SS_500mVpp_700Hz_muestra1.bin")
+        self.assertEqual(app.name_var.get(), path.stem)
+
     def setUp(self) -> None:
+        warning = patch("octoce.gui.messagebox.askyesno", return_value=True)
+        warning.start()
+        self.addCleanup(warning.stop)
         from octoce.gui_dg4162 import OCTOCEDG4162App
         from test_gui_usb import _FakeStream
 

@@ -26,7 +26,7 @@ from .dg4162 import (
 from .engine import EngineEvent, EngineState
 from .gui import MODE_LABELS, ORIENTATION_LABELS, PATTERN_LABELS, _CollapsibleSection, _duration
 from .gui_usb import OCTOCEUSBApp
-from .naming import MODE_PREFIX, clean_stem, default_stem, unique_path
+from .naming import MODE_PREFIX, clean_stem, default_stem, refresh_parameter_stem, unique_path
 from .paths import ACQUISITIONS_DIR, CONFIG_DIR
 from .sequence import DurationModel, SequenceJob, build_jobs, read_rows, sequence_remaining_s, write_template
 from .usb_camera import USBCameraStream
@@ -387,6 +387,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._last_output: Path | None = None
         self._sequence_jobs: list[SequenceJob] = []
         self._sequence_active = False
+        self._simulation_sequence_approved = False
+        self._approved_sequence_waveforms: set[str] = set()
+        self._sequence_offsets = None
         self._sequence_starting = False
         self._sequence_index = 0
         self._sequence_after: str | None = None
@@ -603,7 +606,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
     def _update_target(self) -> None:
         try:
             typed = clean_stem(self.name_var.get())
-            stem = typed or self._default_stem()
+            stem = refresh_parameter_stem(typed, self._default_stem())
             path = unique_path(self._folder(), stem)
             origin = "nombre escrito" if typed else "nombre por defecto"
             suffix = " (ya existía: se añade sufijo)" if path.stem != stem else ""
@@ -617,7 +620,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         if job is not None:
             path = self._job_output_path(job, set())
         else:
-            stem = clean_stem(self.name_var.get()) or self._default_stem()
+            stem = refresh_parameter_stem(self.name_var.get(), self._default_stem())
+            if self.name_var.get().strip():
+                self.name_var.set(stem)
             path = unique_path(self._folder(), stem)
         self.output_var.set(str(path))
         self._last_output = path
@@ -912,6 +917,16 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             return False
         if needs_confirmation and confirm and not self._confirm_high_voltage(settings):
             return False
+        if settings.excitation is Excitation.NON_CONTACT and settings.ch2_waveform != "PULS":
+            approved = self._sequence_active and settings.ch2_waveform in self._approved_sequence_waveforms
+            if not approved and not messagebox.askyesno(
+                "ADVERTENCIA · Excitación distinta de Pulso",
+                f"La forma de excitación CH2 seleccionada es «{waveform_label(settings.ch2_waveform)}», "
+                "distinta de «Pulso». Esta forma se enviará al DG4162.\n\n"
+                "Cancele si esperaba adquirir con Pulso. ¿Desea continuar con esta forma?",
+                icon="warning", default="no", parent=self.root,
+            ):
+                return False
         self._pending_settings = settings
         return True
 
@@ -1211,11 +1226,13 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         }
 
     def _job_scan(self, job: SequenceJob) -> tuple[ScanParameters, Any]:
+        offsets = self._sequence_offsets or self._galvo_offsets()
         scan = ScanParameters(
             alines=job.alines, bscans=job.bscans, m_repetitions=job.m_repetitions,
             sync_points=job.sync_points, bframes_delay_us=job.bframes_delay_us,
             x_length_mm=job.x_length_mm, y_length_mm=job.y_length_mm,
             mode=job.mode, pattern=job.pattern, orientation=job.orientation,
+            center_x_mm=offsets.x_mm, center_y_mm=offsets.y_mm,
         )
         scan.validate()
         hardware = replace(
@@ -1275,14 +1292,18 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
     def _job_output_path(self, job: SequenceJob, taken: set[Path]) -> Path:
         folder = Path(job.folder) if job.folder else self._folder()
         generator = self.gen_enabled_var.get()
-        stem = job.name or default_stem(
+        suggested = default_stem(
             job.mode, job.alines, job.bscans, job.m_repetitions, job.sync_points,
             ch1_vpp=job.generator.ch1_vpp if generator else None,
             ch2_frequency_hz=job.generator.ch2_frequency_hz if generator else None,
         )
+        stem = refresh_parameter_stem(job.name, suggested)
         return unique_path(folder, stem, taken=taken)
 
     def _apply_job_to_gui(self, job: SequenceJob) -> None:
+        if self._sequence_offsets is not None:
+            self.offset_x_var.set(f"{self._sequence_offsets.x_mm:g}")
+            self.offset_y_var.set(f"{self._sequence_offsets.y_mm:g}")
         self.mode_var.set(_MODE_LABEL[job.mode])
         self.pattern_var.set(_PATTERN_LABEL[job.pattern])
         self.orientation_var.set(_ORIENTATION_LABEL[job.orientation])
@@ -1313,6 +1334,30 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             messagebox.showerror("Secuencia", "Active 'Guardar datos crudos (.bin)' para ejecutar una secuencia.",
                                  parent=window.window)
             return
+        try:
+            for job in jobs:
+                self._validate_job_scan(job)
+        except ValueError as exc:
+            messagebox.showerror("Secuencia fuera de límites", str(exc), parent=window.window)
+            return
+        if not self._confirm_simulation():
+            return
+        unusual = {
+            job.generator.ch2_waveform for job in jobs
+            if job.generator.excitation is Excitation.NON_CONTACT and job.generator.ch2_waveform != "PULS"
+        }
+        if self.gen_enabled_var.get() and unusual:
+            details = "; ".join(
+                f"fila {job.row}: {waveform_label(job.generator.ch2_waveform)}" for job in jobs
+                if job.generator.excitation is Excitation.NON_CONTACT and job.generator.ch2_waveform != "PULS"
+            )
+            if not messagebox.askyesno(
+                "ADVERTENCIA · Secuencia con excitación distinta de Pulso",
+                "La secuencia contiene formas CH2 distintas de «Pulso»:\n" + details +
+                "\n\n¿Confirma el uso de estas formas durante la secuencia?",
+                icon="warning", default="no", parent=window.window,
+            ):
+                return
         high = sorted({job.row for job in jobs if job.generator.ch1_vpp > WARNING_CH1_VPP})
         if self.gen_enabled_var.get():
             if high and not messagebox.askyesno(
@@ -1338,6 +1383,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         ):
             return
         self._sequence_active = True
+        self._sequence_offsets = self._galvo_offsets()
+        self._simulation_sequence_approved = self.backend_var.get() == "Simulación"
+        self._approved_sequence_waveforms = unusual
         self._sequence_index = 0
         self._sequence_actuals = {}
         self._job_t0 = self._wait_until = None
@@ -1459,6 +1507,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._sequence_t0 = self._job_t0 = self._wait_until = None
         self._sequence_active = False
         self._current_job = None
+        self._simulation_sequence_approved = False
+        self._approved_sequence_waveforms.clear()
+        self._sequence_offsets = None
         if elapsed is not None:
             message += (f" Tiempo real {_duration(elapsed)} "
                         f"(estimado al inicio {_duration(self._sequence_initial_s)}).")

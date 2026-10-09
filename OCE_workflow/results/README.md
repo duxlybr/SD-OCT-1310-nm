@@ -1,10 +1,18 @@
 # Resultados de validación OCE
 
+La [comparativa desde fase cruda con phase derivative 2D](unwrap_comparison_2026-10-05/Resumen_comparativa.md)
+compara unwrap secuencial, mínimos cuadrados DCT y TIE-DCT de 8 correcciones
+fijas. Incluye pares Exact/FDTD, controles de ruido/alias, el pez enface con
+8 excitaciones independientes y Luis3 leído directamente del BIN. Los filtros,
+promedios y estimadores se aplican después del unwrap óptico; se documenta
+también el unwrap modal y la ablación de sus etapas.
+
 La [comparativa ampliada Exact XZ / True FDTD XZ](fdtd_exact_comparison_2026-10-05/Resumen_comparativa.md)
 añade nueve figuras con ambos estimadores, velocidad y Young en la misma figura:
 Rayleigh con rigidez/fuente/Poisson variables e inclusión, y Lamb con dos espesores
 y dos frecuencias. Incluye el caso Lamb de mayor discrepancia y sus límites.
-El inventario final verifica 45 PNG y ningún otro tipo de archivo en la galería.
+El inventario actualizado registra las imágenes de todos los ensayos y verifica
+que la galería sólo contiene PNG.
 
 La [galería Speed_Young_Maps](Speed_Young_Maps/) contiene únicamente imágenes
 de mapas de velocidad y Young: Lamb con inclusiones, campo reverberante y

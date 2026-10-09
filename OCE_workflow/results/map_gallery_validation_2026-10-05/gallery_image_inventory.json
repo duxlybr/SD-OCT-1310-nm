@@ -1,6 +1,6 @@
 {
   "gallery": "C:\\Users\\proyecto.pi1081\\Desktop\\SD-OCT-1310-nm\\OCE_workflow\\results\\Speed_Young_Maps",
-  "image_count": 45,
+  "image_count": 65,
   "only_png": true,
   "image_readability_check": true,
   "images": [
@@ -77,6 +77,150 @@
       "sha256": "b3d10cec854f90c5ee61409e543859834720def84118c3da7b6c5a584d07294a"
     },
     {
+      "filename": "comparison_unwrap_pd2d_bulk_shear_oblique_30deg_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2392,
+      "height_px": 1793,
+      "bytes": 175417,
+      "sha256": "c54516ed6f481ac69c040d9d6ec2d2e71da632d6a810c9b71f3d79a1eac00310"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_filtered_lamb_A0_12kPa_h060mm_1000Hz_random_static_carrier_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 231013,
+      "sha256": "7461b21e991adeb68a61854129896a5b5a48fceeb1ac3a49c8c8fae1a7f6f797"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_filtered_lamb_A0_12kPa_h060mm_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 198071,
+      "sha256": "2b695b7c1943996da92effe6aa66ed35cdb44357a679db50982c3ebcb5b9db8e"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_filtered_lamb_A0_12kPa_h120mm_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 188761,
+      "sha256": "2b8c2dc7a53369ca92f110a02c7491570259ce9d1f73c20a07ae4d2887ce375a"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_fish_8individual_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2346,
+      "height_px": 1474,
+      "bytes": 230920,
+      "sha256": "31f9274c1ce65dcc0a00b804aaa2ac19a8d9cb327b5b8abea69f9c2e2f88b216"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h060mm_1000Hz_phase_noise020rad_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 202571,
+      "sha256": "d223cf8b03cc6d750a293396a4fe1468e654835311f6aa629a80b1012415d3c1"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h060mm_1000Hz_random_static_carrier_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 220552,
+      "sha256": "4a41134e108d6eb5aa6260db72c4d0d166724815f84eefa9dac2a3b1c81acbbd"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h060mm_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 199168,
+      "sha256": "847bc8fe9912fb065b165fe2bd5cef743c6151c8edc6a77f052e0b45e682bdb8"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h060mm_1000Hz_temporal_alias_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 216064,
+      "sha256": "16f21b2eac7b5e8e4fbcc92df3641c2ae71ef60d12f8259f8f002d86f3b7da3b"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h060mm_1000Hz_temporal_shuffle_null_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 192331,
+      "sha256": "8164794e6cb023a636efb741a7a59dabc3cb12d958cae12afa4a5365e07f778d"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h060mm_500Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 203194,
+      "sha256": "06fe03538e5d4ce737b5edd409eb3746bc9f4af55d9fdc0201b2d73f18785210"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_lamb_A0_12kPa_h120mm_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 188964,
+      "sha256": "126979de7975a4e849c3ea190ab9474006e73376decaa5fe35003fdca3516475"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_rayleigh_12kPa_nu045_1500Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 185145,
+      "sha256": "b24f1cc16dc13110ff57fca6322e698def9e4122d37fa101feb98dce5d2d2961"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_rayleigh_12kPa_original_mesh010mm_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 189953,
+      "sha256": "6faf610d8921378c97aaa5c56aea4d683ee888bd22bfa42da322d7ce84703240"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_rayleigh_12kPa_point_source_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 178943,
+      "sha256": "24f8ebddf34ef57b7816c56b3d4bc05ef2b500f3aa56caa52c55e5694f60f1db"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_rayleigh_12kPa_stiff_inclusion_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 197511,
+      "sha256": "99e322874e515eeab101e75a0e1c1cb2a09ab3458a6a4cb6c1507528d5732e8f"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_rayleigh_24kPa_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 181779,
+      "sha256": "8f383ba35d2de139e5b5a9e9fdfa3f4399ae9592ace0fb99bd437e5865b619f8"
+    },
+    {
+      "filename": "comparison_unwrap_pd2d_rayleigh_6kPa_1000Hz_speed_young.png",
+      "family": "raw_unwrap_PD2D",
+      "width_px": 2410,
+      "height_px": 1793,
+      "bytes": 187396,
+      "sha256": "4c8f5c9972f0bccdbd0306eaf767ebd44b153ea0ae19dfc864791acead6f5702"
+    },
+    {
       "filename": "experimental_luis3_bmode1_phase_gradient_rayleigh_full_and_zoom.png",
       "family": "experimental",
       "width_px": 2406,
@@ -139,6 +283,22 @@
       "height_px": 1327,
       "bytes": 183011,
       "sha256": "3d44bd3bc312f715c4a0a8756d73b83bf3d6e08784a0c06b8d13ae2b27db649c"
+    },
+    {
+      "filename": "experimental_unwrap_pd2d_luis3_bmode1_speed_young.png",
+      "family": "experimental",
+      "width_px": 2422,
+      "height_px": 1629,
+      "bytes": 166172,
+      "sha256": "416b8d4f60c52c39ab00dfbb6c14142fdefc90f6cfa88f8cfdb7e33ad1529a08"
+    },
+    {
+      "filename": "experimental_unwrap_pd2d_luis3_temporal_only_speed_young.png",
+      "family": "experimental",
+      "width_px": 2422,
+      "height_px": 1629,
+      "bytes": 180640,
+      "sha256": "570d6d9da0ea345599dfd6a17101dd718d14e874d2fbf737452289289a751259"
     },
     {
       "filename": "fdtd_lamb_a0_homogeneous_12kPa_speed_young.png",

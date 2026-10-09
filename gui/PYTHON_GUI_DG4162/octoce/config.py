@@ -8,6 +8,7 @@ from typing import Any
 
 # PFI13 is a 5 V-logic counter output. The pulse train timing is fixed at 10% duty.
 OCE_TRIGGER_DUTY_CYCLE = 0.10
+LSM04_FOV_MM = 14.1  # Thorlabs LSM04 nominal square scan field.
 
 
 class AcquisitionMode(str, Enum):
@@ -104,6 +105,20 @@ class ScanParameters:
     @property
     def is_stationary(self) -> bool:
         return self.x_length_mm == 0 and self.y_length_mm == 0
+
+    @property
+    def bounds_mm(self) -> tuple[float, float, float, float]:
+        """Conservative XY bounds of acquired points, excluding unused axes."""
+        hx, hy = self.x_length_mm / 2, self.y_length_mm / 2
+        if self.pattern is ScanPattern.LINEAR:
+            if self.orientation is Orientation.HORIZONTAL:
+                hy = 0.0
+            else:
+                hx = 0.0
+        elif self.bscans == 1 and self.pattern in (ScanPattern.RASTER, ScanPattern.MERIDIANS):
+            hy = 0.0
+        return (self.center_x_mm - hx, self.center_x_mm + hx,
+                self.center_y_mm - hy, self.center_y_mm + hy)
 
     @property
     def expected_alines(self) -> int:
@@ -341,10 +356,16 @@ class HardwareConfig:
                     and self.camera_phase_offset_us + scan.bframes_delay_us < -sync_duration_us
                 ):
                     errors.append("El retardo OCE adelanta PFI13 antes del inicio del segmento.")
-            x_lo = (scan.center_x_mm - scan.x_length_mm / 2.0) * self.x_v_per_mm
-            x_hi = (scan.center_x_mm + scan.x_length_mm / 2.0) * self.x_v_per_mm
-            y_lo = (scan.center_y_mm - scan.y_length_mm / 2.0) * self.y_v_per_mm
-            y_hi = (scan.center_y_mm + scan.y_length_mm / 2.0) * self.y_v_per_mm
+            x_min, x_max, y_min, y_max = scan.bounds_mm
+            half_fov = LSM04_FOV_MM / 2
+            for axis, lo, hi in (("X", x_min, x_max), ("Y", y_min, y_max)):
+                if lo < -half_fov - 1e-12 or hi > half_fov + 1e-12:
+                    errors.append(
+                        f"El recorrido {axis} ({lo:+.4f} a {hi:+.4f} mm), incluido el offset, "
+                        f"excede el FOV LSM04: ±{half_fov:g} mm. Reduzca longitud u offset."
+                    )
+            x_lo, x_hi = x_min * self.x_v_per_mm, x_max * self.x_v_per_mm
+            y_lo, y_hi = y_min * self.y_v_per_mm, y_max * self.y_v_per_mm
             peak = max(abs(x_lo), abs(x_hi), abs(y_lo), abs(y_hi))
             if peak > self.max_galvo_abs_v:
                 errors.append(
@@ -373,6 +394,8 @@ class HardwareConfig:
                         f"({y_min_deg:g}° a {y_max_deg:g}°)."
                     )
         park_x, park_y = self.park_volts
+        if not all(isfinite(v) and abs(v) <= LSM04_FOV_MM / 2 for v in (self.park_x_mm, self.park_y_mm)):
+            errors.append("La posición park debe ser finita y estar dentro del FOV LSM04.")
         if max(abs(park_x), abs(park_y)) > self.max_galvo_abs_v:
             errors.append("La posición de park excede el límite del galvo.")
         if self.galvo_v_per_degree > 0:
@@ -417,6 +440,8 @@ class HardwareConfig:
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)
         result["effective_line_rate_hz"] = self.effective_line_rate_hz
+        result["scan_lens"] = "LSM04"
+        result["lens_fov_xy_mm"] = [LSM04_FOV_MM, LSM04_FOV_MM]
         result["cc1_period_us"] = self.cc1_period_us
         result["camera_operational_setting"] = self.camera_operational_setting
         return result

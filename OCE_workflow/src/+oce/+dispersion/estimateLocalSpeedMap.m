@@ -2,11 +2,16 @@ function result = estimateLocalSpeedMap(data, options)
 %ESTIMATELOCALSPEEDMAP Opt-in harmonic OCE speed mapping with explicit QC.
 % DATA.motion is real [row,x,time], DATA.x_m/row_m/t_s increase in SI;
 % DATA.valid_mask marks measured support, and plane_type is enface or bmode.
+% Alternatively DATA.raw_phase_rad is wrapped phase on this physical grid;
+% it is unwrapped over the full record before any filtering/projection. For
+% native OCT grids, unwrap first and use acquisition.finalizeUnwrappedWavePlane
+% before this estimator: geometry interpolation must follow unwrapping.
 % Optional DATA.analysis_mask (logical [row,x], default true) restricts output
 % centres only; it never removes measured neighbours from a local fit.
 % Phase increments or velocity may be used: their harmonic scale does not
 % change spatial phase. One physical frequency is required in OPTIONS.
-% Methods: phase_gradient (robust local circular plane), directional_phase
+% Methods: phase_derivative_2d (robust polynomial derivatives of unwrapped
+% harmonic phase), phase_gradient (legacy local circular plane), directional_phase
 % (a directed spatial FFT sector before that fit), reverberant (angularly
 % averaged local normalized autocorrelation, Asemani et al. 2024).
 % In bmode, gradient speed is lateral phase speed; row is pooling/depth,
@@ -19,6 +24,17 @@ function result = estimateLocalSpeedMap(data, options)
 
     if nargin < 2, options = struct(); end
     [data, options] = resolve_inputs(data, options);
+    rawUnwrap = struct('performed',false);
+    if isfield(data,'raw_phase_rad')
+        unwrapOptions=struct('method',options.unwrap_method, ...
+            'iterations',options.unwrap_iterations,'dimensions',options.raw_unwrap_dimensions, ...
+            'valid_mask',repmat(data.valid_mask,1,1,numel(data.t_s)) & isfinite(data.raw_phase_rad));
+        unwrapped=oce.motion.unwrapPhase(data.raw_phase_rad,unwrapOptions);
+        data.motion=unwrapped.values;
+        rawUnwrap=rmfield(unwrapped,'values'); rawUnwrap.performed=true;
+    elseif isfield(data,'metadata') && isfield(data.metadata,'raw_unwrap')
+        rawUnwrap=data.metadata.raw_unwrap;
+    end
     selected = data.t_s >= options.time_start_s & data.t_s <= options.time_end_s;
     [phasor, temporalCoherence] = harmonic_projection(data.motion(:,:,selected), ...
         data.t_s(selected), options.frequency_hz);
@@ -27,14 +43,16 @@ function result = estimateLocalSpeedMap(data, options)
     temporalValidCount=nnz(measured);
     phasor(~measured) = 0;
     directionalDiagnostic = struct();
-    if options.method == "directional_phase"
+    useDirectional=options.method == "directional_phase" || ...
+        (options.method == "phase_derivative_2d" && options.directional_filter_enabled);
+    if useDirectional
         [phasor, directionalDiagnostic] = directional_filter(phasor, measured, data, options);
     end
     amplitude = abs(phasor);
     positive = sort(amplitude(measured & amplitude > 0));
     if isempty(positive), referenceAmplitude = Inf;
     else, referenceAmplitude = positive(max(1,ceil(0.95*numel(positive)))); end
-    if options.method == "directional_phase"
+    if useDirectional
         % Reference the measured field as well as its selected component.
         % Renormalizing a nearly empty sector to its own noise would let a
         % weak filtering artifact pass the relative-amplitude gate.
@@ -55,6 +73,9 @@ function result = estimateLocalSpeedMap(data, options)
     if options.method == "reverberant"
         [speed, quality, diagnostic] = reverberant_map(phasor, measured, ...
             temporalCoherence, data, options, halfRow, halfX);
+    elseif options.method == "phase_derivative_2d"
+        [speed, quality, diagnostic] = derivative_map(phasor, measured, ...
+            temporalCoherence, data, options, halfRow, halfX);
     else
         [speed, quality, diagnostic] = gradient_map(phasor, measured, ...
             temporalCoherence, data, options, halfRow, halfX);
@@ -66,6 +87,11 @@ function result = estimateLocalSpeedMap(data, options)
     diagnostic.input_phasor = inputPhasor;
     diagnostic.amplitude_reference = referenceAmplitude;
     diagnostic.directional_filter = directionalDiagnostic;
+    diagnostic.raw_unwrap=rawUnwrap;
+    diagnostic.processing_order=["raw unwrap when supplied", ...
+        "time selection","detrended Hann-weighted harmonic projection", ...
+        "optional directional filter","modal phase unwrap for phase_derivative_2d", ...
+        "local estimation and QC","optional display smoothing"];
     diagnostic.window_samples = [2*halfRow+1, 2*halfX+1];
     diagnostic.time_sample_count = sum(selected);
     % Record a scalar span; no frequency-bin snapping is performed.
@@ -98,7 +124,8 @@ function result = estimateLocalSpeedMap(data, options)
         else, diagnostic.no_valid_reason="supported fits rejected by speed range, spatial aliasing or wavelength identifiability";
         end
     end
-    if data.plane_type=="bmode" && options.method~="reverberant"
+    if data.plane_type=="bmode" && options.method~="reverberant" && ...
+            ~(options.method=="phase_derivative_2d" && options.pd_geometry=="in_plane")
         diagnostic.speed_scope="lateral phase speed omega/abs(kx); depth rows pool independently offset phase; oblique bulk propagation gives a projection";
     else
         diagnostic.speed_scope="in-plane phase speed or supplied diffuse-field model speed";
@@ -109,9 +136,13 @@ function result = estimateLocalSpeedMap(data, options)
 end
 
 function [data, options] = resolve_inputs(data, options)
-    required = {'motion','x_m','row_m','t_s','valid_mask','plane_type'};
+    required = {'x_m','row_m','t_s','valid_mask','plane_type'};
     if ~isstruct(data) || ~isscalar(data) || ~all(isfield(data,required)) || ...
-            ~isnumeric(data.motion) || ~isreal(data.motion) || ndims(data.motion) ~= 3
+            (isfield(data,'motion') == isfield(data,'raw_phase_rad'))
+        error('OCE:LocalSpeed:InvalidData','Supply exactly one real motion or raw_phase_rad [row,x,time] with physical axes and measured valid_mask.');
+    end
+    if isfield(data,'raw_phase_rad'), data.motion=data.raw_phase_rad; end
+    if ~isnumeric(data.motion) || ~isreal(data.motion) || ndims(data.motion) ~= 3
         error('OCE:LocalSpeed:InvalidData','motion must be real [row,x,time] with physical axes and measured valid_mask.');
     end
     shape = size(data.motion);
@@ -146,15 +177,40 @@ function [data, options] = resolve_inputs(data, options)
         'speed_range_m_s',[0.2 15],'min_coherence',0.45, ...
         'min_amplitude_fraction',0.03,'min_support_fraction',0.6, ...
         'smoothing_mm',0,'direction_deg',0,'directional_halfwidth_deg',30, ...
-        'reverb_model',"scalar2d",'reverb_lag_mm',0.6,'fit_error_max',0.3);
+        'reverb_model',"scalar2d",'reverb_lag_mm',0.6,'fit_error_max',0.3, ...
+        'unwrap_method',"sequential",'unwrap_iterations',8,'raw_unwrap_dimensions',3, ...
+        'pd_geometry',"auto",'pd_polynomial_order',2,'directional_filter_enabled',false);
     fields = fieldnames(defaults);
     for index=1:numel(fields)
         if ~isfield(options,fields{index}), options.(fields{index}) = defaults.(fields{index}); end
     end
     options.method = string(options.method); options.reverb_model = string(options.reverb_model);
-    if ~isscalar(options.method) || ~any(options.method == ["phase_gradient","directional_phase","reverberant"]) || ...
+    options.unwrap_method=string(options.unwrap_method); options.pd_geometry=string(options.pd_geometry);
+    if ~isscalar(options.method) || ~any(options.method == ["phase_derivative_2d","phase_gradient","directional_phase","reverberant"]) || ...
             ~isscalar(options.reverb_model) || ~any(options.reverb_model == ["scalar2d","shear3d"])
         error('OCE:LocalSpeed:InvalidMethod','Unknown speed method or reverberant physical model.');
+    end
+    if ~isscalar(options.unwrap_method) || ~any(options.unwrap_method==["sequential","least_squares_dct","tie_dct"]) || ...
+            ~isscalar(options.pd_geometry) || ~any(options.pd_geometry==["auto","lateral","in_plane"]) || ...
+            ~islogical(options.directional_filter_enabled) || ~isscalar(options.directional_filter_enabled)
+        error('OCE:LocalSpeed:InvalidOptions','Unknown unwrap method, derivative geometry or logical directional_filter_enabled.');
+    end
+    if options.pd_geometry=="auto"
+        if data.plane_type=="bmode", options.pd_geometry="lateral";
+        else, options.pd_geometry="in_plane"; end
+    end
+    if options.pd_geometry=="in_plane" && shape(1)<3 && options.method=="phase_derivative_2d"
+        error('OCE:LocalSpeed:InsufficientRows','In-plane phase derivatives require at least 3 rows.');
+    end
+    if ~isnumeric(options.unwrap_iterations) || ~isscalar(options.unwrap_iterations) || ...
+            ~isfinite(options.unwrap_iterations) || options.unwrap_iterations<1 || options.unwrap_iterations>10000 || options.unwrap_iterations~=fix(options.unwrap_iterations) || ...
+            ~isnumeric(options.pd_polynomial_order) || ~isscalar(options.pd_polynomial_order) || ...
+            ~any(options.pd_polynomial_order==[1 2]) || ~isnumeric(options.raw_unwrap_dimensions) || ...
+            ~isvector(options.raw_unwrap_dimensions) || isempty(options.raw_unwrap_dimensions) || ...
+            numel(options.raw_unwrap_dimensions)>2 || ...
+            any(~ismember(options.raw_unwrap_dimensions,1:3)) || ...
+            numel(unique(options.raw_unwrap_dimensions))~=numel(options.raw_unwrap_dimensions)
+        error('OCE:LocalSpeed:InvalidOptions','Unwrap iterations must be a fixed positive integer up to 10000; derivative order is 1/2 and raw unwrap selects one or two distinct dimensions.');
     end
     scalarFields = {'frequency_hz','time_start_s','time_end_s','window_x_mm', ...
         'window_row_mm','min_coherence','min_amplitude_fraction','min_support_fraction', ...
@@ -215,11 +271,13 @@ end
 
 function [filtered, diagnostic] = directional_filter(phasor, measured, data, options)
     [nr,nc] = size(phasor); nx=2^nextpow2(2*nc);
-    if data.plane_type == "enface", ny=2^nextpow2(2*nr); else, ny=nr; end
+    inPlane=data.plane_type=="enface" || ...
+        (options.method=="phase_derivative_2d" && options.pd_geometry=="in_plane");
+    if inPlane, ny=2^nextpow2(2*nr); else, ny=nr; end
     % Finite-aperture zero padding spreads uniform motion into nonzero k.
     % Remove its measured spatial mean before selecting a propagating sector.
     % B-mode rows remain independent because mode shapes may change polarity.
-    if data.plane_type == "enface"
+    if inPlane
         commonMotion=sum(phasor,'all')/max(1,nnz(measured));
         phasor(measured)=phasor(measured)-commonMotion;
     else
@@ -227,9 +285,11 @@ function [filtered, diagnostic] = directional_filter(phasor, measured, data, opt
         phasor=phasor-commonMotion.*measured;
     end
     kx = 2*pi*ifftshift((-floor(nx/2):ceil(nx/2)-1)/(nx*mean(diff(data.x_m))));
-    if data.plane_type == "enface"
+    if inPlane
         ky = 2*pi*ifftshift((-floor(ny/2):ceil(ny/2)-1)'/(ny*mean(diff(data.row_m))));
-    else, ky = zeros(ny,1); end
+    else
+        ky = zeros(ny,1);
+    end
     [Kx,Ky] = meshgrid(kx,ky);
     physicalAngle = atan2d(-Ky,-Kx);
     difference = abs(mod(physicalAngle-options.direction_deg+180,360)-180);
@@ -239,18 +299,134 @@ function [filtered, diagnostic] = directional_filter(phasor, measured, data, opt
     minK=omega/options.speed_range_m_s(2); maxK=omega/options.speed_range_m_s(1);
     pass = radial >= 0.7*minK & radial <= 1.3*maxK;
     transfer = angular.*pass;
-    if data.plane_type == "enface"
+    if inPlane
         spectrum=fft2(phasor,ny,nx); recovered=ifft2(spectrum.*transfer);
     else
         spectrum=fft(phasor,nx,2); recovered=ifft(spectrum.*transfer,[],2);
     end
     filtered = recovered(1:nr,1:nc);
     diagnostic = struct('propagation_direction_deg',options.direction_deg, ...
+        'in_plane_filter',inPlane, ...
         'halfwidth_deg',options.directional_halfwidth_deg, ...
         'removed_common_motion_phasor',commonMotion, ...
         'common_motion_interpretation',"measured spatial mean removed before zero padding; per depth row in B-mode", ...
         'retained_spectral_energy_fraction',sum(abs(spectrum.*transfer).^2,'all')/max(realmin,sum(abs(spectrum).^2,'all')), ...
         'sign_convention',"real(P exp(i omega t)); Fourier sector points opposite physical propagation");
+end
+
+function [speed,quality,diagnostic] = derivative_map(phasor, mask, coherence, data, options, hr, hx)
+    % Optical phase unwrapping and mechanical harmonic phase unwrapping are
+    % separate operations. Only this latter phase has a spatial wavevector.
+    dimensions=2;
+    if options.pd_geometry=="in_plane", dimensions=[1 2]; end
+    unwrapped=oce.motion.unwrapPhase(angle(phasor),struct('method',options.unwrap_method, ...
+        'iterations',options.unwrap_iterations,'dimensions',dimensions,'valid_mask',mask));
+    phase=unwrapped.values;
+    components=phase_support_components(mask,options.pd_geometry);
+    [nr,nc]=size(phasor); speed=NaN(nr,nc); quality=zeros(nr,nc);
+    kxMap=speed; krMap=speed; errorMap=speed; supportMap=zeros(nr,nc); alias=false(nr,nc);
+    expected=(2*hr+1)*(2*hx+1); omega=2*pi*options.frequency_hz;
+    dx=mean(diff(data.x_m)); dr=0;
+    if nr>1, dr=mean(diff(data.row_m)); end
+    for row=1+hr:nr-hr
+        ri=row-hr:row+hr;
+        for col=1+hx:nc-hx
+            if ~mask(row,col) || ~data.analysis_mask(row,col), continue; end
+            ci=col-hx:col+hx; m=mask(ri,ci) & isfinite(phase(ri,ci));
+            if options.pd_geometry=="in_plane"
+                m=m & components(ri,ci)==components(row,col);
+            else
+                % Independent disconnected unwrap components have unknown
+                % pistons. A fit never bridges the missing x segment.
+                rowComponent=components(ri,col);
+                m=m & components(ri,ci)==rowComponent & rowComponent>0;
+            end
+            support=sum(m,'all')/expected; supportMap(row,col)=support;
+            if support<options.min_support_fraction, continue; end
+            weight=abs(phasor(ri,ci)); weight(~m)=0;
+            weight=min(weight,3*median(weight(m)));
+            [X,R]=meshgrid(data.x_m(ci)'-data.x_m(col),data.row_m(ri)-data.row_m(row));
+            [kx,kr,rmse,spatialCoherence,ok]=polynomial_derivative(phase(ri,ci), ...
+                m,weight,X,R,options.pd_geometry,options.pd_polynomial_order);
+            kxMap(row,col)=kx; krMap(row,col)=kr; errorMap(row,col)=rmse;
+            alias(row,col)=abs(kx*dx)>=0.9*pi || ...
+                (options.pd_geometry=="in_plane" && abs(kr*dr)>=0.9*pi);
+            candidate=omega/hypot(kx,kr);
+            if ok && ~alias(row,col) && rmse<=options.fit_error_max && ...
+                    spatialCoherence>=options.min_coherence && ...
+                    candidate>=options.speed_range_m_s(1) && candidate<=options.speed_range_m_s(2)
+                speed(row,col)=candidate;
+                quality(row,col)=spatialCoherence*coherence(row,col)*support;
+            end
+        end
+    end
+    modalUnwrap=rmfield(unwrapped,'values');
+    diagnostic=struct('phase_derivative_x_rad_m',kxMap,'phase_derivative_row_rad_m',krMap, ...
+        'unwrapped_modal_phase_rad',phase,'modal_unwrap',modalUnwrap, ...
+        'fit_error',errorMap,'fit_error_units',"rad RMS unwrapped harmonic phase", ...
+        'support_fraction',supportMap,'spatial_alias_rejected',alias, ...
+        'pd_geometry',options.pd_geometry,'pd_polynomial_order',options.pd_polynomial_order, ...
+        'spatial_fit',"amplitude-capped Huber local polynomial; derivative at window centre", ...
+        'component_support',"only the centre component in_plane; contiguous x segment containing the centre column per row for lateral; no unknown-piston bridging", ...
+        'interpretation',"in_plane uses omega/hypot(kx,krow); lateral uses omega/abs(kx) with independent row offsets; a selected mode is still required");
+end
+
+function labels=phase_support_components(mask,geometry)
+    labels=zeros(size(mask));
+    if geometry=="lateral"
+        count=0;
+        for row=1:size(mask,1)
+            changes=diff([false,mask(row,:),false]);
+            starts=find(changes==1); stops=find(changes==-1)-1;
+            for segment=1:numel(starts)
+                count=count+1; labels(row,starts(segment):stops(segment))=count;
+            end
+        end
+    else
+        indices=find(mask); if isempty(indices),return;end
+        nodes=zeros(size(mask)); nodes(indices)=1:numel(indices);
+        a=nodes(:,1:end-1);b=nodes(:,2:end);keep=a>0&b>0;
+        first=a(keep);second=b(keep);
+        a=nodes(1:end-1,:);b=nodes(2:end,:);keep=a>0&b>0;
+        first=[first;a(keep)];second=[second;b(keep)];
+        labels(indices)=conncomp(graph(first,second,[],numel(indices)));
+    end
+end
+
+function [kx,kr,rmse,coherence,ok]=polynomial_derivative(phase,mask,weight,X,R,geometry,order)
+    kx=NaN; kr=0; rmse=NaN; coherence=0; ok=false;
+    sx=max(abs(X(mask))); sr=max(abs(R(mask)));
+    if sx<=0, return; end
+    x=X(mask)/sx; values=phase(mask); w=weight(mask);
+    x=x(:); values=values(:); w=w(:);
+    if geometry=="in_plane"
+        if sr<=0, return; end
+        r=R(mask)/sr; r=r(:); design=[ones(size(x)),x,r];
+        if order==2, design=[design,x.^2,x.*r,r.^2]; end
+        xColumn=2; rColumn=3;
+    else
+        % Guided-wave depth profiles can have arbitrary constant phase or
+        % sign flips. Each sampled depth row receives its own intercept;
+        % it never contributes a spurious vertical propagation derivative.
+        [rowIndex,~]=find(mask); rowIndex=rowIndex(:); activeRows=unique(rowIndex);
+        design=double(rowIndex==activeRows'); xColumn=size(design,2)+1;
+        design=[design,x];
+        if order==2, design=[design,x.^2]; end
+    end
+    if numel(values)<=size(design,2) || rcond(design'*(design.*w))<1e-10, return; end
+    % Subtract a phase origin for conditioning, without wrapping residuals:
+    % an incorrect unwrap branch must remain detectable as a large error.
+    values=values-values(1); robust=w;
+    for iteration=1:5
+        coefficients=(design.*sqrt(robust)) \ (values.*sqrt(robust));
+        residual=values-design*coefficients;
+        robust=w.*min(1,0.45./max(abs(residual),realmin));
+    end
+    kx=coefficients(xColumn)/sx;
+    if geometry=="in_plane", kr=coefficients(rColumn)/sr; end
+    rmse=sqrt(sum(w.*residual.^2)/sum(w));
+    coherence=abs(sum(w.*exp(1i*residual)))/sum(w);
+    ok=isfinite(kx) && isfinite(kr) && isfinite(rmse);
 end
 
 function [speed,quality,diagnostic] = gradient_map(phasor, mask, coherence, data, options, hr, hx)

@@ -1,11 +1,13 @@
 function result = applyWaveEnfaceOperator(native, geometry, options)
-%APPLYWAVEENFACEOPERATOR Map measured real increments using acquisition geometry.
+%APPLYWAVEENFACEOPERATOR Map measured real phase using acquisition geometry.
 % native.values is [acquired lateral position,time], never a painted phase.
 % The existing enface.operator owns spatial placement/interpolation. This
 % function rejects missing contributors, ring holes, long interpolation edges
 % and phase disagreement; it never fills a hole or registers excitations.
 % Real Loupas increments are interpolated linearly, not wrapped through exp(i*p).
 % Circular resultant is an additional disagreement diagnostic only.
+% finalizeUnwrappedWavePlane also reuses this placement after native unwrap
+% and mean removal, explicitly disabling the incremental/circular gates.
 
     if nargin < 3, options = struct(); end
     options = resolve_options(options);

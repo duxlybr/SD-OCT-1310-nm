@@ -6,7 +6,7 @@ from typing import Sequence
 
 import numpy as np
 
-from ..config import HardwareConfig, OCE_TRIGGER_DUTY_CYCLE, optimized_scan_period_ticks
+from ..config import HardwareConfig, OCE_TRIGGER_DUTY_CYCLE, ScanParameters, optimized_scan_period_ticks
 from ..scan import ScanSegment
 from .base import BackendError
 
@@ -167,18 +167,29 @@ class NIDaqGalvoController:
             raise
 
     def start_continuous_alignment(
-        self, *, alines_per_block: int, block_rate_hz: float | None = None
+        self, *, alines_per_block: int, block_rate_hz: float | None = None,
+        center_xy_mm: tuple[float, float] = (0.0, 0.0),
     ) -> None:
-        """Hold both galvos at the centre and clock both triggers without rearming.
+        """Hold the requested XY point and clock both triggers without rearming.
 
         The two counters share the AO start trigger.  The short AO task is kept
-        open throughout acquisition so its final 0 V sample remains asserted.
+        open throughout acquisition so its final offset sample remains asserted.
         """
         if self._tasks or self._continuous_tasks:
             raise BackendError("Existe una tarea DAQ activa.")
         if alines_per_block < 1 or not self.config.oce_enabled:
             raise BackendError("Alineación continua requiere A-lines y PFI13/OCE habilitado.")
         cfg = self.config
+        point = np.asarray(center_xy_mm, dtype=np.float64)
+        if point.shape != (2,) or not np.all(np.isfinite(point)):
+            raise BackendError("El punto de alineación debe ser un par XY finito.")
+        cfg.validate(ScanParameters(alines=1, x_length_mm=0, y_length_mm=0,
+                                   center_x_mm=float(point[0]), center_y_mm=float(point[1])))
+        target = point * np.asarray((cfg.x_v_per_mm, cfg.y_v_per_mm))
+        count = 2 if np.array_equal(target, self._last_volts) else max(2, cfg.park_ramp_points)
+        t = np.linspace(0, 1, count)
+        smooth = 6 * t**5 - 15 * t**4 + 10 * t**3
+        waveform = self._last_volts[:, None] + (target - self._last_volts)[:, None] * smooth[None, :]
         line_rate_hz = cfg.effective_line_rate_hz
         period_s = 1.0 / block_rate_hz if block_rate_hz is not None else alines_per_block / line_rate_hz
         if period_s <= alines_per_block / line_rate_hz:
@@ -205,12 +216,12 @@ class NIDaqGalvoController:
             ao.timing.cfg_samp_clk_timing(
                 rate=line_rate_hz,
                 sample_mode=self.AcquisitionType.FINITE,
-                samps_per_chan=2,
+                samps_per_chan=count,
             )
             writer = self.AnalogMultiChannelWriter(ao.out_stream, auto_start=False)
-            written = int(writer.write_many_sample(np.zeros((2, 2), dtype=np.float64), timeout=5.0))
-            if written != 2:
-                raise BackendError(f"DAQmx aceptó {written} de 2 muestras AO de alineación.")
+            written = int(writer.write_many_sample(waveform, timeout=5.0))
+            if written != count:
+                raise BackendError(f"DAQmx aceptó {written} de {count} muestras AO de alineación.")
 
             # One whole block of settle time precedes the first frame trigger;
             # after that, counter timing alone defines every 20 ms boundary.
@@ -221,7 +232,7 @@ class NIDaqGalvoController:
                 channel = task.co_channels.add_co_pulse_chan_time(
                     f"{cfg.daq_device}/{counter}",
                     idle_state=self.Level.LOW,
-                    initial_delay=period_s + phase_s,
+                    initial_delay=max(period_s, count / line_rate_hz + 0.0003) + phase_s,
                     low_time=period_s - width_s,
                     high_time=width_s,
                 )
@@ -241,7 +252,7 @@ class NIDaqGalvoController:
             oce.start()
             ao.start()
             self._ever_started = True
-            self._last_volts = np.zeros(2, dtype=np.float64)
+            self._last_volts = target.copy()
         except Exception:
             self.abort_segment()
             raise

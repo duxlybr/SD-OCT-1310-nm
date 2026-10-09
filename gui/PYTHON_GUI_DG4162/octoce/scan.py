@@ -7,7 +7,7 @@ from typing import Iterator
 import numpy as np
 from numpy.typing import NDArray
 
-from .config import POLAR_PATTERNS, AcquisitionMode, HardwareConfig, Orientation, ScanParameters, ScanPattern
+from .config import POLAR_PATTERNS, AcquisitionMode, HardwareConfig, LSM04_FOV_MM, Orientation, ScanParameters, ScanPattern
 
 
 FloatArray = NDArray[np.float64]
@@ -246,6 +246,8 @@ class ScanPlanner:
                         sequence += 1
 
     def _to_volts(self, xy_mm: FloatArray) -> FloatArray:
+        if not np.all(np.isfinite(xy_mm)) or np.any(np.abs(xy_mm) > LSM04_FOV_MM / 2 + 1e-12):
+            raise ValueError("Trayectoria o transición sync fuera del FOV LSM04 (±7.05 mm).")
         scale = np.asarray((self.hardware.x_v_per_mm, self.hardware.y_v_per_mm), dtype=np.float64)
         volts = np.ascontiguousarray(xy_mm * scale[None, :])
         peak = float(np.max(np.abs(volts))) if volts.size else 0.0

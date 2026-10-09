@@ -98,6 +98,14 @@ payload reading remains in `oce.io.readRawAcquisition`; reconstruction reuses
 the spectral preparation context across blocks. See
 [local elastography maps](../local_elastography_maps.md) for assumptions and validation.
 
+The explicit raw-phase branch obtains native `angle(IQ)` from the acquisition
+owner, then calls `oce.motion.unwrapPhase` independently at acquired positions.
+`oce.acquisition.finalizeUnwrappedWavePlane` removes static phase and performs
+depth pooling/geometry placement only after unwrap. Local harmonic filtering,
+modal-phase unwrap and `phase_derivative_2d` then belong to dispersion. The
+phase-unwrapping owner supports sequential, least-squares Neumann and fixed
+TIE-DCT correction budgets; it does not calculate displacement or speed.
+
 - [Dispersion windows](../dispersion_window_options.md): geometry, sampling and temporal alignment.
 - [Dispersion analysis](../dispersion_analysis_options.md): k-f, phase-gradient and diagnostics.
 - [Validation](validation_status.md): runner, catalog and controlled golden.
