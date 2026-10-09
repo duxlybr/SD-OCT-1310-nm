@@ -392,3 +392,5 @@ No se debe afirmar sincronización óptica final hasta resolver y medir:
 
 El preview se etiqueta como diagnóstico; la simulación sigue disponible de
 forma opcional, pero no es el modo de inicio.
+Consulte [Offset XY y límites LSM04](docs/GALVO_OFFSETS.md) para desplazar el
+escaneo, conservar un centrado fino y conocer la advertencia de simulación.

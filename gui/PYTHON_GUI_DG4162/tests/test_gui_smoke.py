@@ -18,6 +18,56 @@ from octoce.processing import preview_complex
 
 @unittest.skipUnless(os.name == "nt", "Smoke visual de Tkinter para Windows")
 class GuiSmokeTests(unittest.TestCase):
+    def test_offsets_loaded_and_applied_to_acquisition_and_continuous_modes(self) -> None:
+        from octoce.galvo_settings import GalvoOffsets
+        root = tk.Tk()
+        try:
+            with patch("octoce.gui.GalvoOffsets.load", return_value=GalvoOffsets(0.025, -0.015)):
+                app = OCTOCEApp(root)
+            self.assertEqual((app.offset_x_var.get(), app.offset_y_var.get()), ("0.025", "-0.015"))
+            app.offset_x_var.set("1,25")
+            app.offset_y_var.set("0.5")
+            scan, _ = app._configs()
+            self.assertEqual((scan.center_x_mm, scan.center_y_mm), (1.25, 0.5))
+            app.backend_var.set("Simulación")
+            with patch.object(app.engine, "start") as start:
+                app._start_alignment()
+                self.assertEqual((start.call_args.args[0].center_x_mm, start.call_args.args[0].center_y_mm), (1.25, 0.5))
+                app._start_crosshair_loop()
+                self.assertEqual((start.call_args.args[0].center_x_mm, start.call_args.args[0].center_y_mm), (1.25, 0.5))
+            app.offset_x_var.set("6")
+            with patch("octoce.gui.messagebox.showerror") as error, patch.object(app.engine, "start") as start:
+                app._start_crosshair_loop()
+                start.assert_not_called()
+                self.assertIn("FOV LSM04", error.call_args.args[1])
+        finally:
+            app._cancel_after_callbacks()
+            root.destroy()
+
+    def test_simulation_decline_prevents_engine_and_camera_hooks(self) -> None:
+        root = tk.Tk()
+        try:
+            app = OCTOCEApp(root)
+            app.backend_var.set("Simulación")
+            app.save_var.set(False)
+            with patch("octoce.gui.messagebox.askyesno", return_value=False) as warning, \
+                    patch.object(app.engine, "start") as start, patch.object(app, "_before_oct_start") as hook:
+                app._start()
+                app._start_alignment()
+                app._start_crosshair_loop()
+                self.assertEqual(warning.call_count, 3)
+                self.assertEqual(warning.call_args.kwargs["default"], "no")
+                start.assert_not_called()
+                hook.assert_not_called()
+        finally:
+            app._cancel_after_callbacks()
+            root.destroy()
+
+    def setUp(self) -> None:
+        warning = patch("octoce.gui.messagebox.askyesno", return_value=True)
+        warning.start()
+        self.addCleanup(warning.stop)
+
     def test_continuous_mb_alignment_arms_one_oce_pulse_per_block(self) -> None:
         root = tk.Tk()
         try:

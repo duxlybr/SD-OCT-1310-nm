@@ -89,6 +89,11 @@ class _FakeStream:
 
 @unittest.skipUnless(os.name == "nt", "Smoke visual de Tkinter para Windows")
 class USBGuiTests(unittest.TestCase):
+    def setUp(self) -> None:
+        warning = patch("octoce.gui.messagebox.askyesno", return_value=True)
+        warning.start()
+        self.addCleanup(warning.stop)
+
     def test_default_data_and_calibration_paths_ignore_working_directory(self) -> None:
         root = tk.Tk()
         original_cwd = Path.cwd()

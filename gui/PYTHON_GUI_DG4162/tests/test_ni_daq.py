@@ -197,6 +197,34 @@ class NIDaqSynchronizationTests(unittest.TestCase):
             controller.abort_segment()
             self.assertTrue(all(task.closed for task in (camera, oce, ao)))
 
+    def test_continuous_alignment_ramps_and_holds_offset_before_triggers(self) -> None:
+        hardware = HardwareConfig(line_rate_hz=52_500.0, park_ramp_points=2000)
+        with patch.dict(sys.modules, _fake_modules()):
+            controller = NIDaqGalvoController(hardware)
+            controller.start_continuous_alignment(alines_per_block=1000, block_rate_hz=50,
+                                                   center_xy_mm=(3.0, 2.0))
+            tasks = {task.name: task for task in _Task.registry}
+            waveform = tasks["octoce_alignment_ao_hold"].written
+            expected = np.asarray([3 * hardware.x_v_per_mm, 2 * hardware.y_v_per_mm])
+            np.testing.assert_allclose(waveform[:, 0], 0)
+            np.testing.assert_allclose(waveform[:, -1], expected)
+            np.testing.assert_allclose(controller._last_volts, expected)
+            self.assertTrue(np.all(np.diff(waveform, axis=1) >= -1e-12))
+            for name in ("octoce_alignment_camera_50hz", "octoce_alignment_oce_50hz"):
+                self.assertGreater(tasks[name].pulse_settings["initial_delay"], 2000 / hardware.effective_line_rate_hz)
+            controller.abort_segment()
+            controller.park()
+            np.testing.assert_allclose(_Task.registry[-1].written[:, 0], expected)
+            np.testing.assert_allclose(_Task.registry[-1].written[:, -1], hardware.park_volts)
+
+    def test_continuous_alignment_invalid_offset_creates_no_tasks(self) -> None:
+        with patch.dict(sys.modules, _fake_modules()):
+            controller = NIDaqGalvoController(HardwareConfig(line_rate_hz=52_500))
+            with self.assertRaisesRegex(ValueError, "FOV LSM04"):
+                controller.start_continuous_alignment(alines_per_block=1000, block_rate_hz=50,
+                                                       center_xy_mm=(8, 0))
+        self.assertEqual(_Task.registry, [])
+
     def test_mb_chunk_arms_many_positions_with_one_task_group(self) -> None:
         scan = ScanParameters(
             alines=3, bscans=1, m_repetitions=4, sync_points=2,

@@ -203,6 +203,7 @@ class NIHardwareBackend:
                 self._daq.start_continuous_alignment(
                     alines_per_block=scan.m_repetitions,
                     block_rate_hz=self._alignment_block_rate_hz,
+                    center_xy_mm=(scan.center_x_mm, scan.center_y_mm),
                 )
             self._opened = True
         except Exception:

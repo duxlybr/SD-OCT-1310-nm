@@ -5,6 +5,40 @@ series de adquisiciones desde Excel. La GUI original no se modifica.
 
 Arranque: `gui\run_gui_dg4162.bat` → `run_gui_dg4162.py` → `octoce.gui_dg4162.main()`.
 
+## Offsets y comprobación al adquirir
+
+En **Plan de adquisición**, **Offset X · centro** y **Offset Y · centro** desplazan
+la trayectoria en mm sin añadir A-lines. Se aplican a todos los patrones,
+incluidos anillos y espiral, y también a la alineación MB y al crosshair continuo.
+**Guardar offsets iniciales** conserva el ajuste fino en
+`gui/config/galvo_offsets.json`; **Volver a 0,0** cambia el plan actual sin borrar
+los valores guardados. La alineación NI llega al punto mediante una rampa suave.
+Las secuencias conservan el offset elegido al comenzarlas.
+
+El recorrido completo, los puntos sync y park se limitan al FOV nominal de la
+**LSM04: 14,1 × 14,1 mm**, centrado en 0,0 (±7,05 mm por eje), además de los
+límites AO y GVS002. Por ejemplo, una línea horizontal de 2 mm centrada en
+X=5 mm adquiere de 4 a 6 mm. El patrón XY y la superposición USB muestran el
+desplazamiento. El header del `.bin` conserva el centro X/Y y el FOV utilizado;
+los A-scans siguen completamente crudos. La LSM04 especifica ese FOV en
+[el catálogo Thorlabs](https://www.thorlabs.com/catalogpages/V21/957.pdf).
+El offset cambia la región lateral XY; no desplaza la profundidad Z ni el
+far field axial del transductor.
+
+Al iniciar se pide confirmación explícita si **Ejecución = Simulación** o si la
+forma de excitación **CH2**, en **Sin contacto**, no es **Pulso**. La respuesta
+inicial es **No**. En **Con contacto**, CH2 no modula la excitación y CH1 usa
+el seno configurado; esa configuración no produce la advertencia de CH2.
+Las secuencias avisan de las formas no Pulso antes de iniciarse; una forma nueva
+que no se hubiera confirmado vuelve a exigir confirmación.
+
+El nombre generado se recalcula al adquirir con los parámetros actuales,
+incluso después de haber pulsado **Sugerido**. Se mantienen los sufijos propios:
+`OCE_100A_1B_400M_200SS_300mVpp_1000Hz_muestra1` cambia sus campos numéricos
+si cambian los parámetros y conserva `_muestra1`. Un nombre completamente
+personalizado, como `muestra_control`, se conserva. Las colisiones siguen
+resolviéndose con `_1`, `_2`, etc.
+
 Requisitos adicionales (Python 3.11, NI-VISA ya instalado):
 
 ```
