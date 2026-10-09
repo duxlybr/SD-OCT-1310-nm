@@ -183,9 +183,11 @@ function assert_mimt_tree(repoRoot)
     root = fullfile(repoRoot, 'third_party', 'MIMT');
     files = dir(fullfile(root, '**', '*'));
     files = files(~[files.isdir]);
-    if numel(files) ~= 151
+    % Editor backups (*.m~) of the upstream copy are not versioned.
+    files = files(~endsWith({files.name}, '~'));
+    if numel(files) ~= 148
         error('OCE:InteractiveArchitecture:MimtCount', ...
-            'Expected 151 preserved MIMT files; actual=%d.', numel(files));
+            'Expected 148 preserved MIMT files; actual=%d.', numel(files));
     end
     required = ["immodify1.m", "imcast.m", "imtweak.m", ...
         "imadjustFB.m", "stretchlimFB.m", "LABLUT.mat"];
