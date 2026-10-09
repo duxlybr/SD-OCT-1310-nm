@@ -30,3 +30,9 @@ pathdef.m
 
 # Allow the reviewed deterministic synthetic scientific baseline
 !tests/fixtures/synthetic_scientific_baseline.mat
+
+# Third-party MIMT data its functions need: colour LUTs and the csview GUI layout
+!third_party/MIMT/LABLUT.mat
+!third_party/MIMT/LUVLUT.mat
+!third_party/MIMT/SRLABLUT.mat
+!third_party/MIMT/csview_gui.fig
