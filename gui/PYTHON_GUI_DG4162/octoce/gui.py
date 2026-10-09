@@ -24,6 +24,8 @@ from .config import (
     POLAR_PATTERNS,
     ScanParameters,
     ScanPattern,
+    alignment_rate_limits,
+    default_alignment_rate_hz,
     estimate_payload_bytes,
     stationary_alignment_timing,
 )
@@ -288,6 +290,9 @@ class OCTOCEApp:
         self.white_db_var = tk.StringVar(value="90")
         self.display_limits_status_var = tk.StringVar(value="")
         self.depth_start_var = tk.StringVar(value="1")
+        # Continuous alignment block (PFI12/PFI13 = ultrasound burst) rate.
+        self.alignment_rate_var = tk.StringVar(value=f"{default_alignment_rate_hz(self.hardware):g}")
+        self.alignment_limits_var = tk.StringVar(value="")
         self.depth_end_var = tk.StringVar(value="2048")
         self.depth_limits_status_var = tk.StringVar(value="Z visible: 1–2048 / 4096 bins")
         self.z_cursor_var = tk.DoubleVar(value=0.0)
@@ -469,13 +474,19 @@ class OCTOCEApp:
             command=self._start_alignment,
         )
         self.align_button.grid(row=row + 1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
+        rate = ttk.Frame(parent, style="Card.TFrame")
+        rate.grid(row=row + 2, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        ttk.Label(rate, text="Tasa de la alineación", style="Card.TLabel").pack(side="left")
+        ttk.Entry(rate, textvariable=self.alignment_rate_var, width=7).pack(side="left", padx=(8, 4))
+        ttk.Label(rate, text="Hz", style="Muted.TLabel").pack(side="left")
+        ttk.Label(rate, textvariable=self.alignment_limits_var, style="Muted.TLabel").pack(side="left", padx=(8, 0))
         self.crosshair_loop_button = ttk.Button(
             parent,
             text="Crosshair continuo · BM · 500 X + 500 Y · 10×10 mm",
             command=self._start_crosshair_loop,
         )
         self.crosshair_loop_button.grid(
-            row=row + 2, column=0, columnspan=2, sticky="ew", pady=(8, 0)
+            row=row + 3, column=0, columnspan=2, sticky="ew", pady=(8, 0)
         )
 
     def _build_previews(self, parent: ttk.Frame) -> None:
@@ -819,6 +830,11 @@ class OCTOCEApp:
 
     def _refresh_plan(self) -> None:
         self._trajectory_after = None
+        try:
+            low, high = alignment_rate_limits(self.hardware, 1000)
+            self.alignment_limits_var.set(f"permitido {low:g}–{high:.4g} Hz · pulsos = tasa")
+        except (ValueError, ConfigurationError):
+            self.alignment_limits_var.set("")
         self.orientation_combo.configure(
             state="readonly" if self.pattern_var.get() == "Lineal" else "disabled"
         )
@@ -1137,10 +1153,19 @@ class OCTOCEApp:
                 dispersion_d2_rad=float(self.d2_var.get().replace(",", ".")),
                 dispersion_d3_rad=float(self.d3_var.get().replace(",", ".")),
             )
+            low, high = alignment_rate_limits(hardware, 1000)
+            try:
+                requested_rate_hz = float(self.alignment_rate_var.get().replace(",", "."))
+            except ValueError:
+                raise ValueError(
+                    f"Tasa de la alineación: '{self.alignment_rate_var.get()}' no es un número "
+                    f"(permitido {low:g}–{high:.4g} Hz)."
+                ) from None
             if self.backend_var.get() == "Hardware NI":
-                hardware, alignment_rate_hz = stationary_alignment_timing(hardware, 1000)
+                hardware, alignment_rate_hz = stationary_alignment_timing(hardware, 1000, requested_rate_hz)
             else:
-                alignment_rate_hz = hardware.effective_line_rate_hz / 1000
+                stationary_alignment_timing(hardware, 1000, requested_rate_hz)  # same limits
+                alignment_rate_hz = requested_rate_hz
             scan.validate()
             hardware.validate(scan)
             real = self.backend_var.get() == "Hardware NI"
