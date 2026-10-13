@@ -34,6 +34,15 @@ from .engine import AcquisitionEngine, EngineEvent, EngineState
 from .processing import DEFAULT_SPECTRAL_WINDOW, SPECTRAL_WINDOWS, normalize_preview, preview_complex
 from .scan import ScanPlanner
 from .paths import ACQUISITIONS_DIR
+from . import phase_peak
+from .phase_peak import (
+    MODE_LABELS as PEAK_MODE_LABELS,
+    PeakHistory,
+    PhasePeakSettings,
+    find_peak,
+    settings_from_text,
+    value_at,
+)
 from .galvo_settings import GalvoOffsets
 
 
@@ -147,6 +156,120 @@ def _duration(seconds: float | None) -> str:
     hours, remainder = divmod(seconds, 3600)
     minutes, secs = divmod(remainder, 60)
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+class _PhasePlotSettingsWindow:
+    """⚙ of the phase plot: peak mode, ROI, time window, history and maximum held."""
+
+    def __init__(self, app: "OCTOCEApp") -> None:
+        self.app = app
+        self.window = tk.Toplevel(app.root)
+        self.window.title("Configuración del gráfico de fase")
+        self.window.transient(app.root)
+        self.window.resizable(False, False)
+        body = ttk.Frame(self.window, padding=12)
+        body.pack(fill="both", expand=True)
+        self.mode_var = tk.StringVar()
+        self.roi_start_var = tk.StringVar()
+        self.roi_end_var = tk.StringVar()
+        self.view_start_var = tk.StringVar()
+        self.view_end_var = tk.StringVar()
+        self.history_var = tk.BooleanVar()
+        self.history_s_var = tk.StringVar()
+        self.max_hold_var = tk.BooleanVar()
+        self.status_var = tk.StringVar(value="")
+
+        ttk.Label(body, text="Se aplica a la alineación continua; los tiempos van desde el inicio del bloque (ms).",
+                  wraplength=360).grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 8))
+        ttk.Label(body, text="Cursor de pico", font=("Segoe UI", 9, "bold")).grid(row=1, column=0, sticky="w")
+        for column, mode in enumerate(phase_peak.MODES):
+            ttk.Radiobutton(body, text=PEAK_MODE_LABELS[mode], value=mode, variable=self.mode_var,
+                            command=self.apply).grid(row=2, column=column, sticky="w", padx=(0, 8))
+        ttk.Label(body, text="Manual: haga clic o arrastre sobre el gráfico para mover el cursor.",
+                  style="Muted.TLabel").grid(row=3, column=0, columnspan=4, sticky="w", pady=(2, 8))
+
+        def window_row(row: int, title: str, start: tk.StringVar, end: tk.StringVar) -> None:
+            ttk.Label(body, text=title, font=("Segoe UI", 9, "bold")).grid(row=row, column=0, sticky="w")
+            fields = ttk.Frame(body)
+            fields.grid(row=row + 1, column=0, columnspan=4, sticky="w", pady=(2, 0))
+            ttk.Label(fields, text="Inicio").pack(side="left")
+            ttk.Entry(fields, textvariable=start, width=8).pack(side="left", padx=(4, 8))
+            ttk.Label(fields, text="Fin").pack(side="left")
+            ttk.Entry(fields, textvariable=end, width=8).pack(side="left", padx=(4, 4))
+            ttk.Label(fields, text="ms (vacío = todo el bloque)", style="Muted.TLabel").pack(side="left")
+
+        window_row(4, "ROI del pico automático", self.roi_start_var, self.roi_end_var)
+        roi_buttons = ttk.Frame(body)
+        roi_buttons.grid(row=6, column=0, columnspan=4, sticky="w", pady=(4, 8))
+        ttk.Button(roi_buttons, text="Seleccionar en el gráfico", command=self.select_roi).pack(side="left")
+        ttk.Button(roi_buttons, text="Todo el bloque", command=lambda: self.clear(self.roi_start_var,
+                                                                                    self.roi_end_var)).pack(side="left", padx=(6, 0))
+        window_row(7, "Ventana de visualización", self.view_start_var, self.view_end_var)
+        ttk.Button(body, text="Todo el bloque", command=lambda: self.clear(self.view_start_var,
+                                                                           self.view_end_var)).grid(
+            row=9, column=0, sticky="w", pady=(4, 8))
+
+        history = ttk.Frame(body)
+        history.grid(row=10, column=0, columnspan=4, sticky="w")
+        ttk.Checkbutton(history, text="Historial del pico, últimos", variable=self.history_var,
+                        command=self.apply).pack(side="left")
+        ttk.Entry(history, textvariable=self.history_s_var, width=6).pack(side="left", padx=(4, 4))
+        ttk.Label(history, text="s").pack(side="left")
+        hold = ttk.Frame(body)
+        hold.grid(row=11, column=0, columnspan=4, sticky="w", pady=(6, 0))
+        ttk.Checkbutton(hold, text="Máximo retenido", variable=self.max_hold_var,
+                        command=self.apply).pack(side="left")
+        ttk.Button(hold, text="Reiniciar máximo e historial", command=self.reset_history).pack(side="left", padx=(8, 0))
+
+        ttk.Label(body, textvariable=self.status_var, foreground="#b3261e", wraplength=360).grid(
+            row=12, column=0, columnspan=4, sticky="w", pady=(8, 0))
+        buttons = ttk.Frame(body)
+        buttons.grid(row=13, column=0, columnspan=4, sticky="e", pady=(8, 0))
+        ttk.Button(buttons, text="Aplicar", command=self.apply).pack(side="left")
+        ttk.Button(buttons, text="Cerrar", command=self.window.destroy).pack(side="left", padx=(6, 0))
+        self.load_fields()
+
+    def load_fields(self) -> None:
+        settings = self.app.phase_peak
+        self.mode_var.set(settings.mode)
+        for window, start, end in ((settings.roi_ms, self.roi_start_var, self.roi_end_var),
+                                   (settings.view_ms, self.view_start_var, self.view_end_var)):
+            start.set("" if window is None else f"{window[0]:.3f}")
+            end.set("" if window is None else f"{window[1]:.3f}")
+        self.history_var.set(settings.history_enabled)
+        self.history_s_var.set(f"{settings.history_s:g}")
+        self.max_hold_var.set(settings.max_hold)
+
+    def values(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode_var.get(), "roi_start": self.roi_start_var.get(), "roi_end": self.roi_end_var.get(),
+            "view_start": self.view_start_var.get(), "view_end": self.view_end_var.get(),
+            "history_enabled": self.history_var.get(), "history_s": self.history_s_var.get(),
+            "max_hold": self.max_hold_var.get(),
+        }
+
+    def apply(self) -> bool:
+        try:
+            settings = settings_from_text(self.app.phase_peak, self.values())
+        except ValueError as exc:
+            self.status_var.set(str(exc))
+            return False
+        self.status_var.set("")
+        self.app._set_phase_peak(settings)
+        return True
+
+    def clear(self, start: tk.StringVar, end: tk.StringVar) -> None:
+        start.set("")
+        end.set("")
+        self.apply()
+
+    def select_roi(self) -> None:
+        self.app._arm_roi_selection()
+        self.status_var.set("Arrastre sobre el gráfico de fase para marcar el ROI.")
+
+    def reset_history(self) -> None:
+        self.app._peak_history.reset()
+        self.app._draw_phase_profile()
 
 
 def _polar_note(scan: ScanParameters, hardware: HardwareConfig) -> str:
@@ -322,6 +445,18 @@ class OCTOCEApp:
         self.phase_auto_var = tk.BooleanVar(value=False)
         self.phase_min_var = tk.StringVar(value="-15")
         self.phase_max_var = tk.StringVar(value="15")
+        # Phase-peak cursor for continuous alignment (settings window ⚙).
+        self._phase_peak_path = phase_peak.DEFAULT_PATH
+        self.phase_peak = PhasePeakSettings.load(self._phase_peak_path)
+        self._peak_history = PeakHistory(self.phase_peak.history_s)
+        self.phase_peak_var = tk.StringVar(value="")
+        self._phase_frame_id = 0  # new preview frames, recorded once in the history
+        self._phase_recorded_frame = -1
+        self._preview_alignment_rate_hz: float | None = None  # set for alignment frames: x in ms
+        self._phase_axes: tuple[float, float, float, float] | None = None  # left, width, t0, t1
+        self._roi_select_armed = False
+        self._roi_drag_start: float | None = None
+        self._phase_settings_window: _PhasePlotSettingsWindow | None = None
 
     def _build_ui(self) -> None:
         header = tk.Frame(self.root, bg="#10233f", height=138)
@@ -731,9 +866,17 @@ class OCTOCEApp:
         phase_card.columnconfigure(0, weight=1)
         phase_card.columnconfigure(1, weight=0)
         phase_card.rowconfigure(1, weight=1)
-        ttk.Label(phase_card, textvariable=self.phase_title_var, style="PlotTitle.TLabel").grid(
-            row=0, column=0, sticky="w", pady=(0, 8)
+        phase_title = ttk.Frame(phase_card, style="Card.TFrame")
+        phase_title.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        ttk.Label(phase_title, textvariable=self.phase_title_var, style="PlotTitle.TLabel").pack(side="left")
+        self.phase_settings_button = ttk.Button(
+            phase_title, text="⚙", width=3, command=self._open_phase_settings,
         )
+        self.phase_settings_button.pack(side="right")
+        tk.Label(
+            phase_title, textvariable=self.phase_peak_var, bg="#ffffff", fg="#b3261e",
+            font=("Segoe UI", 10, "bold"),
+        ).pack(side="right", padx=(0, 10))
         self.phase_canvas = tk.Canvas(
             phase_card,
             height=90,
@@ -743,6 +886,15 @@ class OCTOCEApp:
         )
         self.phase_canvas.grid(row=1, column=0, sticky="nsew")
         self.phase_canvas.bind("<Configure>", lambda _event: self._draw_phase_profile())
+        self.phase_canvas.bind("<ButtonPress-1>", self._phase_press)
+        self.phase_canvas.bind("<B1-Motion>", self._phase_drag)
+        self.phase_canvas.bind("<ButtonRelease-1>", self._phase_release)
+        self.phase_history_canvas = tk.Canvas(
+            phase_card, width=220, height=90, bg="#fbfcfe", highlightthickness=1,
+            highlightbackground="#d5dde8",
+        )
+        self.phase_history_canvas.grid(row=1, column=1, sticky="nsew", padx=(8, 0))
+        self.phase_history_canvas.grid_remove()
         self.cross_canvas = tk.Canvas(
             phase_card,
             width=170,
@@ -1055,6 +1207,8 @@ class OCTOCEApp:
             self._clear_preview("Guardado crudo activo: reconstrucción y preview deshabilitados.")
 
     def _clear_preview(self, message: str) -> None:
+        self._peak_history.reset()  # a new run starts a new history and maximum
+        self.phase_peak_var.set("")
         self._preview_db = None
         self._preview_phase = None
         self._exact_phase = None
@@ -1496,6 +1650,10 @@ class OCTOCEApp:
             self.eta_var.set(f"{timing_label}  ·  {p['throughput_mib_s']:.2f} MiB/s")
         elif event.kind == "preview":
             self._preview_bscan_index = p.get("bscan_index")
+            self._preview_alignment_rate_hz = (
+                self._active_hardware.effective_line_rate_hz
+                if self._alignment_active and self._active_hardware is not None else None
+            )
             self._show_preview(
                 np.asarray(p["intensity_db"], dtype=np.float32),
                 np.asarray(p["phase_rad"], dtype=np.float32),
@@ -1540,6 +1698,7 @@ class OCTOCEApp:
         secondary_selected_phase_rad: np.ndarray | None = None,
     ) -> None:
         first = self._preview_db is None
+        self._phase_frame_id += 1
         previous_sweep = self._preview_sweep_index
         self._preview_db = intensity_db
         self._preview_phase = phase_rad
@@ -2058,10 +2217,29 @@ class OCTOCEApp:
         )
         phase = np.unwrap(np.asarray(phase_source, dtype=np.float64))
         phase -= phase[lateral_index]
-        finite = phase[np.isfinite(phase)]
+        # Alignment frames: x is the time in the block (ms) and the peak cursor applies.
+        rate_hz = self._preview_alignment_rate_hz
+        if rate_hz:
+            original = (
+                self._preview_aline_indexes if self._preview_aline_indexes.size == phase.size
+                else np.arange(phase.size)
+            )
+            xs = np.asarray(original, dtype=np.float64) / rate_hz * 1000.0
+        else:
+            xs = np.arange(phase.size, dtype=np.float64)
+        x0, x1 = float(xs[0]), float(xs[-1]) if xs.size > 1 else float(xs[0]) + 1.0
+        if rate_hz and self.phase_peak.view_ms is not None:
+            v0, v1 = max(x0, self.phase_peak.view_ms[0]), min(x1, self.phase_peak.view_ms[1])
+            if v1 > v0:
+                x0, x1 = v0, v1
+        if x1 <= x0:
+            x1 = x0 + 1.0
+        visible = (xs >= x0) & (xs <= x1)
+        finite = phase[visible & np.isfinite(phase)]
         margin_left, margin_right, margin_top, margin_bottom = 48, 16, 18, 34
         plot_width = max(1, width - margin_left - margin_right)
         plot_height = max(1, height - margin_top - margin_bottom)
+        self._phase_axes = (margin_left, plot_width, x0, x1)
         if not self.phase_auto_var.get():
             try:
                 lo = float(self.phase_min_var.get().replace(",", "."))
@@ -2081,39 +2259,201 @@ class OCTOCEApp:
             lo -= 0.5
             hi += 0.5
 
-        def project(index: int, value: float) -> tuple[float, float]:
-            x = margin_left + index / max(1, columns - 1) * plot_width
-            y = margin_top + (hi - value) / (hi - lo) * plot_height
-            return x, y
+        def x_of(value: float) -> float:
+            return margin_left + (value - x0) / (x1 - x0) * plot_width
 
+        def y_of(value: float) -> float:
+            return margin_top + (hi - float(np.clip(value, lo, hi))) / (hi - lo) * plot_height
+
+        peak_mode = self.phase_peak.mode if rate_hz else "off"
+        if peak_mode == "auto" and self.phase_peak.roi_ms is not None:
+            r0, r1 = max(x0, self.phase_peak.roi_ms[0]), min(x1, self.phase_peak.roi_ms[1])
+            if r1 > r0:  # shaded search range
+                canvas.create_rectangle(x_of(r0), margin_top, x_of(r1), height - margin_bottom,
+                                        fill="#fff3c4", outline="#e8c766")
         if lo <= 0.0 <= hi:
-            zero_y = project(0, 0.0)[1]
+            zero_y = y_of(0.0)
             canvas.create_line(margin_left, zero_y, width - margin_right, zero_y, fill="#cfd8e5", dash=(3, 3))
-        cursor_x = project(lateral_index, 0.0)[0]
-        canvas.create_line(cursor_x, margin_top, cursor_x, height - margin_bottom, fill="#e6b800", width=1.5)
+        if lateral_index < visible.size and visible[lateral_index]:
+            cursor_x = x_of(float(xs[lateral_index]))
+            canvas.create_line(cursor_x, margin_top, cursor_x, height - margin_bottom, fill="#e6b800", width=1.5)
         coords: list[float] = []
-        for index, value in enumerate(phase):
-            x, y = project(index, float(np.clip(value, lo, hi)))
-            coords.extend((x, y))
+        for x_value, value in zip(xs[visible], phase[visible]):
+            coords.extend((x_of(float(x_value)), y_of(float(value))))
         if len(coords) >= 4:
             canvas.create_line(*coords, fill="#2477d4", width=1.6, smooth=False)
+        self._draw_phase_peak(canvas, peak_mode, xs, phase, x_of, y_of, margin_top, height - margin_bottom)
         canvas.create_line(margin_left, margin_top, margin_left, height - margin_bottom, fill="#8593a6")
         canvas.create_line(margin_left, height - margin_bottom, width - margin_right, height - margin_bottom, fill="#8593a6")
         canvas.create_text(8, margin_top, anchor="nw", fill="#5b697c", font=("Segoe UI", 8), text=f"{hi:.2f}")
         canvas.create_text(8, height - margin_bottom, anchor="sw", fill="#5b697c", font=("Segoe UI", 8), text=f"{lo:.2f}")
         axis, _length = self._lateral_axis()
-        if self._alignment_active:
-            axis = "M / repetición"
+        if rate_hz:
+            for value, anchor in ((x0, "nw"), (x1, "ne")):
+                canvas.create_text(x_of(value), height - margin_bottom + 3, anchor=anchor, fill="#5b697c",
+                                   font=("Segoe UI", 8), text=f"{value:.2f} ms")
+            axis_text = "tiempo en el bloque (ms)   ·   fase relativa (rad)"
+        else:
+            if self._alignment_active:
+                axis = "M / repetición"
+            axis_text = f"{axis} / posición lateral   ·   fase relativa (rad)"
         canvas.create_text(
             margin_left + plot_width / 2,
             height - 8,
             anchor="s",
             fill="#5b697c",
             font=("Segoe UI", 8),
-            text=f"{axis} / posición lateral   ·   fase relativa (rad)",
+            text=axis_text,
         )
         z_label, lateral_label = self._cursor_labels(z_index, lateral_index)
         self.phase_title_var.set(f"Fase relativa @ {z_label} · referencia {lateral_label}")
+
+    # -- phase-peak cursor (continuous alignment) ---------------------------------
+    def _draw_phase_peak(self, canvas: tk.Canvas, mode: str, xs: np.ndarray, phase: np.ndarray,
+                         x_of: Any, y_of: Any, top: float, bottom: float) -> None:
+        """Manual cursor or automatic ROI peak; readout, history and maximum held."""
+        settings = self.phase_peak
+        if mode == "off":
+            self.phase_peak_var.set("")
+            self.phase_history_canvas.grid_remove()
+            return
+        if mode == "auto":
+            reading = find_peak(xs, phase, settings.roi_ms)
+            label = "Pico |fase|"
+        elif settings.manual_ms is not None:
+            reading = value_at(xs, phase, settings.manual_ms)
+            label = "Cursor"
+        else:
+            reading, label = None, "Cursor"
+        if reading is None:
+            self.phase_peak_var.set(
+                "Haga clic en el gráfico para fijar el cursor" if mode == "manual" else "Sin datos en el ROI"
+            )
+        else:
+            if self._phase_frame_id != self._phase_recorded_frame:
+                self._peak_history.add(reading)  # once per new block, not on redraws
+                self._phase_recorded_frame = self._phase_frame_id
+            px = x_of(reading.time_ms)
+            left, plot_width = self._phase_axes[0], self._phase_axes[1]
+            if left - 1 <= px <= left + plot_width + 1:  # inside the visible window
+                py = y_of(reading.value_rad)
+                canvas.create_line(px, top, px, bottom, fill="#d34f4f", width=1.5, dash=(5, 3))
+                canvas.create_oval(px - 4, py - 4, px + 4, py + 4, fill="#d34f4f", outline="#ffffff")
+            text = f"{label} {abs(reading.value_rad):.3f} rad ({reading.value_rad:+.3f}) @ {reading.time_ms:.2f} ms"
+            if settings.max_hold and self._peak_history.best is not None:
+                best, best_ms = self._peak_history.best
+                text += f"  ·  máx. retenido {best:.3f} rad @ {best_ms:.2f} ms"
+            self.phase_peak_var.set(text)
+        if settings.history_enabled and self._secondary_db is None:  # crosshair map uses that column
+            self.phase_history_canvas.grid()
+            self._draw_peak_history()
+        else:
+            self.phase_history_canvas.grid_remove()
+
+    def _draw_peak_history(self) -> None:
+        canvas = self.phase_history_canvas
+        canvas.delete("all")
+        width = max(canvas.winfo_width(), 120)
+        height = max(canvas.winfo_height(), 80)
+        left, right, top, bottom = 34, 8, 16, 18
+        seconds = self.phase_peak.history_s
+        ages, values = self._peak_history.as_arrays()
+        best = self._peak_history.best[0] if self.phase_peak.max_hold and self._peak_history.best else None
+        high = max([*values.tolist(), best or 0.0, 1e-3]) * 1.1
+        canvas.create_text(left, 2, anchor="nw", fill="#5b697c", font=("Segoe UI", 8),
+                           text=f"|pico| últimos {seconds:g} s")
+        canvas.create_line(left, top, left, height - bottom, fill="#8593a6")
+        canvas.create_line(left, height - bottom, width - right, height - bottom, fill="#8593a6")
+        canvas.create_text(left - 3, top, anchor="ne", fill="#5b697c", font=("Segoe UI", 7), text=f"{high:.2f}")
+        canvas.create_text(left - 3, height - bottom, anchor="e", fill="#5b697c", font=("Segoe UI", 7), text="0")
+
+        def point(age: float, value: float) -> tuple[float, float]:
+            x = left + (age + seconds) / seconds * (width - left - right)
+            y = top + (high - value) / high * (height - top - bottom)
+            return x, y
+
+        if best is not None:
+            y = point(0.0, best)[1]
+            canvas.create_line(left, y, width - right, y, fill="#9aa5b4", dash=(4, 3))
+        coords = [c for age, value in zip(ages, values) for c in point(float(age), float(value))]
+        if len(coords) >= 4:
+            canvas.create_line(*coords, fill="#d34f4f", width=1.5)
+        if values.size:
+            canvas.create_text(width - right, height - 3, anchor="se", fill="#b3261e",
+                               font=("Segoe UI", 8, "bold"), text=f"{values[-1]:.3f} rad")
+
+    def _phase_time_at(self, x: float) -> float | None:
+        if self._phase_axes is None or not self._preview_alignment_rate_hz:
+            return None
+        left, width, t0, t1 = self._phase_axes
+        return float(np.clip(t0 + (x - left) / width * (t1 - t0), t0, t1))
+
+    def _phase_press(self, event: tk.Event[Any]) -> None:
+        moment = self._phase_time_at(event.x)
+        if moment is None:
+            return
+        if self._roi_select_armed:
+            self._roi_drag_start = moment
+        elif self.phase_peak.mode == "manual":
+            self._set_phase_peak(replace(self.phase_peak, manual_ms=moment), save=False)
+
+    def _phase_drag(self, event: tk.Event[Any]) -> None:
+        moment = self._phase_time_at(event.x)
+        if moment is None:
+            return
+        if self._roi_select_armed and self._roi_drag_start is not None and self._phase_axes is not None:
+            left, width, t0, t1 = self._phase_axes
+            canvas = self.phase_canvas
+            canvas.delete("roi_drag")
+            x_start = left + (self._roi_drag_start - t0) / (t1 - t0) * width
+            canvas.create_rectangle(x_start, 2, event.x, canvas.winfo_height() - 2,
+                                    outline="#c98a00", dash=(4, 2), width=1.5, tags="roi_drag")
+        elif self.phase_peak.mode == "manual" and not self._roi_select_armed:
+            self._set_phase_peak(replace(self.phase_peak, manual_ms=moment), save=False)
+
+    def _phase_release(self, event: tk.Event[Any]) -> None:
+        moment = self._phase_time_at(event.x)
+        if self._roi_select_armed and self._roi_drag_start is not None and moment is not None:
+            start, end = sorted((self._roi_drag_start, moment))
+            self._roi_select_armed = False
+            self._roi_drag_start = None
+            self.phase_canvas.configure(cursor="")
+            if end - start > 0:
+                mode = "auto" if self.phase_peak.mode == "off" else self.phase_peak.mode
+                self._set_phase_peak(replace(self.phase_peak, mode=mode, roi_ms=(start, end)))
+                self._append_log(f"Fase: ROI del pico {start:.2f}–{end:.2f} ms.")
+            else:
+                self._draw_phase_profile()
+        elif self.phase_peak.mode == "manual" and moment is not None:
+            self._set_phase_peak(replace(self.phase_peak, manual_ms=moment))
+
+    def _arm_roi_selection(self) -> None:
+        self._roi_select_armed = True
+        self._roi_drag_start = None
+        self.phase_canvas.configure(cursor="crosshair")
+
+    def _set_phase_peak(self, settings: PhasePeakSettings, *, save: bool = True) -> None:
+        settings.validate()
+        if settings.history_s != self._peak_history.seconds:
+            self._peak_history.seconds = settings.history_s
+        self.phase_peak = settings
+        if save:
+            try:
+                settings.save(self._phase_peak_path)
+            except OSError as exc:
+                self._append_log(f"No se pudieron guardar los ajustes del gráfico de fase: {exc}")
+        self._draw_phase_profile()
+        window = self._phase_settings_window
+        if window is not None and window.window.winfo_exists():
+            window.load_fields()
+
+    def _open_phase_settings(self) -> None:
+        window = self._phase_settings_window
+        if window is None or not window.window.winfo_exists():
+            self._phase_settings_window = _PhasePlotSettingsWindow(self)
+        else:
+            window.window.deiconify()
+            window.window.lift()
 
     def _draw_cross_map(self) -> None:
         if self._preview_db is None or self._secondary_db is None:

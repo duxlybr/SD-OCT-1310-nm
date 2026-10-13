@@ -132,7 +132,25 @@ los galvos en movimiento, y confirme la imagen y el `.bin`.
     pueda cerrar cada frame antes del siguiente trigger, la cámara se configura
     solo en esta alineación a 52,632 klps efectivos. Cada bloque de 1000
     A-lines ocupa 19 ms; el resto del período queda libre.
-  - La GUI muestra ambas tasas en el log. La adquisición normal
+  - La GUI muestra ambas tasas en el log.
+- **Cursor de pico de fase** (para alinear el foco del transductor confocal con
+  el de la lente). Se configura con el botón **⚙** del gráfico de fase y solo
+  se aplica a los frames de la alineación continua, cuyo eje X pasa a ser el
+  tiempo dentro del bloque en ms.
+  - *Manual:* clic o arrastre sobre el gráfico para fijar el cursor. En cada
+    bloque se lee la fase en ese tiempo.
+  - *Automático:* en cada bloque busca el máximo |fase| (respecto a la
+    referencia amarilla) dentro de un ROI. El ROI se arrastra sobre el gráfico
+    con *Seleccionar en el gráfico* o se escribe en ms; vacío = todo el bloque.
+    En el gráfico aparece sombreado.
+  - *Ventana de visualización:* el tramo del bloque que se dibuja, en ms.
+  - *Historial:* el |pico| de cada bloque durante los últimos N segundos, en un
+    panel a la derecha del gráfico.
+  - *Máximo retenido:* el mejor pico desde el último reinicio. Se reinicia con
+    un botón y también al empezar una nueva alineación.
+  - La lectura (por ejemplo `Pico |fase| 1.626 rad (-1.626) @ 7.94 ms`) aparece
+    en rojo junto al título del gráfico.
+  - Los ajustes se recuerdan en `gui/config/phase_peak.json`. La adquisición normal
   conserva su frecuencia configurada; MB/BM finitos con sync>0 usan lotes de
   hasta 64 sweeps, y MB estacionario con sync=0 también puede usar lotes.
 - **Crosshair continuo** repite indefinidamente un B-scan lógico BM de
