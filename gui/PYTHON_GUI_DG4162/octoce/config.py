@@ -266,6 +266,14 @@ class HardwareConfig:
     sensor_trigger_value: str = "1:  Fixed Exp"
     external_buffer_trigger_enabled: bool = True
     external_buffer_trigger_line: int = 0
+    # GL2048R on-camera corrections, re-sent by NI-IMAQ at every acquisition.
+    # Uniformity (CORR:GAIN) stays off; the offset correction uses the dark
+    # frame taken with CORR:DARK while the camera is covered. Dark level =
+    # CORR:OFFSET:GLOBAL (DN, steps of 50); 0 is what the camera reported.
+    camera_offset_correction: bool = True
+    camera_uniformity_correction: bool = False
+    camera_pixel_replace: bool = True
+    camera_dark_level: int = 0
 
     def validate(self, scan: ScanParameters | None = None) -> None:
         errors: list[str] = []
@@ -344,6 +352,8 @@ class HardwareConfig:
             errors.append(
                 "PFI12 llega al frame grabber: debe habilitarse el trigger externo de cada buffer."
             )
+        if not (0 <= self.camera_dark_level <= 2048 and self.camera_dark_level % 50 == 0):
+            errors.append("El nivel de oscuro de la cámara debe estar entre 0 y 2048 DN, en pasos de 50.")
         if not 0 <= self.external_buffer_trigger_line <= 8:
             errors.append("La línea de trigger externo NI-IMAQ debe estar entre 0 y 8.")
         if scan is not None:

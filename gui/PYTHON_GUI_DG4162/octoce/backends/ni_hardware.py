@@ -180,6 +180,10 @@ class NIHardwareBackend:
             cc1_period_us=hardware.cc1_period_us,
             external_buffer_trigger_enabled=hardware.external_buffer_trigger_enabled,
             external_buffer_trigger_line=hardware.external_buffer_trigger_line,
+            offset_correction=hardware.camera_offset_correction,
+            uniformity_correction=hardware.camera_uniformity_correction,
+            pixel_replace=hardware.camera_pixel_replace,
+            dark_level=hardware.camera_dark_level,
         )
         self._camera_signature = tuple(camera_kwargs.values())
         if self._warm_enabled:
