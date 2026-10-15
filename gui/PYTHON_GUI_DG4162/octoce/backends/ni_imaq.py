@@ -24,9 +24,21 @@ IMG_TRIG_POLAR_ACTIVEH = 0
 IMG_TRIG_ACTION_BUFFER = 3
 
 
+# imgRingSetup replays the camera-file serial commands and waits for each
+# reply within the ICD action Timeout; a slower camera gives this code.
+IMG_ERR_SERIAL_READ_TIMEOUT = -1074397037
+
+
 class ImaqError(BackendError):
     def __init__(self, operation: str, code: int, description: str):
-        super().__init__(f"NI-IMAQ {operation} falló ({code}): {description}")
+        message = f"NI-IMAQ {operation} falló ({code}): {description}"
+        if code == IMG_ERR_SERIAL_READ_TIMEOUT:
+            message += (
+                " La cámara respondió por serie más lento que el timeout del archivo ICD "
+                "(OPR y RESET tardan ~3 s). Con la GUI y NI MAX cerrados ejecute: "
+                "py -3.11 -m diagnostics.camera_serial_timing --fix"
+            )
+        super().__init__(message)
         self.operation = operation
         self.code = code
         self.description = description
@@ -144,6 +156,10 @@ class NIIMAQCamera:
         cc1_period_us: float,
         external_buffer_trigger_enabled: bool,
         external_buffer_trigger_line: int,
+        offset_correction: bool = True,
+        uniformity_correction: bool = False,
+        pixel_replace: bool = True,
+        dark_level: int = 0,
     ) -> None:
         if self._opened:
             raise BackendError("La sesión NI-IMAQ ya está abierta.")
@@ -172,6 +188,14 @@ class NIIMAQCamera:
             )
             if configure_sensor_trigger:
                 self.set_camera_attribute("Serial Commands", "ON")
+                # On-camera corrections are re-sent by NI-IMAQ at every ring
+                # setup; "Manual" sends exactly these (the ICD "ON" value also
+                # sent CORR:GAIN ON, undoing the CORR:GAIN OFF set after CORR:DARK).
+                self.set_camera_attribute("Corrections", "Manual")
+                self.set_camera_attribute("Offset Correction", "ON" if offset_correction else "OFF")
+                self.set_camera_attribute("Uniformity Correction", "ON" if uniformity_correction else "OFF")
+                self.set_camera_attribute("Pixel Replace", "ON" if pixel_replace else "OFF")
+                self.set_camera_attribute_numeric("Dark Level", float(dark_level))
                 # Trigger Polarity performs a camera reset in the installed ICD,
                 # so all remaining serial settings are deliberately applied after it.
                 self.set_camera_attribute("Trigger Polarity", "CC1 High")

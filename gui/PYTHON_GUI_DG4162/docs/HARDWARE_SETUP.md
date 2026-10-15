@@ -55,6 +55,46 @@ ICD cuantiza el periodo a 0,1 µs: una solicitud de 147 klps usa 6,8 µs y una
 tasa efectiva de 147,059 klps, por lo que anchos y retardos deben verificarse de
 nuevo.
 
+### Comandos serie del ICD (timeouts)
+
+Al configurar el ring (`imgRingSetup`), NI-IMAQ reenvía todos los comandos
+serie del ICD (OPR, correcciones, ganancia, trigger, `TRIG:POL HIGH` + `RESET`)
+y espera la respuesta exacta de cada uno dentro de su `Timeout`. Por eso la
+primera apertura tarda ~8 s.
+
+- El ICD original permitía 3000 ms por comando. La cámara tarda ~3,0–3,1 s en
+  `OPR 2` y ~2,7 s en `RESET` (medido el 2026-10-15), así que las adquisiciones
+  fallaban de forma intermitente o permanente con NI-IMAQ -1074397037
+  (*"The serial read did not complete within the specified timeout period"*).
+- **Corrección aplicada:** los 49 timeouts serie del ICD se elevaron a
+  10000 ms. Hay un respaldo `*.icd.bak-AAAAMMDD-hhmmss` junto al ICD.
+- Si NI se reinstala o el ICD se restaura, la GUI lo avisa en la consola al
+  arrancar. Para medir y corregir, con la GUI y NI MAX cerrados:
+
+  ```
+  py -3.11 -m diagnostics.camera_serial_timing          # mide y compara con el ICD
+  py -3.11 -m diagnostics.camera_serial_timing --fix    # eleva los timeouts (con respaldo)
+  ```
+
+### Correcciones de la cámara (CORR)
+
+El ICD tenía *Corrections = ON*, así que **cada adquisición reenviaba
+`CORR:GAIN ON`** y deshacía el `CORR:GAIN OFF` que se fija tras calibrar el
+oscuro. Ahora el backend selecciona *Corrections = Manual* en cada apertura:
+
+| Corrección | Comando enviado | `HardwareConfig` |
+|------------|-----------------|------------------|
+| Offset (usa el oscuro de `CORR:DARK`) | `CORR:OFFSET ON` | `camera_offset_correction = True` |
+| Uniformidad | `CORR:GAIN OFF` | `camera_uniformity_correction = False` |
+| Reemplazo de píxeles | `CORR:PIXEL ON` | `camera_pixel_replace = True` |
+| Offset global | `CORR:OFFSET:GLOBAL 0` | `camera_dark_level = 0` |
+
+- `RESET` (de *Trigger Polarity*) reinicializa la lectura del sensor y conserva
+  estas correcciones, el OPR y el modo de trigger. Esto se verificó
+  consultando la cámara antes y después del `RESET`.
+- El oscuro (`CORR:DARK`) se toma a mano con la cámara tapada, siguiendo la
+  secuencia del laboratorio. La GUI no lo envía nunca.
+
 ## 4. Límites de galvo
 
 La DAQ admite el rango configurado ±10 V, pero ese no es automáticamente el

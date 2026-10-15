@@ -15,6 +15,7 @@ python -m diagnostics.diagnose_usb_video --help
 | diagnose_warm_imaq | Reutilización de sesión NI-IMAQ |
 | diagnose_alignment_50hz | Alineación MB continua |
 | diagnose_camera_setup | Configuración de cámara lineal |
+| camera_serial_timing | Tiempos de los comandos serie de la cámara frente al ICD; `--fix` eleva sus timeouts |
 | diagnose_ni_usb_together | Convivencia NI y cámara USB |
 | diagnose_usb_video | Codificación y decodificación MP4 USB |
 | diagnose_pfi13_single_pulse | Pulso OCE individual |

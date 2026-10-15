@@ -34,6 +34,7 @@ from .engine import AcquisitionEngine, EngineEvent, EngineState
 from .processing import DEFAULT_SPECTRAL_WINDOW, SPECTRAL_WINDOWS, normalize_preview, preview_complex
 from .scan import ScanPlanner
 from .paths import ACQUISITIONS_DIR
+from .camera_icd import icd_timeout_warning
 from . import phase_peak
 from .phase_peak import (
     MODE_LABELS as PEAK_MODE_LABELS,
@@ -354,6 +355,9 @@ class OCTOCEApp:
         self._refresh_plan()
         if self._galvo_defaults_error:
             self._append_log(self._galvo_defaults_error)
+        icd_warning = icd_timeout_warning(self.hardware.camera_interface)
+        if icd_warning:
+            self._append_log(icd_warning)
         self._events_after = self.root.after(50, self._poll_events)
 
     def _build_style(self) -> None:
