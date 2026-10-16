@@ -5,7 +5,10 @@ function resolved = resolveOCTSystemOptions(options, preparedProfile, ...
 % Binary format is deliberately not an input to this resolver. When the
 % optional normalized acquisition header records the camera line rate
 % (a_scan_rate_hz), that measured rate replaces the profile's nominal
-% a_scan_rate (kHz) with a_scan_rate_source="acquisition_header".
+% a_scan_rate (kHz) with a_scan_rate_source="acquisition_header". When it
+% records a spectral calibration (spectral_calibration: wavelength endpoints
+% in stored pixel order and D2/D3 dispersion), those values replace the
+% profile's spectral_sampling with parameter_source="acquisition_header".
 
     if nargin < 2
         preparedProfile = "";
@@ -34,6 +37,8 @@ function resolved = resolveOCTSystemOptions(options, preparedProfile, ...
     end
     depthCalibration = validate_depth_calibration(options.depth_sampling_calibration);
     spectralSampling = validate_spectral_sampling(options.spectral_sampling);
+    spectralSampling = apply_header_spectral_calibration( ...
+        spectralSampling, acquisitionHeader);
     spectralPreprocessing = validate_spectral_preprocessing( ...
         options.spectral_preprocessing, spectralSampling.method);
 
@@ -125,21 +130,51 @@ function systemType = system_type_for_profile(profile)
     end
 end
 
+function sampling = apply_header_spectral_calibration(sampling, header)
+% The acquisition GUI owns the spectrometer calibration in use when a file was
+% written; its header values therefore take precedence over profile defaults.
+    if ~(isstruct(header) && isscalar(header) && ...
+            isfield(header, 'spectral_calibration'))
+        return;
+    end
+    if sampling.method ~= "linear_wavelength_endpoints"
+        invalid(['The acquisition header records a wavelength calibration, ' ...
+            'but the selected OCT profile uses spectral_sampling.method ' ...
+            '"%s".'], sampling.method);
+    end
+    calibration = header.spectral_calibration;
+    sampling = validate_spectral_sampling(struct( ...
+        'method', sampling.method, ...
+        'lambda_start_nm', calibration.lambda_start_nm, ...
+        'lambda_end_nm', calibration.lambda_end_nm, ...
+        'dispersion_d2_rad', calibration.dispersion_d2_rad, ...
+        'dispersion_d3_rad', calibration.dispersion_d3_rad, ...
+        'parameter_source', "acquisition_header"));
+end
+
 function sampling = validate_spectral_sampling(value)
     expected = ["method"; "lambda_start_nm"; "lambda_end_nm"; ...
-        "parameter_source"];
+        "dispersion_d2_rad"; "dispersion_d3_rad"; "parameter_source"];
     require_exact_fields(value, expected, ...
         'OCTSystemOptions.spectral_sampling');
 
     method = text_scalar(value.method, 'spectral_sampling.method');
     source = text_scalar( ...
         value.parameter_source, 'spectral_sampling.parameter_source');
+    dispersionD2 = finite_scalar( ...
+        value.dispersion_d2_rad, 'spectral_sampling.dispersion_d2_rad');
+    dispersionD3 = finite_scalar( ...
+        value.dispersion_d3_rad, 'spectral_sampling.dispersion_d3_rad');
 
     switch method
         case "fft_ready_uniform_k"
             if ~isempty(value.lambda_start_nm) || ~isempty(value.lambda_end_nm)
                 invalid(['spectral_sampling wavelength endpoints must be ' ...
                     'empty for fft_ready_uniform_k.']);
+            end
+            if dispersionD2 ~= 0 || dispersionD3 ~= 0
+                invalid(['Numerical dispersion requires ' ...
+                    'linear_wavelength_endpoints spectral sampling.']);
             end
             lambdaStart = [];
             lambdaEnd = [];
@@ -161,6 +196,8 @@ function sampling = validate_spectral_sampling(value)
         'method', method, ...
         'lambda_start_nm', lambdaStart, ...
         'lambda_end_nm', lambdaEnd, ...
+        'dispersion_d2_rad', dispersionD2, ...
+        'dispersion_d3_rad', dispersionD3, ...
         'parameter_source', source);
 end
 
@@ -234,6 +271,13 @@ function value = positive_scalar(value, label)
     if ~isnumeric(value) || ~isscalar(value) || ...
             ~isfinite(value) || value <= 0
         invalid('%s must be a positive finite numeric scalar.', label);
+    end
+    value = double(value);
+end
+
+function value = finite_scalar(value, label)
+    if ~isnumeric(value) || ~isscalar(value) || ~isfinite(value)
+        invalid('%s must be a finite numeric scalar.', label);
     end
     value = double(value);
 end

@@ -3,6 +3,9 @@ function output = prepareSpectralSamples(rawData, octSystem, varargin)
 % context = prepareSpectralSamples(rawData, octSystem)
 % samples = prepareSpectralSamples(rawData, octSystem, timeIndices, ...
 %     lateralIndex, context, purpose)
+% Order: background -> uniform-wavenumber resampling -> numerical dispersion.
+% Samples are real unless spectral_sampling records nonzero D2/D3; then they
+% are the dispersion-corrected analytic signal (complex).
 
     validate_common(rawData, octSystem);
     if isempty(varargin)
@@ -22,7 +25,8 @@ function context = build_context(rawData, octSystem)
         'profile', string(octSystem.profile), ...
         'background_spectrum', [], ...
         'source_coordinate', [], ...
-        'target_coordinate', []);
+        'target_coordinate', [], ...
+        'dispersion', []);
 
     backgroundMethod = string( ...
         octSystem.spectral_preprocessing.background_method);
@@ -64,6 +68,7 @@ function context = build_context(rawData, octSystem)
             end
             context.source_coordinate = sourceCoordinate;
             context.target_coordinate = targetCoordinate;
+            context.dispersion = dispersion_context(sampling, sigmaCm);
         otherwise
             error('OCE:Acquisition:UnsupportedSpectralSampling', ...
                 'Unsupported spectral sampling method "%s".', samplingMethod);
@@ -84,6 +89,52 @@ function samples = apply_preparation(rawData, octSystem, timeIndices, ...
         samples, octSystem.spectral_preprocessing.background_method, context);
     samples = apply_resampling( ...
         samples, octSystem.spectral_preprocessing, context);
+    samples = apply_dispersion(samples, context);
+end
+
+function dispersion = dispersion_context(sampling, sigmaCm)
+% Header/GUI definition: phase D2*q^2 + D3*q^3 over the uniform-wavenumber
+% grid, q = -1 at the lowest and +1 at the highest wavenumber.
+    dispersion = [];
+    if sampling.dispersion_d2_rad == 0 && sampling.dispersion_d3_rad == 0
+        return;
+    end
+    q = linspace(-1, 1, numel(sigmaCm))';
+    dispersion = struct( ...
+        'phase_ascending_k', sampling.dispersion_d2_rad * q.^2 + ...
+            sampling.dispersion_d3_rad * q.^3, ...
+        'prepared_k_descending', sigmaCm(end) < sigmaCm(1));
+end
+
+function samples = apply_dispersion(samples, context)
+% The analytic signal is formed along increasing wavenumber, as in the GUI.
+% For a descending prepared grid the corrected signal is returned reversed and
+% conjugated, so the retained FFT bins keep the sign convention of the real
+% uncorrected spectrum (with zero phase they reproduce it for bins 2..N/2).
+    if isempty(context.dispersion)
+        return;
+    end
+    correction = exp(-1i * context.dispersion.phase_ascending_k);
+    if context.dispersion.prepared_k_descending
+        samples = flipud(conj(analytic_signal(flipud(samples)) .* correction));
+    else
+        samples = analytic_signal(samples) .* correction;
+    end
+end
+
+function analytic = analytic_signal(samples)
+% Equal to hilbert(samples)/2 along the spectral axis: the positive-frequency
+% magnitude matches the real input, as in the GUI reconstruction.
+    sampleCount = size(samples, 1);
+    weights = zeros(sampleCount, 1);
+    weights(1) = 0.5;
+    if mod(sampleCount, 2) == 0
+        weights(2:sampleCount / 2) = 1;
+        weights(sampleCount / 2 + 1) = 0.5;
+    else
+        weights(2:(sampleCount + 1) / 2) = 1;
+    end
+    analytic = ifft(fft(samples, [], 1) .* weights, [], 1);
 end
 
 function samples = prepare_input_samples(fringes, samplingMethod, purpose)
