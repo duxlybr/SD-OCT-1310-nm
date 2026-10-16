@@ -380,6 +380,9 @@ class OCTOCEUSBApp(OCTOCEApp):
         )
         self.usb_canvas.grid(row=1, column=0, sticky="nsew")
         self.usb_canvas.bind("<Configure>", lambda _event: self._render_usb())
+        # Click on the image: save a photo with the configured area (FOV / ROI).
+        self.usb_canvas.bind("<Button-1>", lambda _event: self._snapshot_usb())
+        self.usb_canvas.configure(cursor="hand2")
         self.usb_status_var = tk.StringVar(value="USB desconectada")
         ttk.Label(
             self.usb_panel,
@@ -612,8 +615,39 @@ class OCTOCEUSBApp(OCTOCEApp):
                 warning = f"Indicador no disponible: {exc}"
         self._usb_photo = ImageTk.PhotoImage(pil)
         canvas.create_image(canvas_width / 2, canvas_height / 2, image=self._usb_photo, anchor="center")
+        # Shutter cue: the whole image is clickable; this marks it.
+        right = (canvas_width + display_width) / 2 - 10
+        bottom = (canvas_height + display_height) / 2 - 10
+        canvas.create_oval(right - 26, bottom - 26, right, bottom, fill="#ffffff", outline="#b3261e", width=3)
+        canvas.create_oval(right - 18, bottom - 18, right - 8, bottom - 8, fill="#b3261e", outline="")
         if warning:
             canvas.create_text(8, 8, anchor="nw", fill="#ffdf4d", width=max(80, canvas_width - 16), text=warning)
+
+    def _snapshot_usb(self) -> Path | None:
+        """Save the frame on screen as PNG, with the configured area (FOV or ROI) and flips."""
+        frame = self._usb_last_frame
+        if frame is None:
+            self.usb_status_var.set("No hay imagen USB para guardar.")
+            return None
+        try:
+            transform = self._media_transform()
+            image = np.ascontiguousarray(transform(frame)) if transform is not None else frame
+            path = self._media_path(None, ".png")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("xb") as handle:
+                Image.fromarray(image, mode="RGB").save(handle, format="PNG")
+        except (OSError, ValueError) as exc:
+            self.usb_status_var.set(f"No se pudo guardar la foto: {exc}")
+            self._append_log(f"Foto USB: {exc}")
+            return None
+        area = self.capture_area_var.get().lower()
+        self.usb_status_var.set(f"Foto guardada ({area}): {path.name}")
+        self._append_log(f"Foto USB ({area}) guardada: {path}")
+        canvas = self.usb_canvas  # brief flash as confirmation
+        flash = canvas.create_rectangle(2, 2, canvas.winfo_width() - 2, canvas.winfo_height() - 2,
+                                        outline="#ffffff", width=6)
+        self.root.after(150, lambda: canvas.winfo_exists() and canvas.delete(flash))
+        return path
 
     def _open_roi_setup(self) -> None:
         """Run the camera ROI calibration (run_camera_roi_setup) inside the GUI."""

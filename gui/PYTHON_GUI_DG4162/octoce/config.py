@@ -513,9 +513,9 @@ def estimate_payload_bytes(scan: ScanParameters, hardware: HardwareConfig) -> in
 
 # Continuous alignment: every block of A-lines fires PFI13, i.e. one
 # ultrasound burst. Its rate is chosen in the GUI (the camera line rate and the
-# block size do not change); the default is half the former fixed 50 Hz so the
-# transducer does not overheat.
-ALIGNMENT_DEFAULT_RATE_HZ = 25.0
+# block size do not change); the default is low (2 Hz, user 2026-10-16) so
+# the transducer does not overheat.
+ALIGNMENT_DEFAULT_RATE_HZ = 2.0
 ALIGNMENT_MIN_RATE_HZ = 1.0
 
 

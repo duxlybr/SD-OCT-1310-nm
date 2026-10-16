@@ -113,7 +113,7 @@ amplitud y offset):
    - La alineación continua MB verifica OUTPUT1 y lo enciende si está
      apagado; lo apaga al detenerla. Cada bloque dispara un burst del
      transductor. Su tasa se elige en *Tasa de la alineación*: por defecto
-     25 Hz, permitido de 1 a 50 Hz. Ver `README.md`.
+     2 Hz, permitido de 1 a 50 Hz. Ver `README.md`.
    - **Crosshair continuo: OUTPUT1 estrictamente apagado.** Al iniciarlo la GUI
      apaga OUTPUT1 y lo verifica (si no puede, no inicia); durante el loop el
      controlador rechaza cualquier intento de encenderlo y el vigía lo apaga en
@@ -201,6 +201,10 @@ costaba ~2 s por consulta y causaba la demora de ~10 s antes de OUTPUT1.
 - **Cámara USB (⚙):**
   - *Al adquirir:* sin captura, foto o video.
   - *Área a guardar:* FOV completo o solo la ROI de 15 × 15 mm.
+  - **Foto en cualquier momento:** clic sobre la imagen de la cámara USB (el
+    círculo de la esquina lo indica). Se guarda el fotograma que se ve, con el
+    área elegida y la inversión X/Y, como `USB_AAAAMMDD_hhmmss.png` en la
+    carpeta de salida; nunca sobrescribe. Un destello blanco lo confirma.
   - *Setup de cámara · calibrar ROI…* (antes `run_camera_roi_setup.bat`).
     Parte de la ROI guardada (rojo discontinuo) y las flechas +X/+Y muestran
     la orientación de los galvos. Al cerrar el setup se guarda automáticamente

@@ -87,7 +87,7 @@ class GuiSmokeTests(unittest.TestCase):
             self.assertTrue(hardware.oce_enabled)
             self.assertGreater(hardware.effective_line_rate_hz, 50_000.0)
             # Default: half the former 50 Hz; the camera keeps its line rate.
-            self.assertAlmostEqual(start.call_args.kwargs["backend"]._alignment_block_rate_hz, 25.0)
+            self.assertAlmostEqual(start.call_args.kwargs["backend"]._alignment_block_rate_hz, 2.0)
             self.assertIn("1–50 Hz", app.alignment_limits_var.get())
             self.assertTrue(start.call_args.kwargs["continuous"])
             self.assertIsNone(start.call_args.kwargs["output_path"])
