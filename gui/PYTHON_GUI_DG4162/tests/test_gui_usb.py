@@ -253,6 +253,31 @@ class USBGuiTests(unittest.TestCase):
                 if root.winfo_exists():
                     app._on_close()
 
+    def test_click_on_usb_image_saves_photo_with_configured_area(self) -> None:
+        root = tk.Tk()
+        roi = CameraROI(0, 640, 480, 20, 320, 240)
+        with patch.object(CameraROI, "load", return_value=roi):
+            app = OCTOCEUSBApp(root, usb_stream=_FakeStream(), show_setup_on_start=False)
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                app.output_var.set(str(Path(directory) / "sample.bin"))
+                app._usb_last_frame = np.full((480, 640, 3), 90, dtype=np.uint8)
+                app.capture_area_var.set("FOV completo")
+                full = app._snapshot_usb()
+                app.capture_area_var.set("Solo ROI")
+                cropped = app._snapshot_usb()
+                with Image.open(full) as image:
+                    self.assertEqual(image.size, (640, 480))
+                with Image.open(cropped) as image:
+                    self.assertEqual(image.size[0], image.size[1])  # square ROI
+                    self.assertLess(image.size[0], 480)
+                self.assertNotEqual(full, cropped)  # never overwrites
+                self.assertIn("Foto guardada", app.usb_status_var.get())
+                app._usb_last_frame = None
+                self.assertIsNone(app._snapshot_usb())
+        finally:
+            app._on_close()
+
     def test_photo_is_saved_once_before_oct(self) -> None:
         root = tk.Tk()
         stream = _FakeStream()

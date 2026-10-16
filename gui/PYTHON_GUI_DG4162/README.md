@@ -121,13 +121,13 @@ los galvos en movimiento, y confirme la imagen y el `.bin`.
   - **Tasa de la alineación** (campo bajo el botón): cuántos bloques, y por lo
     tanto cuántos pulsos PFI13 (uno por burst del transductor), se emiten por
     segundo.
-    - Por defecto son **25 Hz**, la mitad de los 50 Hz fijos anteriores, para
-      que el transductor ultrasónico no se sobrecaliente.
+    - Por defecto son **2 Hz** (antes 50 Hz fijos), para que el transductor
+      ultrasónico no se sobrecaliente.
     - Rango permitido: de 1 Hz al máximo del hardware (50 Hz a 50 klps). El
       mínimo sube si el timeout de NI-IMAQ es menor que 2 s, porque el período
       debe caber en la mitad de ese timeout.
     - Un valor fuera de rango no inicia la alineación.
-  - PFI13 permanece alto el 10 % del período (4 ms a 25 Hz).
+  - PFI13 permanece alto el 10 % del período (50 ms a 2 Hz).
   - **Cámara:** la tasa no cambia su frecuencia de línea. Para que NI-IMAQ
     pueda cerrar cada frame antes del siguiente trigger, la cámara se configura
     solo en esta alineación a 52,632 klps efectivos. Cada bloque de 1000

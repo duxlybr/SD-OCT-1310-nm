@@ -73,7 +73,7 @@ class ScanPlannerTests(unittest.TestCase):
     def test_alignment_rate_default_and_limits(self) -> None:
         hardware = HardwareConfig()
         self.assertEqual(alignment_rate_limits(hardware), (1.0, 50.0))
-        self.assertEqual(default_alignment_rate_hz(hardware), 25.0)
+        self.assertEqual(default_alignment_rate_hz(hardware), 2.0)
         capture, rate = stationary_alignment_timing(hardware, 1000, 25.0)
         self.assertEqual(rate, 25.0)
         # The camera line rate does not depend on the chosen block rate.
