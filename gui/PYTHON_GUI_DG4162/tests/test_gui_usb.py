@@ -273,6 +273,12 @@ class USBGuiTests(unittest.TestCase):
                     self.assertLess(image.size[0], 480)
                 self.assertNotEqual(full, cropped)  # never overwrites
                 self.assertIn("Foto guardada", app.usb_status_var.get())
+                shutter = app.usb_canvas.find_withtag("usb_shutter")
+                self.assertEqual(app.usb_canvas.itemcget(shutter[0], "fill"), "#1e9e4a")  # green
+                app._usb_saved_until = 0.0  # after 1 s it returns to the normal button
+                app._render_usb()
+                shutter = app.usb_canvas.find_withtag("usb_shutter")
+                self.assertEqual(app.usb_canvas.itemcget(shutter[0], "fill"), "#ffffff")
                 app._usb_last_frame = None
                 self.assertIsNone(app._snapshot_usb())
         finally:
