@@ -1,0 +1,2 @@
+# Aceleración en GPU NVIDIA (driver con CUDA 13.x). Incluye NVRTC y runtime de CUDA vía pip.
+cupy-cuda13x[ctk]>=14.0

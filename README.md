@@ -25,6 +25,7 @@ through the `spectral_domain_1310` profile.
 - [Main components](#main-components)
 - [Acquisition parameters](#acquisition-parameters)
 - [Processing](#processing)
+- [OCE simulator](#oce-simulator)
 - [Repository structure](#repository-structure)
 - [Software requirements](#software-requirements)
 - [Data](#data)
@@ -180,6 +181,34 @@ coefficients are applied.
 
 ---
 
+## OCE simulator
+
+[`simulator/`](simulator/) is a Python GUI that simulates a complete OCE
+acquisition with this system. It runs five stages:
+
+1. **Wave propagation:** 3-D viscoelastic (Kelvin-Voigt) FDTD on the GPU,
+   with layers, inclusions and a flat or corneal-dome surface.
+2. **Excitation:** acoustic-radiation-force excitation (contact or air-coupled,
+   pressure in MPa) or a reverberant ring of contacts.
+3. **Acquisition timing:** identical to the acquisition GUI (`octoce`) in
+   MB/BM modes and raster, crosshair, meridian and linear patterns.
+4. **Complex OCT signal:** built from the measured system values in
+   [`characterization/LATEST.md`](characterization/LATEST.md).
+5. **OCE processing:**
+   - Loupas phase estimation;
+   - B-mode and en-face wave videos;
+   - phase-gradient, time-of-flight, local-wavenumber, k-f and reverberant
+     autocorrelation speed maps;
+   - automatic validation against the Rayleigh, Lamb (mRLFE) and
+     Kelvin-Voigt shear theories.
+
+Every equation in the code cites its source; see
+[`simulator/README.md`](simulator/README.md) and
+[`simulator/docs/MODELO_FISICO.md`](simulator/docs/MODELO_FISICO.md).
+Launch it with `simulator/setup_venv.bat`, then `simulator/run_simulator.bat`.
+
+---
+
 ## Repository structure
 
 ```
@@ -220,9 +249,13 @@ SD-OCT-1310-nm/
 ├── acquisition/                  Acquisition and hardware control
 │   ├── labview/                  Acquisition and galvanometer-control VIs
 │   └── camera_config/            Camera Link configuration of the camera
-└── gui/                          Operator tools for the instrument
-    ├── characterization/
-    └── imaging/
+├── gui/                          Operator tools for the instrument
+│   ├── characterization/
+│   └── imaging/
+└── simulator/                    Python OCE simulator (GPU FDTD + simulated OCT + GUI)
+    ├── octsim/                   Physics, acquisition, processing, GUI
+    ├── tests/                    unittest suite (physics, octoce equivalence, GUI)
+    └── docs/                     Physical model and verified references
 ```
 
 The system documents in `docs/` describe **how** each measurement is made;
@@ -238,6 +271,7 @@ The system documents in `docs/` describe **how** each measurement is made;
 | LabVIEW + NI-DAQmx | PCIe-6323 control (galvanometers and triggers) |
 | NI Vision Acquisition Software (NI-IMAQ) | PCIe-1433 frame grabber and Camera Link camera |
 | Autodesk Fusion 360 | Virtual assembly (optional) |
+| Python 3.14 + NumPy/SciPy/matplotlib (+ CuPy for NVIDIA GPUs) | OCE simulator ([`simulator/`](simulator/)) |
 
 ---
 
@@ -285,6 +319,7 @@ released after the thesis defense.
 - [x] Repository structure and system documentation
 - [x] Characterization log with the current reference values
 - [x] MATLAB processing workflow (`spectral_domain_1310` profile)
+- [x] OCE simulator with GUI (FDTD, simulated acquisition, validated examples)
 - [ ] Reconcile the spectral calibration of the processing profile with the thesis characterization
 - [ ] LabVIEW acquisition and synchronization VIs
 - [ ] Characterization and imaging GUIs
