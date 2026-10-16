@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import tkinter as tk
 from dataclasses import replace
 from datetime import datetime
@@ -262,6 +263,7 @@ class OCTOCEUSBApp(OCTOCEApp):
         self._usb_stream = usb_stream or USBCameraStream()
         self._usb_last_frame: np.ndarray | None = None
         self._usb_photo: ImageTk.PhotoImage | None = None
+        self._usb_saved_until = 0.0  # shutter shown green (photo saved) until this time
         self._usb_after: str | None = None
         self._video_active_path: Path | None = None
         self._setup_after: str | None = None
@@ -618,8 +620,18 @@ class OCTOCEUSBApp(OCTOCEApp):
         # Shutter cue: the whole image is clickable; this marks it.
         right = (canvas_width + display_width) / 2 - 10
         bottom = (canvas_height + display_height) / 2 - 10
-        canvas.create_oval(right - 26, bottom - 26, right, bottom, fill="#ffffff", outline="#b3261e", width=3)
-        canvas.create_oval(right - 18, bottom - 18, right - 8, bottom - 8, fill="#b3261e", outline="")
+        if time.monotonic() < self._usb_saved_until:  # confirmation: green for 1 s
+            canvas.create_oval(right - 34, bottom - 34, right, bottom, fill="#1e9e4a", outline="#ffffff",
+                               width=3, tags="usb_shutter")
+            canvas.create_text(right - 17, bottom - 17, text="✓", fill="#ffffff",
+                               font=("Segoe UI", 15, "bold"), tags="usb_shutter")
+            canvas.create_text(right - 42, bottom - 17, anchor="e", text="Guardada", fill="#ffffff",
+                               font=("Segoe UI", 10, "bold"), tags="usb_shutter")
+        else:
+            canvas.create_oval(right - 26, bottom - 26, right, bottom, fill="#ffffff", outline="#b3261e",
+                               width=3, tags="usb_shutter")
+            canvas.create_oval(right - 18, bottom - 18, right - 8, bottom - 8, fill="#b3261e", outline="",
+                               tags="usb_shutter")
         if warning:
             canvas.create_text(8, 8, anchor="nw", fill="#ffdf4d", width=max(80, canvas_width - 16), text=warning)
 
@@ -643,10 +655,10 @@ class OCTOCEUSBApp(OCTOCEApp):
         area = self.capture_area_var.get().lower()
         self.usb_status_var.set(f"Foto guardada ({area}): {path.name}")
         self._append_log(f"Foto USB ({area}) guardada: {path}")
-        canvas = self.usb_canvas  # brief flash as confirmation
-        flash = canvas.create_rectangle(2, 2, canvas.winfo_width() - 2, canvas.winfo_height() - 2,
-                                        outline="#ffffff", width=6)
-        self.root.after(150, lambda: canvas.winfo_exists() and canvas.delete(flash))
+        # Visible confirmation: the shutter turns green for 1 s, then back.
+        self._usb_saved_until = time.monotonic() + 1.0
+        self._render_usb()
+        self.root.after(1050, lambda: self.usb_canvas.winfo_exists() and self._render_usb())
         return path
 
     def _open_roi_setup(self) -> None:

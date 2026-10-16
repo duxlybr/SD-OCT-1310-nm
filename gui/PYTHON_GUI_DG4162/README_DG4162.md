@@ -204,7 +204,7 @@ costaba ~2 s por consulta y causaba la demora de ~10 s antes de OUTPUT1.
   - **Foto en cualquier momento:** clic sobre la imagen de la cámara USB (el
     círculo de la esquina lo indica). Se guarda el fotograma que se ve, con el
     área elegida y la inversión X/Y, como `USB_AAAAMMDD_hhmmss.png` en la
-    carpeta de salida; nunca sobrescribe. Un destello blanco lo confirma.
+    carpeta de salida; nunca sobrescribe. El botón se pone verde con ✓ «Guardada» durante 1 s.
   - *Setup de cámara · calibrar ROI…* (antes `run_camera_roi_setup.bat`).
     Parte de la ROI guardada (rojo discontinuo) y las flechas +X/+Y muestran
     la orientación de los galvos. Al cerrar el setup se guarda automáticamente
