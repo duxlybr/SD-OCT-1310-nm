@@ -45,6 +45,7 @@ from .phase_peak import (
     value_at,
 )
 from .galvo_settings import GalvoOffsets
+from .widgets import disable_combobox_wheel
 
 
 PATTERN_LABELS = {
@@ -308,6 +309,7 @@ class OCTOCEApp:
         self.root.state("zoomed")  # maximized; F11 toggles full screen
         self.root.bind("<F11>", self._toggle_fullscreen)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        disable_combobox_wheel(self.root)  # scrolling the panel must never change a parameter
         self.event_queue: queue.Queue[EngineEvent] = queue.Queue()
         self.engine = AcquisitionEngine(self.event_queue.put)
         self.hardware = HardwareConfig()
@@ -1240,6 +1242,14 @@ class OCTOCEApp:
     def _before_oct_start(self, output: Path | None) -> None:
         """Extension point for optional USB video pre-roll."""
 
+    def _start_configs(self) -> tuple[ScanParameters, HardwareConfig]:
+        """Plan used by the next ``_start`` (extension point: the panel by default)."""
+        return self._configs()
+
+    def _arming_note(self) -> str:
+        """Extra paragraph for the 'Armar hardware NI' confirmation (extension point)."""
+        return ""
+
     def _on_oct_start_failed(self) -> None:
         """Release auxiliary capture if OCT did not start."""
 
@@ -1268,7 +1278,7 @@ class OCTOCEApp:
         try:
             if self.engine.is_active:
                 raise RuntimeError("Hay una adquisición en curso; deténgala antes de iniciar otra.")
-            scan, hardware = self._configs()
+            scan, hardware = self._start_configs()
             depth_range = self._parse_depth_range()
             self._last_depth_range = depth_range
             output = self._resolve_output_path() if self.save_var.get() else None
@@ -1306,6 +1316,7 @@ class OCTOCEApp:
                     f"OCE: {'habilitado' if hardware.oce_enabled else 'deshabilitado'}\n"
                     f"{trigger_description}\n"
                     f"{validation_note}"
+                    f"{self._arming_note()}"
                     "Confirme que PFI12 llega a la entrada de trigger del frame grabber, que su acción "
                     "NI-IMAQ produce una línea válida por pulso y que los límites eléctricos son seguros."
                 )

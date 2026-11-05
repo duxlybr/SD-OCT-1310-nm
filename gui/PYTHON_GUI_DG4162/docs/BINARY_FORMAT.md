@@ -49,6 +49,11 @@ hasta `data_offset` es cero. Incluye:
   `excitation`), `state` (estado leído del equipo tras programarlo) y
   `sequence` (fila de Excel, o `null`). La frecuencia de CH2 es la frecuencia
   de excitación OCE.
+- `preacquisition` (solo en el raster `*_preraster.bin` guardado antes de una
+  adquisición MB): `purpose`, `lateral_sampling_mm` (0,02), `rule`,
+  `requested_window_mm`, `window_mm` (ventana realmente adquirida),
+  `reduced_to_limits` y `oce_trigger` (`false`). Es un raster BM normal con
+  M = 1; se lee igual que cualquier otro `.bin`.
 
 ## Payload
 
