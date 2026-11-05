@@ -1,0 +1,6 @@
+# Núcleo del simulador (CPU). Probado con Python 3.14 en Windows 11.
+numpy>=2.0
+scipy>=1.14
+matplotlib>=3.9
+imageio>=2.34
+imageio-ffmpeg>=0.5
