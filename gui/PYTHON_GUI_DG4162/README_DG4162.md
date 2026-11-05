@@ -180,6 +180,31 @@ amplitud y offset):
      - Las esperas `espera_s` se cuentan exactas.
      - Al terminar se registran el tiempo real y el estimado inicial.
    - El patrón admite también `Anillos` y `Espiral` (ver `README.md`, *Patrones*).
+   - Si la serie contiene filas MB y la pre-adquisición está activa, el raster
+     se guarda **una sola vez, al inicio de la serie** (punto 6).
+6. **Pre-adquisición raster (MB).**
+   - Sección propia del panel, activa por defecto. Antes de cada adquisición
+     MB guarda un volumen estructural de alta resolución de la zona que se va
+     a medir: raster BM, M = 1, sin PFI13 (el DG4162 no se dispara; OUTPUT1
+     sigue apagado) y sin foto/video USB.
+   - Muestreo a la resolución lateral óptica de 20 µm:
+     A-lines por B-scan = ventana X / 0,02 mm y B-scans = ventana Y / 0,02 mm.
+     Ventana por defecto 15 × 15 mm (750 × 750); sync 100 puntos (2 ms) entre
+     B-scans.
+   - La ventana se centra en el offset de los galvos. Si excede el FOV del
+     LSM04 (14,1 mm) o la tabla angular del GVS002 se **reduce
+     automáticamente** al máximo válido y se avisa en el panel y la consola.
+     Con offset 0,0 y diámetro de haz = 0 (fila conservadora de 5 mm) queda
+     en 14,1 × 11,8 mm (705 × 590, ≈ 1,6 GiB, ≈ 10 s). Introduzca el diámetro
+     real del haz en *Configuración de hardware…* para ampliar Y.
+   - Se guarda como `<nombre de la adquisición MB>_preraster.bin` en la misma
+     carpeta; el header lleva la sección `preacquisition`.
+   - Las confirmaciones (armado NI, simulación, CH1 > 1 V, forma no Pulso) se
+     piden una vez, antes del raster. Al terminar el raster, la adquisición MB
+     empieza sola; *Detener* en ese instante la cancela. Si el raster falla se
+     reintenta como cualquier adquisición; si se detiene o falla del todo, la
+     adquisición MB (o la serie) no se inicia.
+   - Se omite en BM, con la casilla desactivada o sin *Guardar datos crudos*.
 
 ## Diagnóstico
 
@@ -215,6 +240,9 @@ costaba ~2 s por consulta y causaba la demora de ~10 s antes de OUTPUT1.
 - La ventana arranca maximizada; F11 activa o desactiva la pantalla completa.
 - La vista de la cámara USB empieza como un cuadrado.
 - El plot del patrón X/Y usa la misma escala en X e Y.
+- Las listas desplegables ignoran la rueda del ratón: al desplazar el panel
+  izquierdo con la rueda sobre una lista, se desplaza el panel y el valor no
+  cambia. Solo cambian con clic o teclado.
 
 ## Pruebas
 

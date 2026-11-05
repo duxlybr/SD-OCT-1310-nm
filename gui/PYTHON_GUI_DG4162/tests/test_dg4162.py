@@ -644,6 +644,7 @@ class DG4162GuiTests(unittest.TestCase):
         app = self.app
         app.backend_var.set("Simulación")
         app.save_var.set(True)
+        app.preacq_enabled_var.set(False)  # covered in test_preacquisition.py
         app.folder_var.set(str(self.folder))
         app.mode_var.set("MB-mode  (B → A → M)")
         app.pattern_var.set("Lineal")

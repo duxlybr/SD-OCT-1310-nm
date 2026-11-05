@@ -48,6 +48,7 @@ from .backends.simulated import SimulatedBackend
 from .config import AcquisitionMode, HardwareConfig, ScanParameters, ScanPattern, stationary_alignment_timing
 from .engine import AcquisitionEngine, EngineEvent
 from .paths import CONFIG_DIR, DATA_ROOT
+from .widgets import disable_combobox_wheel
 
 DEFAULT_REFERENCE = CONFIG_DIR / "alineacion_referencia.json"
 DEFAULT_TARGETS = CONFIG_DIR / "alineacion_objetivos.json"
@@ -515,6 +516,7 @@ class AlignmentLiveApp:
         except tk.TclError:
             self.root.geometry("1600x950")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        disable_combobox_wheel(self.root)
 
         self.events: queue.Queue[EngineEvent] = queue.Queue()
         self.results: queue.Queue[AlignmentResult] = queue.Queue(maxsize=4)

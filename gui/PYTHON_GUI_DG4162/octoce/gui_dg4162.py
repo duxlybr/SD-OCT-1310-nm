@@ -10,7 +10,7 @@ from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 from typing import Any
 
-from .config import ConfigurationError, ScanParameters
+from .config import AcquisitionMode, ConfigurationError, ScanParameters, estimate_payload_bytes
 from .dg4162 import (
     CH2_WAVEFORMS,
     DG4162Error,
@@ -28,6 +28,8 @@ from .gui import MODE_LABELS, ORIENTATION_LABELS, PATTERN_LABELS, _CollapsibleSe
 from .gui_usb import OCTOCEUSBApp
 from .naming import MODE_PREFIX, clean_stem, default_stem, refresh_parameter_stem, unique_path
 from .paths import ACQUISITIONS_DIR, CONFIG_DIR
+from . import preacquisition
+from .preacquisition import PreacquisitionPlan, plan_preacquisition
 from .sequence import DurationModel, SequenceJob, build_jobs, read_rows, sequence_remaining_s, write_template
 from .usb_camera import USBCameraStream
 
@@ -40,6 +42,7 @@ BASE_SETUP_PATH = CONFIG_DIR / "dg4162_base.json"
 LINK_CHECK_PERIOD_S = 2.0
 LINK_ON_COLOR, LINK_OFF_COLOR = "#1da56d", "#9aa5b1"
 RETRY_DELAY_MS = 1500
+PREACQ_CHAIN_DELAY_MS = 300  # pre-acquisition finished → configured MB acquisition
 
 
 def _parse_cycles(text: str) -> int:
@@ -413,6 +416,14 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._retrying = False
         self._retry_after: str | None = None
         self._square_after: str | None = None
+        # High-resolution raster pre-acquisition before MB (once per Excel series).
+        self._preacq_plan: PreacquisitionPlan | None = None
+        self._preacq_active = False  # the engine is running the pre-acquisition
+        self._preacq_done = False  # already saved for this acquisition / series
+        self._preacq_chaining = False  # starting the MB acquisition that follows it
+        self._preacq_after: str | None = None
+        self._preapproved_settings: GeneratorSettings | None = None
+        self._preacq_backend: str | None = None  # backend confirmed for the raster + MB pair
         super().__init__(root, usb_stream=usb_stream, show_setup_on_start=show_setup_on_start)
         self.root.title("OCT / OCE Acquisition · USB · DG4162")
         for variable in (
@@ -424,6 +435,12 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         for variable in (self.ch1_mvpp_var, self.excitation_var):
             variable.trace_add("write", lambda *_args: self._update_voltage_warning())
         self.excitation_var.trace_add("write", lambda *_args: self._update_excitation_fields())
+        for variable in (
+            self.preacq_enabled_var, self.preacq_x_var, self.preacq_y_var, self.mode_var,
+            self.offset_x_var, self.offset_y_var,
+        ):
+            variable.trace_add("write", lambda *_args: self._update_preacq_info())
+        self._update_preacq_info()
         self._update_target()
         self._update_voltage_warning()
         self._update_excitation_fields()
@@ -466,6 +483,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.ch2_cycles_var = tk.StringVar(value=str(int(base.burst_cycles)))
         self.gen_warning_var = tk.StringVar(value="")
         self.gen_status_var = tk.StringVar(value="DG4162 sin conectar.")
+        self.preacq_enabled_var = tk.BooleanVar(value=True)
+        self.preacq_x_var = tk.StringVar(value=f"{preacquisition.DEFAULT_WINDOW_MM:g}")
+        self.preacq_y_var = tk.StringVar(value=f"{preacquisition.DEFAULT_WINDOW_MM:g}")
+        self.preacq_info_var = tk.StringVar(value="")
 
     def _build_output_controls(self, parent: ttk.Frame, row: int) -> int:
         ttk.Label(parent, text="Carpeta", style="Card.TLabel").grid(row=row, column=0, columnspan=2, sticky="w")
@@ -487,6 +508,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         return row + 5
 
     def _build_extra_controls(self, parent: ttk.Frame, row: int) -> int:
+        row = self._build_preacq_controls(parent, row)
         self.generator_section = _CollapsibleSection(parent, "Generador DG4162")
         self.generator_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
         section = self.generator_section.body
@@ -553,6 +575,27 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.sequence_button.grid(row=inner_row + 4, column=0, columnspan=2, sticky="ew", pady=(6, 0))
         return row + 1
 
+    def _build_preacq_controls(self, parent: ttk.Frame, row: int) -> int:
+        self.preacq_section = _CollapsibleSection(parent, "Pre-adquisición raster (MB)")
+        self.preacq_section.grid(row=row, column=0, columnspan=2, sticky="ew", pady=(10, 0))
+        section = self.preacq_section.body
+        ttk.Checkbutton(
+            section, text="Guardar un raster de alta resolución antes de adquirir en MB",
+            variable=self.preacq_enabled_var,
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        for inner_row, (label, variable) in enumerate(
+            (("Ventana X", self.preacq_x_var), ("Ventana Y", self.preacq_y_var)), start=1,
+        ):
+            ttk.Label(section, text=label, style="Card.TLabel").grid(row=inner_row, column=0, sticky="w", pady=3)
+            holder = ttk.Frame(section, style="Card.TFrame")
+            holder.grid(row=inner_row, column=1, sticky="ew", padx=(12, 0), pady=3)
+            holder.columnconfigure(0, weight=1)
+            ttk.Entry(holder, textvariable=variable, width=12).grid(row=0, column=0, sticky="ew")
+            ttk.Label(holder, text="mm", style="Muted.TLabel").grid(row=0, column=1, padx=(6, 0))
+        ttk.Label(section, textvariable=self.preacq_info_var, style="Muted.TLabel", wraplength=330,
+                  justify="left").grid(row=3, column=0, columnspan=2, sticky="w", pady=(2, 0))
+        return row + 1
+
     def _square_usb_view(self) -> None:
         """Start with the USB camera pane as wide as it is tall (square view)."""
         self._square_after = None
@@ -616,6 +659,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
             self.target_var.set(f"Nombre no disponible: {exc}")
 
     def _resolve_output_path(self) -> Path:
+        if self._preacq_active:
+            path = self._preacq_path()
+            self._last_output = path  # a failed attempt is deleted before retrying
+            return path
         job = self._current_job if self._sequence_active else None
         if job is not None:
             path = self._job_output_path(job, set())
@@ -894,6 +941,178 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self.gen_status_var.set(state.summary())
         self._append_log("DG4162 programado (OUTPUT1 OFF, OUTPUT2 ON): " + state.summary().replace("\n", " | "))
 
+    # -- raster pre-acquisition ---------------------------------------------
+    def _plan_preacquisition(self) -> PreacquisitionPlan:
+        """Raster for the panel window around the galvo offset (reduced to the limits)."""
+        offsets = self._galvo_offsets()
+        _scan, hardware = self._configs()  # λ/dispersion of the panel, recorded in the header
+        return plan_preacquisition(
+            _parse_float(self.preacq_x_var.get(), "Pre-adquisición ventana X"),
+            _parse_float(self.preacq_y_var.get(), "Pre-adquisición ventana Y"),
+            offsets.x_mm, offsets.y_mm, hardware,
+        )
+
+    def _update_preacq_info(self) -> None:
+        if not hasattr(self, "preacq_info_var"):
+            return
+        if not self.preacq_enabled_var.get():
+            self.preacq_info_var.set("Desactivada: las adquisiciones MB empiezan directamente.")
+            return
+        try:
+            offsets = self._galvo_offsets()
+            plan = plan_preacquisition(
+                _parse_float(self.preacq_x_var.get(), "Ventana X"),
+                _parse_float(self.preacq_y_var.get(), "Ventana Y"),
+                offsets.x_mm, offsets.y_mm, self.hardware,
+            )
+        except (ValueError, ConfigurationError) as exc:
+            self.preacq_info_var.set(f"⚠ {exc}")
+            return
+        scan, hardware = plan.scan, plan.hardware
+        seconds = (scan.alines + scan.sync_points) * scan.bscans / hardware.effective_line_rate_hz
+        gib = estimate_payload_bytes(scan, hardware) / 2**30
+        text = (
+            f"{scan.alines} A-lines × {scan.bscans} B-scans (mm / {preacquisition.LATERAL_SAMPLING_MM:g}) · "
+            f"{scan.x_length_mm:g} × {scan.y_length_mm:g} mm · ≈ {seconds:.0f} s · ≈ {gib:.2f} GiB · "
+            "BM, M=1, sin PFI13. Antes de cada adquisición MB; en secuencias Excel solo al inicio."
+        )
+        if plan.reduced:
+            text = "⚠ Reducida al máximo permitido por el FOV LSM04 / galvo con el offset actual. " + text
+        self.preacq_info_var.set(text)
+
+    def _preacq_wanted(self) -> bool:
+        """True if the next start must first save the raster pre-acquisition."""
+        if self._preacq_done or not self.preacq_enabled_var.get():
+            return False
+        if self._sequence_active:
+            mb = any(job.mode is AcquisitionMode.MB for job in self._sequence_jobs)
+        else:
+            mb = MODE_LABELS.get(self.mode_var.get()) is AcquisitionMode.MB
+        if not mb:
+            return False
+        if not self.save_var.get():
+            self._append_log("Pre-adquisición omitida: active 'Guardar datos crudos (.bin)' para guardarla.")
+            return False
+        return True
+
+    def _preacq_path(self) -> Path:
+        """``<name of the MB acquisition>_preraster.bin`` in the same folder."""
+        if self._sequence_active:
+            job = next(job for job in self._sequence_jobs if job.mode is AcquisitionMode.MB)
+            real = self._job_output_path(job, set())
+        else:
+            stem = refresh_parameter_stem(self.name_var.get(), self._default_stem())
+            real = unique_path(self._folder(), stem)
+        return unique_path(real.parent, f"{real.stem}_{preacquisition.FILE_SUFFIX}")
+
+    def _start_preacquisition(self, *, confirm: bool) -> bool:
+        try:
+            self._configs()  # the MB acquisition must be valid before spending time on the raster
+            plan = self._plan_preacquisition()
+        except (ValueError, KeyError, ConfigurationError) as exc:
+            messagebox.showerror("No se puede iniciar", f"Pre-adquisición raster: {exc}")
+            return False
+        # Generator checks and confirmations of the MB acquisition happen now,
+        # not after the raster; the same values are not asked again.
+        if not self._prepare_generator(confirm=confirm):
+            return False
+        self._preapproved_settings, self._pending_settings = self._pending_settings, None
+        self._preacq_plan = plan
+        self._preacq_active = True
+        self._run_kind = "preacquisition"
+        self._append_log("Pre-adquisición: " + plan.describe() + ".")
+        window = self._sequence_window
+        if self._sequence_active and window is not None:
+            window.status_var.set("Pre-adquisición raster al inicio de la secuencia…")
+        started = False
+        try:
+            started = super()._start(confirm=confirm)
+        finally:
+            if not started:
+                self._preacq_active = False
+                self._preacq_plan = None
+                self._preapproved_settings = None
+                self._run_kind = None
+        self._preacq_backend = self.backend_var.get() if started else None
+        return started
+
+    def _confirm_simulation(self) -> bool:
+        # The simulation warning was accepted for the raster of this same start.
+        if self._preacq_chaining and self._preacq_backend == self.backend_var.get():
+            return True
+        return super()._confirm_simulation()
+
+    def _start_configs(self) -> tuple[ScanParameters, Any]:
+        plan = self._preacq_plan
+        if self._preacq_active and plan is not None:
+            return plan.scan, plan.hardware
+        return super()._start_configs()
+
+    def _arming_note(self) -> str:
+        plan = self._preacq_plan
+        if not self._preacq_active or plan is None:
+            return ""
+        try:
+            scan, _hardware = self._configs()
+            target = (f"{scan.mode.value} X {scan.bounds_mm[0]:+.4f} a {scan.bounds_mm[1]:+.4f} mm · "
+                      f"Y {scan.bounds_mm[2]:+.4f} a {scan.bounds_mm[3]:+.4f} mm")
+        except (ValueError, KeyError, ConfigurationError):
+            target = "configurada en el panel"
+        return (
+            "Primero se guarda la PRE-ADQUISICIÓN raster indicada arriba (sin PFI13 ni DG4162). "
+            f"Al terminar se inicia automáticamente, sin volver a preguntar, la adquisición {target}.\n\n"
+        )
+
+    def _cancel_preacq_chain(self) -> bool:
+        if self._preacq_after is None:
+            return False
+        try:
+            self.root.after_cancel(self._preacq_after)
+        except tk.TclError:
+            pass
+        self._preacq_after = None
+        self._preapproved_settings = None
+        return True
+
+    def _preacq_finished(self, state: str) -> None:
+        self._preacq_active = False
+        self._preacq_plan = None
+        if state == EngineState.COMPLETED.value:
+            self._preacq_done = True
+            self._append_log("Pre-adquisición raster guardada; se inicia la adquisición MB configurada.")
+            self.start_button.configure(state="disabled")
+            self.stop_button.configure(state="normal")  # cancels the MB acquisition that follows
+            self._preacq_after = self.root.after(PREACQ_CHAIN_DELAY_MS, self._start_after_preacq)
+            self._update_target()
+            return
+        if state == EngineState.ERROR.value and not self._closing and self._retry_failed_acquisition():
+            self._update_target()
+            return
+        self._preapproved_settings = None
+        self._update_target()
+        label = "detenida" if state == EngineState.STOPPED.value else "fallida"
+        self._append_log(f"Pre-adquisición {label}: no se inicia la adquisición MB.")
+        if self._sequence_active:
+            if self._sequence_window is not None:
+                self._sequence_window.mark(self._sequence_index, "failed")
+            self._finish_sequence(f"Secuencia abortada: pre-adquisición {label}.")
+
+    def _start_after_preacq(self) -> None:
+        self._preacq_after = None
+        if self._closing:
+            return
+        if self._sequence_active:
+            self._run_sequence_job()  # the same first job, now without pre-acquisition
+            return
+        # Arming was confirmed for the raster + MB pair; a backend changed meanwhile asks again.
+        same_backend = self._preacq_backend == self.backend_var.get()
+        self._preacq_chaining = True
+        try:
+            self._start(confirm=not same_backend)
+        finally:
+            self._preacq_chaining = False
+            self._preacq_backend = None
+
     # -- acquisition hooks ----------------------------------------------------
     def _prepare_generator(self, *, confirm: bool) -> bool:
         """Validate the panel values before arming; False aborts the start."""
@@ -915,6 +1134,10 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 "o desmarque 'Controlar DG4162 en cada adquisición'.",
             )
             return False
+        preapproved, self._preapproved_settings = settings == self._preapproved_settings, None
+        if preapproved:  # confirmed before the raster pre-acquisition, unchanged since
+            self._pending_settings = settings
+            return True
         if needs_confirmation and confirm and not self._confirm_high_voltage(settings):
             return False
         if settings.excitation is Excitation.NON_CONTACT and settings.ch2_waveform != "PULS":
@@ -934,11 +1157,19 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         if self._sequence_active and not self._sequence_starting:
             messagebox.showinfo("Secuencia en curso", "Detenga la secuencia antes de iniciar otra adquisición.")
             return False
+        if self._preacq_after is not None:
+            messagebox.showinfo("Pre-adquisición", "La adquisición MB empieza en un instante.")
+            return False
         if not self._retrying:
             self._cancel_retry()
             self._retry_count = 0
+            if not self._preacq_chaining and not self._sequence_active:
+                self._preacq_done = False  # a new acquisition from the panel
         self._last_output = None
-        if not self._prepare_generator(confirm=confirm):
+        if self._preacq_wanted():
+            return self._start_preacquisition(confirm=confirm)
+        # The MB acquisition after the raster re-asks only if its generator values changed.
+        if not self._prepare_generator(confirm=confirm or self._preacq_chaining):
             return False
         self._generator_run = True
         self._run_kind = "acquisition"
@@ -951,6 +1182,8 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         return started
 
     def _start_alignment(self) -> None:
+        if self._preacq_after is not None:
+            return
         if self._sequence_active:
             messagebox.showinfo("Secuencia en curso", "Detenga la secuencia antes de alinear.")
             return
@@ -971,6 +1204,8 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
 
     def _start_crosshair_loop(self) -> None:
         """Continuous crosshair: OUTPUT1 is switched off and locked off for the whole loop."""
+        if self._preacq_after is not None:
+            return
         if self._sequence_active:
             messagebox.showinfo("Secuencia en curso", "Detenga la secuencia antes del crosshair continuo.")
             return
@@ -1008,6 +1243,13 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
                 self.generator.output1_locked = False
 
     def _before_oct_start(self, output: Path | None) -> None:
+        plan = self._preacq_plan
+        if self._preacq_active and plan is not None:
+            # Structural raster only: no USB photo/video and no excitation (OUTPUT1 stays off).
+            self.engine.before_acquire = None
+            if output is not None:
+                self.engine.header_metadata = {"preacquisition": plan.header()}
+            return
         settings = self._pending_settings if self._generator_run else None
         if settings is None:
             super()._before_oct_start(output)
@@ -1109,6 +1351,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         self._generator_off({"completed": "adquisición completa", "stopped": "detenida",
                              "error": "error"}.get(state, state))
         kind, self._run_kind = self._run_kind, None
+        if kind == "preacquisition":
+            self._preacq_finished(state)
+            return
         if kind == "crosshair":
             self.generator.output1_locked = False
             self._append_log("DG4162: crosshair continuo terminado; OUTPUT1 desbloqueado (sigue apagado).")
@@ -1191,6 +1436,13 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         return True
 
     def _stop(self) -> None:
+        if not self.engine.is_active and self._cancel_preacq_chain():
+            self.stop_button.configure(state="disabled")
+            self.start_button.configure(state="normal")
+            self._append_log("Adquisición MB cancelada por el usuario tras la pre-adquisición.")
+            if self._sequence_active:
+                self._finish_sequence("Secuencia detenida por el usuario tras la pre-adquisición.")
+            return
         if not self.engine.is_active and self._cancel_retry():
             self.stop_button.configure(state="disabled")
             self._append_log("Reintento cancelado por el usuario.")
@@ -1383,6 +1635,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         ):
             return
         self._sequence_active = True
+        self._preacq_done = False  # one raster pre-acquisition at the start of the series
         self._sequence_offsets = self._galvo_offsets()
         self._simulation_sequence_approved = self.backend_var.get() == "Simulación"
         self._approved_sequence_waveforms = unusual
@@ -1491,6 +1744,9 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
 
     def _finish_sequence(self, message: str) -> None:
         self._cancel_retry()
+        if self._cancel_preacq_chain():
+            self.start_button.configure(state="normal")
+            self.stop_button.configure(state="disabled")
         if self._sequence_after is not None:
             try:
                 self.root.after_cancel(self._sequence_after)
@@ -1541,6 +1797,7 @@ class OCTOCEDG4162App(OCTOCEUSBApp):
         if self._sequence_active:
             self._finish_sequence("Secuencia cancelada al cerrar la aplicación.")
         self._cancel_retry()
+        self._cancel_preacq_chain()
         self._link_stop.set()
         if self._link_thread is not None:
             self._link_thread.join(timeout=5.0)

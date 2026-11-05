@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 
 from .camera_roi import CameraROI, DEFAULT_ROI_PATH
 from .usb_camera import USBCameraStream
+from .widgets import disable_combobox_wheel
 
 
 def geometry_scale(kind, points, real_mm, axis="Horizontal"):
@@ -365,5 +366,6 @@ def main():
     parser.add_argument("--output", type=Path, default=DEFAULT_ROI_PATH)
     args = parser.parse_args()
     root = tk.Tk()
+    disable_combobox_wheel(root)
     CameraROISetup(root, USBCameraStream(), args.camera, args.output)
     root.mainloop()
