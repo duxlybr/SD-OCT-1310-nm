@@ -394,8 +394,8 @@ function metadata = plane_metadata(header, system, options, bmodes, lateral, pla
     else
         notes(end+1) = "Un B-mode independiente: no se crea continuidad temporal ni espacial entre meridianos almacenados.";
     end
-    if isfield(header, 'source_calibration')
-        notes(end+1) = "La calibración de preview registrada en GUI se conserva como evidencia. La reconstrucción usa OCTSystemOptions explícito, sin adoptar automáticamente parámetros del preview.";
+    if isfield(header, 'spectral_calibration')
+        notes(end+1) = "La reconstrucción usa la calibración espectral registrada por la GUI en el header (extremos de longitud de onda y dispersión D2/D3).";
     end
     if options.surface_method == "max_in_search"
         notes(end+1) = "Superficie: máximo OCT dentro de búsqueda; revisar sobre la imagen estructural y excluir bandas DC. Un máximo no garantiza una interfaz anatómica.";

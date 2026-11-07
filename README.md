@@ -173,9 +173,15 @@ in `OCE_workflow/src/+oce/+config/getOCTSystemOptions.m` and its contract in
 Dispersion is compensated **optically** in the sample arm; no numerical phase
 coefficients are applied.
 
-> **Note:** the thesis characterization used wavelength endpoints
-> 1262.34 → 1471.08 nm, spline resampling and zero-padded FFTs of 4096
-> (imaging) and 8192 (characterization) points. See
+> **GUI files carry their own calibration.** For `.bin` files written by the
+> acquisition GUI, the k-linearization endpoints and D2/D3 dispersion stored in
+> each header replace the profile values above. The GUI is the reference
+> calibration, re-optimized whenever the spectrometer is realigned. The profile
+> endpoints apply only to files without a recorded calibration.
+>
+> The thesis characterization used wavelength endpoints 1262.34 → 1471.08 nm,
+> spline resampling and zero-padded FFTs of 4096 (imaging) and 8192
+> (characterization) points. See
 > [`characterization/LATEST.md`](characterization/LATEST.md).
 
 ---
@@ -285,7 +291,7 @@ released after the thesis defense.
 - [x] Repository structure and system documentation
 - [x] Characterization log with the current reference values
 - [x] MATLAB processing workflow (`spectral_domain_1310` profile)
-- [ ] Reconcile the spectral calibration of the processing profile with the thesis characterization
+- [x] Processing adopts the spectral calibration (k endpoints, D2/D3) recorded by the GUI in each file header
 - [ ] LabVIEW acquisition and synchronization VIs
 - [ ] Characterization and imaging GUIs
 - [ ] CAD assembly and 3D-printed parts

@@ -88,6 +88,24 @@ The SD-1040 estimator is retained as an explicit system-specific tradeoff becaus
 The SD-1310 system configuration uses detector-pixel wavelength endpoints
 `1261.36 -> 1472.76 nm`, nominal center wavelength `1.310 um`, and a 50 kHz
 A-scan rate. The endpoints define spectral resampling, not depth sampling.
+
+OCTOCE (GUI) files that record a spectrometer calibration override these
+profile values: `readAcquisitionHeader` reports `spectral_calibration`, and
+`resolveOCTSystemOptions` adopts it with
+`spectral_sampling.parameter_source = "acquisition_header"`.
+
+- The GUI preview reverses the stored detector row before applying
+  `wavelength_start_nm -> wavelength_end_nm`, so the reader swaps the
+  endpoints into stored pixel order. For example, a header with
+  `1466.61 -> 1263.79 nm` gives `1263.79 -> 1466.61 nm`.
+- The recorded `D2`, `D3` (rad) are applied after resampling with the GUI
+  definition: the phase `D2*q^2 + D3*q^3` (q in [-1, 1], ascending
+  wavenumber) is removed from the analytic signal (`hilbert/2`).
+- The prepared grid runs in descending wavenumber, so the corrected signal is
+  returned reversed and conjugated. The retained FFT bins then keep the sign
+  convention of the uncorrected real spectrum.
+- Profile defaults have zero dispersion, and files without a recorded
+  calibration keep the profile endpoints.
 Depth calibration is experimental: `1.48 um/bin` in air at reference FFT 8192
 for 2048 spectral samples. Reconstruction retains FFT 2048 and derives
 `1.48 * 8192 / 2048 = 5.92 um/bin` in air. The reference FFT is calibration

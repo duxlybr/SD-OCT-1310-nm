@@ -5,6 +5,9 @@ function scanInfo = readAcquisitionHeader(filename, filepath)
 % per stored line, bscan_length_mm, bscan_angle_deg and
 % bscan_storage_reversed; a_scan_rate_hz (camera line rate); and excitation,
 % read from the header 'generator' section when the GUI controlled it.
+% When the GUI recorded its spectrometer calibration, OCTOCE files also report
+% spectral_calibration: wavelength endpoints in stored detector-pixel order and
+% the D2/D3 numerical dispersion, for resolveOCTSystemOptions.
 % Crosshair B-scans are stored as consecutive X and Y lines (No_3Dscans = 2B).
 
     if nargin < 1 || isempty(filename)
@@ -186,6 +189,10 @@ function scanInfo = build_octoce_raw_v1_scan_info(fileID, fullPath)
     scanInfo.raster_bidirectional = rasterBidirectional;
     scanInfo.a_scan_rate_hz = octoce_line_rate(hardware, fullPath);
     scanInfo.excitation = read_generator_header(source, fullPath);
+    calibration = read_spectral_calibration(source, fullPath);
+    if ~isempty(calibration)
+        scanInfo.spectral_calibration = calibration;
+    end
     % Preserve acquisition evidence for bounded experimental plane loading.
     % It remains header metadata, not an alternate OCT physics configuration.
     for section = ["calibration", "synchronization", "hardware"]
@@ -271,6 +278,49 @@ function rateHz = octoce_line_rate(hardware, fullPath)
         error('OCE:IO:InvalidAcquisitionHeader', ...
             'OCTOCE A-line rate must be positive and finite in: %s', fullPath);
     end
+end
+
+function calibration = read_spectral_calibration(source, fullPath)
+    % The GUI preview reverses the stored detector row before applying
+    % wavelength_start_nm -> wavelength_end_nm (its k_linearization.model
+    % says so). In stored pixel order the endpoints are therefore swapped.
+    % Dispersion keeps the GUI definition: phase D2*q^2 + D3*q^3 removed from
+    % the analytic signal over uniform k, q in [-1, 1] with k ascending.
+    calibration = [];
+    if ~isfield(source, 'calibration') || ...
+            ~isfield(source.calibration, 'k_linearization')
+        return;
+    end
+    linearization = source.calibration.k_linearization;
+    startNm = json_numeric_scalar(linearization, 'wavelength_start_nm', ...
+        'calibration.k_linearization.wavelength_start_nm', fullPath);
+    endNm = json_numeric_scalar(linearization, 'wavelength_end_nm', ...
+        'calibration.k_linearization.wavelength_end_nm', fullPath);
+    model = lower(json_text_scalar(linearization, 'model', ...
+        'calibration.k_linearization.model', fullPath));
+    if startNm <= 0 || endNm <= 0 || startNm == endNm
+        error('OCE:IO:InvalidAcquisitionHeader', ...
+            ['OCTOCE wavelength endpoints must be positive and distinct ' ...
+             'in: %s'], fullPath);
+    end
+    if contains(model, "reversed in the preview")
+        [startNm, endNm] = deal(endNm, startNm);
+    end
+    d2 = 0;
+    d3 = 0;
+    if isfield(source.calibration, 'dispersion_compensation')
+        dispersion = source.calibration.dispersion_compensation;
+        d2 = json_numeric_scalar(dispersion, 'd2_rad', ...
+            'calibration.dispersion_compensation.d2_rad', fullPath);
+        d3 = json_numeric_scalar(dispersion, 'd3_rad', ...
+            'calibration.dispersion_compensation.d3_rad', fullPath);
+    end
+    calibration = struct( ...
+        'lambda_start_nm', startNm, ...
+        'lambda_end_nm', endNm, ...
+        'dispersion_d2_rad', d2, ...
+        'dispersion_d3_rad', d3, ...
+        'source', "octoce_header_calibration");
 end
 
 function value = json_optional_logical(source, name, label, fullPath)
